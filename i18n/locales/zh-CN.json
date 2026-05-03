@@ -24,6 +24,7 @@
     "actions": "行动队列",
     "tasks": "任务",
     "ssl": "SSL 证书",
+    "import": "导入导出",
     "webhooks": "Webhooks",
     "serverchan": "Server酱",
     "settings": "设置"
@@ -273,5 +274,42 @@
     "checkError": "SSL 检查失败",
     "refreshSuccess": "刷新成功",
     "refreshError": "刷新失败"
+  },
+  "import": {
+    "title": "导入导出",
+    "description": "批量导入域名或导出现有数据",
+    "export": {
+      "title": "导出域名",
+      "description": "将所有域名数据导出为 CSV 文件",
+      "button": "导出 CSV",
+      "exporting": "导出中...",
+      "success": "导出成功",
+      "error": "导出失败"
+    },
+    "import": {
+      "title": "导入域名",
+      "description": "从 CSV 文件批量导入域名",
+      "clickToUpload": "点击上传",
+      "orDragDrop": "或拖放文件到此处",
+      "maxSize": "最大 10MB",
+      "button": "导入 CSV",
+      "importing": "导入中...",
+      "updateExisting": "更新已存在的域名",
+      "result": "成功: {success}, 失败: {failed}",
+      "errors": "错误详情",
+      "successMessage": "成功导入 {count} 个域名",
+      "failedMessage": "{count} 个域名导入失败",
+      "error": "导入失败",
+      "invalidFile": "请选择 CSV 文件"
+    },
+    "format": {
+      "title": "CSV 格式说明",
+      "required": "必填字段",
+      "watchKind": "监控类型",
+      "priority": "优先级",
+      "tags": "标签",
+      "tagsFormat": "使用分号分隔",
+      "example": "查看示例"
+    }
   }
 }

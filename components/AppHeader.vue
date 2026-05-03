@@ -22,6 +22,9 @@
         <NuxtLink to="/ssl" active-class="text-accent" class="hover:text-text-main transition-colors">
           {{ $t('nav.ssl') }}
         </NuxtLink>
+        <NuxtLink to="/import" active-class="text-accent" class="hover:text-text-main transition-colors">
+          {{ $t('nav.import') }}
+        </NuxtLink>
         <NuxtLink to="/webhooks" active-class="text-accent" class="hover:text-text-main transition-colors">
           {{ $t('nav.webhooks') }}
         </NuxtLink>

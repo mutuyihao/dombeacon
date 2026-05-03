@@ -24,6 +24,7 @@
     "actions": "Action Queue",
     "tasks": "Tasks",
     "ssl": "SSL Certificates",
+    "import": "Import/Export",
     "webhooks": "Webhooks",
     "serverchan": "Server酱",
     "settings": "Settings"
@@ -273,5 +274,42 @@
     "checkError": "SSL check failed",
     "refreshSuccess": "Refresh successful",
     "refreshError": "Refresh failed"
+  },
+  "import": {
+    "title": "Import/Export",
+    "description": "Bulk import domains or export existing data",
+    "export": {
+      "title": "Export Domains",
+      "description": "Export all domain data as CSV file",
+      "button": "Export CSV",
+      "exporting": "Exporting...",
+      "success": "Export successful",
+      "error": "Export failed"
+    },
+    "import": {
+      "title": "Import Domains",
+      "description": "Bulk import domains from CSV file",
+      "clickToUpload": "Click to upload",
+      "orDragDrop": "or drag and drop",
+      "maxSize": "Max 10MB",
+      "button": "Import CSV",
+      "importing": "Importing...",
+      "updateExisting": "Update existing domains",
+      "result": "Success: {success}, Failed: {failed}",
+      "errors": "Error Details",
+      "successMessage": "Successfully imported {count} domains",
+      "failedMessage": "{count} domains failed to import",
+      "error": "Import failed",
+      "invalidFile": "Please select a CSV file"
+    },
+    "format": {
+      "title": "CSV Format Guide",
+      "required": "Required fields",
+      "watchKind": "Watch Kind",
+      "priority": "Priority",
+      "tags": "Tags",
+      "tagsFormat": "Separated by semicolons",
+      "example": "View Example"
+    }
   }
 }
