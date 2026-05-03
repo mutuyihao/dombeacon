@@ -29,7 +29,7 @@
       </div>
     </div>
 
-    <div class="flex items-center gap-2 flex-wrap min-h-[24px]">
+    <div class="flex items-center gap-2 flex-wrap min-h-6">
       <span v-for="tag in domain.tags" :key="tag" class="text-[10px] bg-white border border-card-border px-1.5 py-0.5 rounded text-text-secondary">
         {{ tag }}
       </span>

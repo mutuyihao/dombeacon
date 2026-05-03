@@ -63,7 +63,7 @@
                  <h3 class="font-medium text-text-main mb-4 border-b border-card-border pb-2">Meta</h3>
                  <div class="mb-4">
                      <p class="text-sm text-text-secondary mb-1">Note</p>
-                     <p class="text-text-main bg-background p-3 rounded-lg text-sm min-h-[60px]">{{ domain.note || 'No notes' }}</p>
+                     <p class="text-text-main bg-background p-3 rounded-lg text-sm min-h-15">{{ domain.note || 'No notes' }}</p>
                  </div>
                  <div>
                      <p class="text-sm text-text-secondary mb-1">Tags</p>
