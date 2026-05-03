@@ -5,6 +5,7 @@ import { createAction } from "./actions";
 import { sendNotification } from "./mail";
 import { notifyWebhooks } from "./webhook";
 import { notifyServerchan } from "./serverchan";
+import { scanDomainSSL } from "./ssl";
 
 const LOCK_TTL_MS = 1000 * 60 * 30; // 30 minutes
 
@@ -82,6 +83,44 @@ export const runDomainScan = async () => {
     for (const d of activeDomains) {
       try {
         const result = await checkDomain(d.domain, d.id);
+
+        // Check SSL certificate for OWNED domains
+        if (d.watchKind === "OWNED") {
+          try {
+            const sslResult = await scanDomainSSL(d.id, d.domain);
+
+            // Create action if SSL is expiring soon (< 30 days)
+            if (sslResult.hasSSL && sslResult.daysUntilExpiry !== undefined && sslResult.daysUntilExpiry < 30) {
+              await createAction({
+                domainId: d.id,
+                actionType: "SSL_EXPIRING",
+                priority: d.priority,
+                metadata: {
+                  daysUntilExpiry: sslResult.daysUntilExpiry,
+                  validTo: sslResult.validTo?.toISOString(),
+                  issuer: sslResult.issuer,
+                  domain: d.domain,
+                },
+              });
+            }
+
+            // Create action if SSL is invalid
+            if (sslResult.hasSSL && !sslResult.isValid) {
+              await createAction({
+                domainId: d.id,
+                actionType: "SSL_INVALID",
+                priority: d.priority,
+                metadata: {
+                  issuer: sslResult.issuer,
+                  validTo: sslResult.validTo?.toISOString(),
+                  domain: d.domain,
+                },
+              });
+            }
+          } catch (sslError: any) {
+            console.error(`SSL check failed for ${d.domain}:`, sslError.message);
+          }
+        }
 
         // Create actions based on status changes and domain type
         if (result) {

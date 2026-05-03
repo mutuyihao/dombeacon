@@ -132,3 +132,34 @@ export const serverchanConfigs = sqliteTable("serverchan_configs", {
     () => new Date(),
   ),
 });
+
+// SSL 证书状态表 (v1.1)
+export const sslStatusLatest = sqliteTable("ssl_status_latest", {
+  domainId: integer("domain_id")
+    .references(() => domains.id, { onDelete: "cascade" })
+    .primaryKey(),
+  hasSSL: integer("has_ssl", { mode: "boolean" }).default(false),
+  isValid: integer("is_valid", { mode: "boolean" }).default(false),
+  issuer: text("issuer"),
+  validFrom: integer("valid_from", { mode: "timestamp" }),
+  validTo: integer("valid_to", { mode: "timestamp" }),
+  daysUntilExpiry: integer("days_until_expiry"),
+  checkedAt: integer("checked_at", { mode: "timestamp" }),
+  lastError: text("last_error"),
+  lastErrorAt: integer("last_error_at", { mode: "timestamp" }),
+});
+
+// SSL 证书历史记录表 (v1.1)
+export const sslStatusHistory = sqliteTable("ssl_status_history", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  domainId: integer("domain_id").references(() => domains.id, {
+    onDelete: "cascade",
+  }),
+  hasSSL: integer("has_ssl", { mode: "boolean" }),
+  isValid: integer("is_valid", { mode: "boolean" }),
+  issuer: text("issuer"),
+  validFrom: integer("valid_from", { mode: "timestamp" }),
+  validTo: integer("valid_to", { mode: "timestamp" }),
+  daysUntilExpiry: integer("days_until_expiry"),
+  checkedAt: integer("checked_at", { mode: "timestamp" }),
+});

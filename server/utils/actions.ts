@@ -5,6 +5,8 @@ export type ActionType =
   | "WANTED_AVAILABLE"
   | "WANTED_DROPPING"
   | "OWNED_EXPIRING"
+  | "SSL_EXPIRING"
+  | "SSL_INVALID"
   | "SCAN_FAILED";
 
 export type ActionStatus = "OPEN" | "SNOOZED" | "DISMISSED" | "RESOLVED";

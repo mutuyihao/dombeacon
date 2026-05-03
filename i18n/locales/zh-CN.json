@@ -23,6 +23,7 @@
     "domains": "域名",
     "actions": "行动队列",
     "tasks": "任务",
+    "ssl": "SSL 证书",
     "webhooks": "Webhooks",
     "serverchan": "Server酱",
     "settings": "设置"
@@ -246,5 +247,31 @@
     "selectEvents": "选择事件类型",
     "howToGetSendKey": "如何获取 SendKey？",
     "sendKeyGuide": "1. 访问 https://sct.ftqq.com\n2. 使用微信扫码登录\n3. 在「SendKey」页面获取您的 SendKey"
+  },
+  "ssl": {
+    "title": "SSL 证书监控",
+    "description": "监控域名的 SSL 证书状态和过期时间",
+    "refreshAll": "刷新全部",
+    "checkNow": "立即检查",
+    "lastChecked": "最后检查",
+    "issuer": "颁发者",
+    "daysUntilExpiry": "{days} 天后过期",
+    "noData": "暂无 SSL 证书数据",
+    "filters": {
+      "all": "全部",
+      "expiring": "即将过期",
+      "invalid": "无效证书",
+      "nossl": "无 SSL"
+    },
+    "status": {
+      "valid": "有效",
+      "expiring": "即将过期",
+      "invalid": "无效",
+      "noSSL": "无 SSL"
+    },
+    "checkSuccess": "SSL 检查成功",
+    "checkError": "SSL 检查失败",
+    "refreshSuccess": "刷新成功",
+    "refreshError": "刷新失败"
   }
 }

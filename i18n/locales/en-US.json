@@ -23,6 +23,7 @@
     "domains": "Domains",
     "actions": "Action Queue",
     "tasks": "Tasks",
+    "ssl": "SSL Certificates",
     "webhooks": "Webhooks",
     "serverchan": "Server酱",
     "settings": "Settings"
@@ -246,5 +247,31 @@
     "selectEvents": "Select Event Types",
     "howToGetSendKey": "How to get SendKey?",
     "sendKeyGuide": "1. Visit https://sct.ftqq.com\n2. Login with WeChat\n3. Get your SendKey from the SendKey page"
+  },
+  "ssl": {
+    "title": "SSL Certificate Monitoring",
+    "description": "Monitor SSL certificate status and expiration dates",
+    "refreshAll": "Refresh All",
+    "checkNow": "Check Now",
+    "lastChecked": "Last Checked",
+    "issuer": "Issuer",
+    "daysUntilExpiry": "Expires in {days} days",
+    "noData": "No SSL certificate data",
+    "filters": {
+      "all": "All",
+      "expiring": "Expiring Soon",
+      "invalid": "Invalid",
+      "nossl": "No SSL"
+    },
+    "status": {
+      "valid": "Valid",
+      "expiring": "Expiring Soon",
+      "invalid": "Invalid",
+      "noSSL": "No SSL"
+    },
+    "checkSuccess": "SSL check successful",
+    "checkError": "SSL check failed",
+    "refreshSuccess": "Refresh successful",
+    "refreshError": "Refresh failed"
   }
 }

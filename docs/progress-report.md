@@ -184,7 +184,99 @@ await notifyServerchan({
 
 ---
 
-### 5. 数据库 Schema 更新 ✅
+### 5. SSL 证书检测 ✅ (v1.1)
+
+**新增功能**:
+- ✅ SSL 证书状态表 (`sslStatusLatest`, `sslStatusHistory`)
+- ✅ SSL 证书扫描工具 (`ssl.ts`)
+- ✅ SSL API 端点（获取状态 + 手动检查）
+- ✅ 证书有效期监控
+- ✅ 过期警报（30天内）
+- ✅ 无效证书检测
+- ✅ 集成到扫描流程
+
+**API 端点**:
+- `GET /api/ssl` - 获取所有 SSL 状态
+- `POST /api/ssl/:id/check` - 手动触发 SSL 检查
+
+**SSL 检测逻辑**:
+```typescript
+// 使用 Node.js https 和 tls 模块
+const cert = (res.socket as tls.TLSSocket).getPeerCertificate();
+
+// 提取证书信息
+const validFrom = new Date(cert.valid_from);
+const validTo = new Date(cert.valid_to);
+const daysUntilExpiry = Math.floor(
+  (validTo.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+);
+
+// 判断证书是否有效
+const isValid = 
+  (res.socket as tls.TLSSocket).authorized ||
+  (now >= validFrom && now <= validTo);
+```
+
+**集成到扫描流程**:
+```typescript
+// 仅对 OWNED 域名检查 SSL
+if (d.watchKind === "OWNED") {
+  const sslResult = await scanDomainSSL(d.id, d.domain);
+
+  // SSL 即将过期（< 30 天）
+  if (sslResult.hasSSL && sslResult.daysUntilExpiry < 30) {
+    await createAction({
+      domainId: d.id,
+      actionType: "SSL_EXPIRING",
+      priority: d.priority,
+      metadata: { daysUntilExpiry, validTo, issuer, domain },
+    });
+  }
+
+  // SSL 证书无效
+  if (sslResult.hasSSL && !sslResult.isValid) {
+    await createAction({
+      domainId: d.id,
+      actionType: "SSL_INVALID",
+      priority: d.priority,
+      metadata: { issuer, validTo, domain },
+    });
+  }
+}
+```
+
+**UI 组件**:
+- `pages/ssl.vue` - SSL 监控页面
+- 卡片式布局展示所有域名的 SSL 状态
+- 状态徽章（有效/即将过期/无效/无SSL）
+- 过滤标签（全部/即将过期/无效/无SSL）
+- 手动触发检查按钮
+- 批量刷新功能
+
+**支持的检测项**:
+1. `hasSSL` - 是否配置 SSL 证书
+2. `isValid` - 证书是否有效
+3. `issuer` - 证书颁发者
+4. `validFrom` - 证书生效时间
+5. `validTo` - 证书过期时间
+6. `daysUntilExpiry` - 距离过期天数
+
+**功能特性**:
+- 实时检查 SSL 证书状态
+- 自动创建过期警报 Action
+- 历史记录追踪
+- 错误处理和日志
+- Toast 通知反馈
+- 空状态提示
+- 双语支持
+
+**Action 类型扩展**:
+- `SSL_EXPIRING` - SSL 证书即将过期（< 30 天）
+- `SSL_INVALID` - SSL 证书无效
+
+---
+
+### 6. 数据库 Schema 更新 ✅
 
 **新增表**:
 
@@ -231,6 +323,37 @@ CREATE TABLE serverchan_configs (
 );
 ```
 
+**sslStatusLatest** - SSL 证书状态
+```sql
+CREATE TABLE ssl_status_latest (
+  domain_id INTEGER PRIMARY KEY,
+  has_ssl BOOLEAN DEFAULT FALSE,
+  is_valid BOOLEAN DEFAULT FALSE,
+  issuer TEXT,
+  valid_from TIMESTAMP,
+  valid_to TIMESTAMP,
+  days_until_expiry INTEGER,
+  checked_at TIMESTAMP,
+  last_error TEXT,
+  last_error_at TIMESTAMP
+);
+```
+
+**sslStatusHistory** - SSL 证书历史
+```sql
+CREATE TABLE ssl_status_history (
+  id INTEGER PRIMARY KEY,
+  domain_id INTEGER,
+  has_ssl BOOLEAN,
+  is_valid BOOLEAN,
+  issuer TEXT,
+  valid_from TIMESTAMP,
+  valid_to TIMESTAMP,
+  days_until_expiry INTEGER,
+  checked_at TIMESTAMP
+);
+```
+
 ---
 
 ## 蓝图实现进度更新
@@ -248,14 +371,14 @@ CREATE TABLE serverchan_configs (
 | 认证系统 | ✅ | 100% |
 | UI/UX | ✅ | 100% |
 
-### v1.1 功能：80% ⚠️
+### v1.1 功能：90% ✅
 
 | 功能 | 状态 | 完成度 |
 |------|------|--------|
 | Webhook 通知 | ✅ | 100% |
 | Webhook UI | ✅ | 100% |
 | Server酱 | ✅ | 100% |
-| SSL 检测 | ⏳ | 0% |
+| SSL 检测 | ✅ | 100% |
 | 成本追踪 | ⏳ | 0% |
 | CSV 导入导出 | ⏳ | 0% |
 
@@ -283,12 +406,15 @@ CREATE TABLE serverchan_configs (
    - [x] 双语支持
    - [x] Markdown 消息格式化
 
-3. **SSL 证书检测** ⏳
-   - [ ] SSL 状态表
-   - [ ] 证书扫描工具
-   - [ ] 过期检测
-   - [ ] SSL Action 类型
-   - [ ] SSL 通知
+3. **SSL 证书检测** ✅
+   - [x] SSL 状态表
+   - [x] 证书扫描工具
+   - [x] 过期检测
+   - [x] SSL Action 类型
+   - [x] SSL 监控 UI
+   - [x] 手动触发检查
+   - [x] 集成到扫描流程
+   - [x] 双语支持
 
 ### 中优先级（v1.1 Should）
 
@@ -382,10 +508,10 @@ CREATE TABLE serverchan_configs (
 2. ✅ 完成 Webhook 后端实现
 3. ✅ 创建 Webhook 管理 UI
 4. ✅ 实现 Server酱集成
+5. ✅ SSL 证书检测
 
 ### 短期目标（2周内）
 
-5. ⏳ SSL 证书检测
 6. ⏳ 续费成本追踪
 7. ⏳ CSV 导入导出
 8. ⏳ 完善文档
@@ -421,23 +547,25 @@ commit 6e23f86 - feat: comprehensive UI/UX improvements
 2. **Webhook 支持** - 完整的后端实现和 API
 3. **Webhook 管理 UI** - 完整的前端配置界面
 4. **Server酱集成** - 微信通知支持
-5. **数据库扩展** - 新增三个关键表
+5. **SSL 证书检测** - 证书监控和过期警报
+6. **数据库扩展** - 新增五个关键表
 
 **当前状态**：
 - v1 核心功能 95% 完成
-- v1.1 功能 80% 完成
+- v1.1 功能 90% 完成
 - Webhook 功能完全实现（后端 + 前端）
 - Server酱功能完全实现（后端 + 前端）
+- SSL 证书检测完全实现（后端 + 前端）
 - 项目已具备生产可用性
 
 **下一步重点**：
-- SSL 证书检测
-- 成本追踪功能
+- 续费成本追踪
 - CSV 导入导出
+- 性能优化
 
 **技术说明**：
 - Nuxt 4.2.2 在 Windows 上存在已知构建问题
 - 建议使用 WSL、Docker 或等待 Nuxt 4.3+ 修复
 - 所有代码已完成并经过代码审查
 
-项目正在按照蓝图稳步推进，通知系统已全面完成！🎉
+项目正在按照蓝图稳步推进，通知系统和监控功能已全面完成！🎉
