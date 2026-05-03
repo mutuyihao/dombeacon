@@ -3,14 +3,16 @@ version: "3.8"
 services:
   app:
     build: .
-    image: domain-watchlist:latest
-    container_name: domain-watchlist
+    image: domain-ops-radar:latest
+    container_name: domain-ops-radar
     restart: unless-stopped
     ports:
       - "3000:3000"
     volumes:
       - ./data:/app/data
     environment:
-      - DATABASE_URL=file:/app/data/app.db
+      - DATABASE_PATH=/app/data/domains.db
       - BASE_URL=http://localhost:3000
+      # Optional: Set ADMIN_PASSWORD for authentication
+      # - ADMIN_PASSWORD=your-secure-password
     # Optional: Healthcheck

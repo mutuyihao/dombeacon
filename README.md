@@ -35,8 +35,55 @@ A self-hosted Domain Ops Radar for tracking wanted domain opportunities, managin
 
 ## Configuration
 
-- **SMTP**: Go to `/settings` to configure your email provider (Gmail, SMTP2GO, etc.) and target email.
-- **Rules**: Toggle "Instant Notification" or "Daily Summary" in Settings.
+### Authentication (Optional)
+
+Set `ADMIN_PASSWORD` in your `.env` file to enable password protection:
+
+```env
+ADMIN_PASSWORD=your-secure-password
+```
+
+If not set, the app is publicly accessible.
+
+### SMTP & Notifications
+
+Go to `/settings` to configure:
+- Email provider (Gmail, SMTP2GO, etc.)
+- Target email address
+- Notification rules (Instant alerts, Daily summary)
+
+### Database
+
+The database path can be configured via `DATABASE_PATH` environment variable (default: `./data/domains.db`).
+
+## Usage
+
+### Adding Domains
+
+1. Navigate to `/domains`
+2. Click "Add Domain"
+3. Select:
+   - **Watch Kind**: OWNED (domains you own) or WANTED (domains you're tracking)
+   - **Priority**: HIGH, MEDIUM, or LOW
+4. Add optional notes and tags
+
+### Managing Actions
+
+The action queue (`/actions`) shows events requiring attention:
+
+- **WANTED_AVAILABLE**: A wanted domain became available
+- **WANTED_DROPPING**: A wanted domain is in pending delete/redemption
+- **OWNED_EXPIRING**: An owned domain is expiring soon (<30 days)
+- **SCAN_FAILED**: RDAP scan failed for a domain
+
+Actions can be:
+- **Snoozed**: Temporarily hidden until a future date
+- **Dismissed**: Acknowledged but no action needed
+- **Resolved**: Action completed
+
+### API Access
+
+See [docs/README.md](docs/README.md) for full API documentation.
 
 ## Development Setup
 
