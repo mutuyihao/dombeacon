@@ -13,7 +13,7 @@ export default defineNuxtConfig({
       { code: "zh", iso: "zh-CN", file: "zh-CN.json", name: "中文" },
     ],
     lazy: true,
-    langDir: "i18n/locales",
+    langDir: "locales",
     defaultLocale: "zh",
     strategy: "no_prefix",
     detectBrowserLanguage: {
