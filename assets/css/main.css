@@ -27,7 +27,38 @@
 }
 
 @layer base {
+  /* Prevent layout shift when scrollbar appears/disappears */
+  html {
+    overflow-y: scroll; /* Always show scrollbar space */
+    scrollbar-gutter: stable; /* Reserve space for scrollbar */
+  }
+
   body {
     @apply bg-background text-text-main font-sans antialiased;
+  }
+
+  /* Custom scrollbar styling (optional, for better aesthetics) */
+  ::-webkit-scrollbar {
+    width: 12px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: var(--color-background);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-card-border);
+    border-radius: 6px;
+    border: 3px solid var(--color-background);
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-text-weak);
+  }
+
+  /* Firefox scrollbar */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-card-border) var(--color-background);
   }
 }
