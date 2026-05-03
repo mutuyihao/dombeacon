@@ -1,0 +1,24 @@
+@import "tailwindcss";
+
+/* Custom theme - Tailwind CSS v4 uses CSS variables */
+@theme {
+  --color-background: #F4F2EE;
+  --color-card: #FAF8F4;
+  --color-card-border: #E7E2DA;
+  --color-text-main: #2B2B2B;
+  --color-text-secondary: #6B6B6B;
+  --color-text-weak: #9A9A9A;
+  --color-accent: #4B5B6B;
+  --color-accent-hover: #3F4E5D;
+  --color-status-available: #7C8B7A;
+  --color-status-registered: #7A7F8C;
+  --color-status-expiring: #A08C7C;
+  --color-status-dropping: #8C6F6F;
+  --color-status-unknown: #8A8780;
+}
+
+@layer base {
+  body {
+    @apply bg-background text-text-main font-sans antialiased;
+  }
+}

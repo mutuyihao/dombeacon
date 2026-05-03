@@ -1,0 +1,16 @@
+version: "3.8"
+
+services:
+  app:
+    build: .
+    image: domain-watchlist:latest
+    container_name: domain-watchlist
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - DATABASE_URL=file:/app/data/app.db
+      - BASE_URL=http://localhost:3000
+    # Optional: Healthcheck
