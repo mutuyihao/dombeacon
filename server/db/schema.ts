@@ -85,3 +85,38 @@ export const actions = sqliteTable("actions", {
   resolvedAt: integer("resolved_at", { mode: "timestamp" }),
   metadata: text("metadata"), // JSON: { oldStatus, newStatus, expiresAt, error, etc. }
 });
+
+// New table for notification event tracking and deduplication
+export const notificationEvents = sqliteTable("notification_events", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  domainId: integer("domain_id").references(() => domains.id, {
+    onDelete: "cascade",
+  }),
+  actionId: integer("action_id").references(() => actions.id, {
+    onDelete: "cascade",
+  }),
+  eventType: text("event_type").notNull(), // 'STATUS_CHANGE' | 'EXPIRING_SOON' | 'SCAN_FAILED' | 'DAILY_SUMMARY'
+  channel: text("channel").notNull(), // 'EMAIL' | 'WEBHOOK' | 'SERVERCHAN'
+  status: text("status").notNull().default("PENDING"), // 'PENDING' | 'SENT' | 'FAILED'
+  sentAt: integer("sent_at", { mode: "timestamp" }),
+  failedAt: integer("failed_at", { mode: "timestamp" }),
+  errorMessage: text("error_message"),
+  metadata: text("metadata"), // JSON: additional context
+  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(
+    () => new Date(),
+  ),
+});
+
+// New table for webhook configurations (v1.1)
+export const webhookConfigs = sqliteTable("webhook_configs", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  name: text("name").notNull(),
+  url: text("url").notNull(),
+  method: text("method").notNull().default("POST"), // 'POST' | 'GET'
+  headersJson: text("headers_json"), // JSON: custom headers
+  enabled: integer("enabled", { mode: "boolean" }).default(true),
+  eventTypes: text("event_types"), // JSON array: which events to send
+  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(
+    () => new Date(),
+  ),
+});

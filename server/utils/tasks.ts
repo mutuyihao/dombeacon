@@ -1,7 +1,8 @@
 import { domains, taskLocks, taskRuns, domainStatusLatest } from "../db/schema";
-import { eq, lt } from "drizzle-orm";
+import { eq, lt, or, and } from "drizzle-orm";
 import { checkDomain } from "./scanner";
 import { createAction } from "./actions";
+import { sendNotification } from "./mail";
 
 const LOCK_TTL_MS = 1000 * 60 * 30; // 30 minutes
 
@@ -95,6 +96,20 @@ export const runDomainScan = async () => {
               },
             });
             actionsCreated.push(action);
+
+            // Send instant notification
+            await sendNotification({
+              domainId: d.id,
+              actionId: action.id,
+              eventType: "STATUS_CHANGE",
+              templateType: "instant",
+              templateData: {
+                domain: d.domain,
+                oldStatus: result.oldStatus,
+                newStatus: result.newStatus,
+              },
+              deduplicateHours: 24,
+            });
           }
 
           // WANTED domain entered PENDING_DELETE
@@ -111,6 +126,20 @@ export const runDomainScan = async () => {
             });
             actionsCreated.push(action);
             newlyDropping.push({ domain: d.domain, id: d.id });
+
+            // Send instant notification
+            await sendNotification({
+              domainId: d.id,
+              actionId: action.id,
+              eventType: "STATUS_CHANGE",
+              templateType: "instant",
+              templateData: {
+                domain: d.domain,
+                oldStatus: result.oldStatus,
+                newStatus: result.newStatus,
+              },
+              deduplicateHours: 24,
+            });
           }
 
           // OWNED domain is EXPIRING (check expiration date)
@@ -133,6 +162,21 @@ export const runDomainScan = async () => {
                 },
               });
               actionsCreated.push(action);
+
+              // Send instant notification
+              await sendNotification({
+                domainId: d.id,
+                actionId: action.id,
+                eventType: "EXPIRING_SOON",
+                templateType: "instant",
+                templateData: {
+                  domain: d.domain,
+                  oldStatus: result.oldStatus,
+                  newStatus: result.newStatus,
+                  expiresAt: statusInfo.expiresAt,
+                },
+                deduplicateHours: 72, // Less frequent for expiring domains
+              });
             }
           }
         } else {
@@ -175,11 +219,14 @@ export const runDomainScan = async () => {
 
     // Trigger alert if newly dropping domains found
     if (newlyDropping.length > 0) {
-      const { sendMail, getTemplate } = await import("./mail");
-      const { subject, html } = getTemplate("dropping_alert", {
-        domains: newlyDropping,
+      await sendNotification({
+        eventType: "DROPPING_ALERT",
+        templateType: "dropping_alert",
+        templateData: {
+          domains: newlyDropping,
+        },
+        deduplicateHours: 0, // Always send dropping alerts
       });
-      await sendMail(subject, html);
     }
   } catch (e: any) {
     errors.push({ general: e.message });
@@ -211,8 +258,43 @@ export const runDailySummary = async () => {
   }
   const start = Date.now();
   try {
-    // TODO: Implement Email Sending
-    console.log("Daily summary running... (email sending to be implemented)");
+    const db = useDb();
+
+    // Get notable domains (expiring soon, pending delete, recently changed)
+    const notableDomains = await db
+      .select({
+        domain: domains.domain,
+        status: domainStatusLatest.status,
+        expiresAt: domainStatusLatest.expiresAt,
+        watchKind: domains.watchKind,
+        priority: domains.priority,
+      })
+      .from(domains)
+      .leftJoin(domainStatusLatest, eq(domains.id, domainStatusLatest.domainId))
+      .where(
+        and(
+          eq(domains.isActive, true),
+          or(
+            eq(domainStatusLatest.status, "EXPIRING"),
+            eq(domainStatusLatest.status, "PENDING_DELETE"),
+            eq(domainStatusLatest.status, "AVAILABLE"),
+          ),
+        ),
+      )
+      .limit(50);
+
+    // Send daily summary
+    await sendNotification({
+      eventType: "DAILY_SUMMARY",
+      templateType: "daily",
+      templateData: {
+        domains: notableDomains,
+        totalDomains: await db.select().from(domains).where(eq(domains.isActive, true)).then(r => r.length),
+      },
+      deduplicateHours: 20, // Once per day
+    });
+
+    console.log(`Daily summary sent with ${notableDomains.length} notable domains`);
   } finally {
     await releaseLock("daily-summary");
     // Log run
