@@ -23,6 +23,7 @@
     "domains": "Domains",
     "actions": "Action Queue",
     "tasks": "Tasks",
+    "webhooks": "Webhooks",
     "settings": "Settings"
   },
   "auth": {
@@ -162,5 +163,47 @@
     "smtpTo": "To Address",
     "testEmail": "Send Test Email",
     "testEmailSent": "Test email sent"
+  },
+  "webhook": {
+    "title": "Webhook Configuration",
+    "addWebhook": "Add Webhook",
+    "editWebhook": "Edit Webhook",
+    "deleteWebhook": "Delete Webhook",
+    "confirmDelete": "Confirm delete this webhook?",
+    "name": "Name",
+    "url": "URL",
+    "method": "Method",
+    "headers": "Custom Headers",
+    "eventTypes": "Event Types",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "testWebhook": "Test Webhook",
+    "testing": "Testing...",
+    "testSuccess": "Test successful",
+    "testFailed": "Test failed",
+    "addSuccess": "Webhook added successfully",
+    "addError": "Failed to add webhook",
+    "deleteSuccess": "Webhook deleted successfully",
+    "deleteError": "Failed to delete webhook",
+    "noWebhooks": "No webhooks configured",
+    "noWebhooksHint": "Add a webhook to receive domain event notifications",
+    "nameRequired": "Name is required",
+    "urlRequired": "URL is required",
+    "invalidUrl": "Invalid URL format",
+    "headerKey": "Header Name",
+    "headerValue": "Header Value",
+    "addHeader": "Add Header",
+    "removeHeader": "Remove",
+    "events": {
+      "wanted_available": "Wanted Domain Available",
+      "wanted_dropping": "Wanted Domain Dropping",
+      "owned_expiring": "Owned Domain Expiring",
+      "status_change": "Status Change",
+      "expiring_soon": "Expiring Soon",
+      "dropping_alert": "Dropping Alert",
+      "daily_summary": "Daily Summary"
+    },
+    "allEvents": "All Events",
+    "selectEvents": "Select Event Types"
   }
 }

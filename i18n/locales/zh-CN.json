@@ -23,6 +23,7 @@
     "domains": "域名",
     "actions": "行动队列",
     "tasks": "任务",
+    "webhooks": "Webhooks",
     "settings": "设置"
   },
   "auth": {
@@ -162,5 +163,47 @@
     "smtpTo": "收件人地址",
     "testEmail": "发送测试邮件",
     "testEmailSent": "测试邮件已发送"
+  },
+  "webhook": {
+    "title": "Webhook 配置",
+    "addWebhook": "添加 Webhook",
+    "editWebhook": "编辑 Webhook",
+    "deleteWebhook": "删除 Webhook",
+    "confirmDelete": "确认删除此 Webhook？",
+    "name": "名称",
+    "url": "URL 地址",
+    "method": "请求方法",
+    "headers": "自定义 Headers",
+    "eventTypes": "事件类型",
+    "enabled": "启用",
+    "disabled": "禁用",
+    "testWebhook": "测试 Webhook",
+    "testing": "测试中...",
+    "testSuccess": "测试成功",
+    "testFailed": "测试失败",
+    "addSuccess": "Webhook 添加成功",
+    "addError": "Webhook 添加失败",
+    "deleteSuccess": "Webhook 删除成功",
+    "deleteError": "Webhook 删除失败",
+    "noWebhooks": "暂无 Webhook 配置",
+    "noWebhooksHint": "添加 Webhook 以接收域名事件通知",
+    "nameRequired": "名称不能为空",
+    "urlRequired": "URL 不能为空",
+    "invalidUrl": "URL 格式不正确",
+    "headerKey": "Header 名称",
+    "headerValue": "Header 值",
+    "addHeader": "添加 Header",
+    "removeHeader": "移除",
+    "events": {
+      "wanted_available": "想要的域名可注册",
+      "wanted_dropping": "想要的域名待删除",
+      "owned_expiring": "拥有的域名即将过期",
+      "status_change": "状态变更",
+      "expiring_soon": "即将过期",
+      "dropping_alert": "待删除警报",
+      "daily_summary": "每日摘要"
+    },
+    "allEvents": "所有事件",
+    "selectEvents": "选择事件类型"
   }
 }

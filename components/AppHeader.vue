@@ -19,6 +19,9 @@
         <NuxtLink to="/tasks" active-class="text-accent" class="hover:text-text-main transition-colors">
           {{ $t('nav.tasks') }}
         </NuxtLink>
+        <NuxtLink to="/webhooks" active-class="text-accent" class="hover:text-text-main transition-colors">
+          {{ $t('nav.webhooks') }}
+        </NuxtLink>
         <NuxtLink to="/settings" active-class="text-accent" class="hover:text-text-main transition-colors">
           {{ $t('nav.settings') }}
         </NuxtLink>
