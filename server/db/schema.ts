@@ -3,6 +3,8 @@ import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
 export const domains = sqliteTable("domains", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   domain: text("domain").notNull().unique(),
+  watchKind: text("watch_kind").notNull().default("WANTED"), // 'OWNED' | 'WANTED'
+  priority: text("priority").notNull().default("MEDIUM"), // 'LOW' | 'MEDIUM' | 'HIGH'
   note: text("note"),
   tagsJson: text("tags_json").default("[]"),
   groupName: text("group_name"),
@@ -19,7 +21,7 @@ export const domainStatusLatest = sqliteTable("domain_status_latest", {
   domainId: integer("domain_id")
     .references(() => domains.id, { onDelete: "cascade" })
     .primaryKey(),
-  status: text("status").notNull(), // AVAILABLE, REGISTERED, EXPIRING, DROPPING, UNKNOWN
+  status: text("status").notNull(), // AVAILABLE, REGISTERED, EXPIRING, PENDING_DELETE, UNKNOWN
   checkedAt: integer("checked_at", { mode: "timestamp" }),
   expiresAt: integer("expires_at", { mode: "timestamp" }),
   registrar: text("registrar"),
@@ -27,6 +29,8 @@ export const domainStatusLatest = sqliteTable("domain_status_latest", {
   source: text("source"), // rdap, whois
   rawSnapshot: text("raw_snapshot"),
   parseReason: text("parse_reason"),
+  lastError: text("last_error"),
+  lastErrorAt: integer("last_error_at", { mode: "timestamp" }),
 });
 
 export const domainStatusHistory = sqliteTable("domain_status_history", {
@@ -64,4 +68,20 @@ export const taskRuns = sqliteTable("task_runs", {
   startedAt: integer("started_at", { mode: "timestamp" }),
   finishedAt: integer("finished_at", { mode: "timestamp" }),
   resultJson: text("result_json"),
+});
+
+export const actions = sqliteTable("actions", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  domainId: integer("domain_id")
+    .references(() => domains.id, { onDelete: "cascade" })
+    .notNull(),
+  actionType: text("action_type").notNull(), // 'WANTED_AVAILABLE' | 'WANTED_DROPPING' | 'OWNED_EXPIRING' | 'SCAN_FAILED'
+  status: text("status").notNull().default("OPEN"), // 'OPEN' | 'SNOOZED' | 'DISMISSED' | 'RESOLVED'
+  priority: text("priority").notNull(), // Inherited from domain: 'LOW' | 'MEDIUM' | 'HIGH'
+  triggeredAt: integer("triggered_at", { mode: "timestamp" }).$defaultFn(
+    () => new Date(),
+  ),
+  snoozedUntil: integer("snoozed_until", { mode: "timestamp" }),
+  resolvedAt: integer("resolved_at", { mode: "timestamp" }),
+  metadata: text("metadata"), // JSON: { oldStatus, newStatus, expiresAt, error, etc. }
 });
