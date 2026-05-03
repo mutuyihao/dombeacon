@@ -31,7 +31,10 @@
                 class="w-full pl-9 pr-4 py-2 bg-card border border-card-border rounded-xl focus:outline-none focus:border-accent transition-colors text-sm"
               >
           </div>
-          <button @click="isAddModalOpen = true" class="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-xl shadow-sm text-sm font-medium transition-colors">
+          <button
+            @click="isAddModalOpen = true"
+            class="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-xl shadow-sm text-sm font-medium transition-all active:scale-95"
+          >
               <PlusIcon class="w-4 h-4" />
               <span class="hidden sm:inline">{{ $t('domain.addDomain') }}</span>
               <span class="sm:hidden">{{ $t('common.add') }}</span>
@@ -67,6 +70,16 @@
 
     <!-- Modals -->
     <AddDomainModal :is-open="isAddModalOpen" @close="isAddModalOpen = false" @saved="fetchDomains" />
+    <ConfirmDialog
+      :is-open="confirmDialog.isOpen"
+      :title="$t('domain.deleteDomain')"
+      :message="$t('domain.confirmDelete')"
+      :confirm-text="$t('common.delete')"
+      :cancel-text="$t('common.cancel')"
+      variant="danger"
+      @confirm="confirmDelete"
+      @cancel="confirmDialog.isOpen = false"
+    />
   </div>
 </template>
 
@@ -84,10 +97,15 @@ const tabs = [
 ];
 
 const { t } = useI18n();
+const toast = useToast();
 
 const currentStatus = ref('ALL');
 const search = ref('');
 const isAddModalOpen = ref(false);
+const confirmDialog = ref({
+  isOpen: false,
+  domainId: null
+});
 
 // Data Fetching
 const page = ref(1);
@@ -107,26 +125,32 @@ const domains = computed(() => data.value?.data?.items || []);
 const fetchDomains = () => refresh();
 
 const refreshDomain = async (id) => {
-    // Optimistic UI or just trigger endpoint
-    // Trigger manual refresh endpoint
-    // Actually I haven't implemented manual refresh endpoint yet? 
-    // Wait, prompt asked for POST /api/domains/:id/refresh. I missed that one in create list.
-    // I should create it. For now, just scaffold function.
     try {
         await $fetch(`/api/domains/${id}/refresh`, { method: 'POST' });
-        refresh(); // Reload list
+        toast.success(t('domain.scanSuccess'));
+        refresh();
     } catch (e) {
-        alert('Refresh failed');
+        toast.error(t('domain.scanError'));
     }
 };
 
-const deleteDomain = async (id) => {
-    if(!confirm(t('domain.confirmDelete'))) return;
+const deleteDomain = (id) => {
+    confirmDialog.value = {
+        isOpen: true,
+        domainId: id
+    };
+};
+
+const confirmDelete = async () => {
+    const id = confirmDialog.value.domainId;
+    confirmDialog.value.isOpen = false;
+
     try {
         await $fetch(`/api/domains/${id}`, { method: 'DELETE' });
+        toast.success(t('domain.deleteSuccess'));
         refresh();
     } catch (e) {
-        alert(t('domain.deleteError'));
+        toast.error(t('domain.deleteError'));
     }
 };
 </script>

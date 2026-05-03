@@ -3,10 +3,18 @@
     <div class="flex justify-between items-center">
         <h2 class="text-xl font-semibold">{{ $t('task.title') }}</h2>
         <div class="flex gap-2">
-            <button @click="trigger('hourly-scan')" :disabled="loading" class="px-4 py-2 bg-white border border-card-border rounded-lg text-sm font-medium hover:bg-gray-50">
+            <button
+              @click="trigger('hourly-scan')"
+              :disabled="loading"
+              class="px-4 py-2 bg-white border border-card-border rounded-lg text-sm font-medium hover:bg-gray-50 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
                 {{ $t('task.triggerScan') }}
             </button>
-            <button @click="trigger('daily-summary')" :disabled="loading" class="px-4 py-2 bg-white border border-card-border rounded-lg text-sm font-medium hover:bg-gray-50">
+            <button
+              @click="trigger('daily-summary')"
+              :disabled="loading"
+              class="px-4 py-2 bg-white border border-card-border rounded-lg text-sm font-medium hover:bg-gray-50 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
                 {{ $t('task.triggerSummary') }}
             </button>
         </div>
@@ -49,6 +57,7 @@
 import { format } from 'date-fns';
 
 const { t } = useI18n();
+const toast = useToast();
 const { data, refresh } = await useFetch('/api/tasks/runs');
 const runs = computed(() => data.value?.data?.items || []);
 const loading = ref(false);
@@ -59,9 +68,12 @@ const trigger = async (task) => {
     loading.value = true;
     try {
         await $fetch('/api/tasks/trigger', { method: 'POST', body: { task } });
-        setTimeout(refresh, 1000); // Wait a bit for start
-        alert(`${task} ${t('task.triggered')}`);
-    } catch(e) { alert(t('task.triggerFailed')); }
-    finally { loading.value = false; }
+        setTimeout(refresh, 1000);
+        toast.success(`${task} ${t('task.triggered')}`);
+    } catch(e) {
+        toast.error(t('task.triggerFailed'));
+    } finally {
+        loading.value = false;
+    }
 };
 </script>

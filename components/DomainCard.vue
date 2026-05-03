@@ -40,10 +40,18 @@
     
     <!-- Actions -->
     <div class="absolute bottom-4 right-4 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-20">
-       <button @click.stop="$emit('refresh', domain.id)" class="p-1.5 hover:bg-white rounded-lg text-text-secondary hover:text-accent transition-colors" title="Refresh">
+       <button
+         @click.stop="$emit('refresh', domain.id)"
+         class="p-1.5 hover:bg-white rounded-lg text-text-secondary hover:text-accent transition-all active:scale-90"
+         title="Refresh"
+       >
          <RefreshCwIcon class="w-4 h-4" />
        </button>
-       <button @click.stop="$emit('delete', domain.id)" class="p-1.5 hover:bg-white rounded-lg text-text-secondary hover:text-red-500 transition-colors" title="Delete">
+       <button
+         @click.stop="$emit('delete', domain.id)"
+         class="p-1.5 hover:bg-white rounded-lg text-text-secondary hover:text-red-500 transition-all active:scale-90"
+         title="Delete"
+       >
          <Trash2Icon class="w-4 h-4" />
        </button>
     </div>

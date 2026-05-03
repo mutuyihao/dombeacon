@@ -65,4 +65,31 @@
     scrollbar-width: thin;
     scrollbar-color: var(--color-card-border) var(--color-background);
   }
+
+  /* Button animations and interactions */
+  button, a {
+    @apply transition-all duration-200;
+  }
+
+  button:active:not(:disabled), a:active {
+    @apply scale-95;
+  }
+
+  button:disabled {
+    @apply opacity-50 cursor-not-allowed;
+  }
+
+  /* Focus visible for accessibility */
+  *:focus-visible {
+    @apply outline-none ring-2 ring-accent ring-offset-2 ring-offset-background;
+  }
+
+  /* Smooth transitions for interactive elements */
+  input, select, textarea {
+    @apply transition-all duration-200;
+  }
+
+  input:focus, select:focus, textarea:focus {
+    @apply outline-none border-accent ring-2 ring-accent/20;
+  }
 }

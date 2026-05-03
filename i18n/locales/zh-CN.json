@@ -66,13 +66,16 @@
     "deleteDomain": "删除域名",
     "confirmDelete": "确认删除此域名？",
     "addSuccess": "域名添加成功",
+    "addError": "域名添加失败",
     "updateSuccess": "域名更新成功",
     "deleteSuccess": "域名删除成功",
     "scanSuccess": "扫描完成",
     "scanError": "扫描失败",
     "noDomains": "暂无域名",
     "noDomainsHint": "尝试调整筛选条件或添加新域名",
-    "deleteError": "删除失败"
+    "deleteError": "删除失败",
+    "domainRequired": "域名不能为空",
+    "invalidDomain": "域名格式不正确"
   },
   "action": {
     "title": "行动队列",

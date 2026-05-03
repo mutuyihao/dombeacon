@@ -83,40 +83,116 @@
           <button
             v-if="action.status === 'OPEN'"
             @click="snoozeAction(action.id)"
-            class="flex-1 px-3 py-1.5 text-xs bg-background hover:bg-accent/10 border border-card-border rounded-lg transition-colors"
+            class="flex-1 px-3 py-1.5 text-xs bg-background hover:bg-accent/10 border border-card-border rounded-lg transition-all active:scale-95"
           >
             {{ $t('action.snooze') }}
           </button>
           <button
             v-if="action.status === 'OPEN'"
             @click="dismissAction(action.id)"
-            class="flex-1 px-3 py-1.5 text-xs bg-background hover:bg-accent/10 border border-card-border rounded-lg transition-colors"
+            class="flex-1 px-3 py-1.5 text-xs bg-background hover:bg-accent/10 border border-card-border rounded-lg transition-all active:scale-95"
           >
             {{ $t('action.dismiss') }}
           </button>
           <button
             v-if="action.status === 'OPEN' || action.status === 'SNOOZED'"
             @click="resolveAction(action.id)"
-            class="flex-1 px-3 py-1.5 text-xs bg-accent hover:bg-accent-hover text-white rounded-lg transition-colors"
+            class="flex-1 px-3 py-1.5 text-xs bg-accent hover:bg-accent-hover text-white rounded-lg transition-all active:scale-95"
           >
             {{ $t('action.resolve') }}
           </button>
         </div>
       </div>
     </div>
+
+    <!-- Snooze Dialog -->
+    <TransitionRoot appear :show="snoozeDialog.isOpen" as="template">
+      <Dialog as="div" @close="snoozeDialog.isOpen = false" class="relative z-50">
+        <TransitionChild
+          as="template"
+          enter="duration-200 ease-out"
+          enter-from="opacity-0"
+          enter-to="opacity-100"
+          leave="duration-150 ease-in"
+          leave-from="opacity-100"
+          leave-to="opacity-0"
+        >
+          <div class="fixed inset-0 bg-black/30 backdrop-blur-sm" />
+        </TransitionChild>
+
+        <div class="fixed inset-0 overflow-y-auto">
+          <div class="flex min-h-full items-center justify-center p-4">
+            <TransitionChild
+              as="template"
+              enter="duration-200 ease-out"
+              enter-from="opacity-0 scale-95"
+              enter-to="opacity-100 scale-100"
+              leave="duration-150 ease-in"
+              leave-from="opacity-100 scale-100"
+              leave-to="opacity-0 scale-95"
+            >
+              <DialogPanel
+                class="w-full max-w-sm transform overflow-hidden rounded-2xl bg-card p-6 text-left align-middle shadow-xl transition-all border border-card-border"
+              >
+                <DialogTitle as="h3" class="text-lg font-medium text-text-main mb-4">
+                  {{ $t('action.snooze') }}
+                </DialogTitle>
+
+                <div class="mb-6">
+                  <label class="block text-sm font-medium text-text-secondary mb-2">
+                    {{ $t('action.snoozeDays') }}
+                  </label>
+                  <input
+                    v-model.number="snoozeDialog.days"
+                    type="number"
+                    min="1"
+                    max="365"
+                    class="w-full px-3 py-2 bg-background border border-card-border rounded-lg focus:outline-none focus:border-accent transition-colors"
+                  />
+                </div>
+
+                <div class="flex justify-end gap-3">
+                  <button
+                    type="button"
+                    class="px-4 py-2 text-sm font-medium text-text-secondary hover:bg-black/5 rounded-lg transition-all active:scale-95"
+                    @click="snoozeDialog.isOpen = false"
+                  >
+                    {{ $t('common.cancel') }}
+                  </button>
+                  <button
+                    type="button"
+                    class="px-4 py-2 text-sm font-medium text-white bg-accent hover:bg-accent-hover rounded-lg transition-all active:scale-95"
+                    @click="confirmSnooze"
+                  >
+                    {{ $t('common.confirm') }}
+                  </button>
+                </div>
+              </DialogPanel>
+            </TransitionChild>
+          </div>
+        </div>
+      </Dialog>
+    </TransitionRoot>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, watch } from "vue";
 import { format } from "date-fns";
+import { TransitionRoot, TransitionChild, Dialog, DialogPanel, DialogTitle } from '@headlessui/vue';
 
 const { t } = useI18n();
+const toast = useToast();
 
 const loading = ref(true);
 const actions = ref([]);
 const statusFilter = ref("");
 const priorityFilter = ref("");
+const snoozeDialog = ref({
+  isOpen: false,
+  actionId: null,
+  days: 7
+});
 
 const fetchActions = async () => {
   loading.value = true;
@@ -138,21 +214,30 @@ watch([statusFilter, priorityFilter], fetchActions);
 
 onMounted(fetchActions);
 
-const snoozeAction = async (id) => {
-  const days = prompt(t('action.snoozeDays'), "7");
-  if (!days) return;
+const snoozeAction = (id) => {
+  snoozeDialog.value = {
+    isOpen: true,
+    actionId: id,
+    days: 7
+  };
+};
+
+const confirmSnooze = async () => {
+  const { actionId, days } = snoozeDialog.value;
+  snoozeDialog.value.isOpen = false;
 
   const snoozedUntil = new Date();
   snoozedUntil.setDate(snoozedUntil.getDate() + parseInt(days));
 
   try {
-    await $fetch(`/api/actions/${id}`, {
+    await $fetch(`/api/actions/${actionId}`, {
       method: "PATCH",
       body: { status: "SNOOZED", snoozedUntil: snoozedUntil.toISOString() },
     });
+    toast.success(t('action.snoozeSuccess'));
     await fetchActions();
   } catch (error) {
-    alert(t('action.snoozeError'));
+    toast.error(t('action.snoozeError'));
   }
 };
 
@@ -162,9 +247,10 @@ const dismissAction = async (id) => {
       method: "PATCH",
       body: { status: "DISMISSED" },
     });
+    toast.success(t('action.dismissSuccess'));
     await fetchActions();
   } catch (error) {
-    alert(t('action.dismissError'));
+    toast.error(t('action.dismissError'));
   }
 };
 
@@ -174,9 +260,10 @@ const resolveAction = async (id) => {
       method: "PATCH",
       body: { status: "RESOLVED" },
     });
+    toast.success(t('action.resolveSuccess'));
     await fetchActions();
   } catch (error) {
-    alert(t('action.resolveError'));
+    toast.error(t('action.resolveError'));
   }
 };
 

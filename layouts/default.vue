@@ -5,7 +5,8 @@
       <slot />
     </main>
     <footer class="text-center py-6 text-text-weak text-sm">
-      Domain Watchlist &copy; {{ new Date().getFullYear() }}
+      Domain Ops Radar &copy; {{ new Date().getFullYear() }}
     </footer>
+    <Toast />
   </div>
 </template>

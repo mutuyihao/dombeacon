@@ -66,13 +66,16 @@
     "deleteDomain": "Delete Domain",
     "confirmDelete": "Confirm delete this domain?",
     "addSuccess": "Domain added successfully",
+    "addError": "Failed to add domain",
     "updateSuccess": "Domain updated successfully",
     "deleteSuccess": "Domain deleted successfully",
     "scanSuccess": "Scan completed",
     "scanError": "Scan failed",
     "noDomains": "No domains found",
     "noDomainsHint": "Try adjusting your filters or add a new domain",
-    "deleteError": "Delete failed"
+    "deleteError": "Delete failed",
+    "domainRequired": "Domain name is required",
+    "invalidDomain": "Invalid domain format"
   },
   "action": {
     "title": "Action Queue",
