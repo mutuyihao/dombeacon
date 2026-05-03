@@ -1,14 +1,17 @@
-# Domain Watchlist
+# Domain Ops Radar
 
-A self-hosted, aesthetically pleasing domain status monitoring system built with Nuxt 3, SQLite, and SMTP notifications. Designed for domain investors and brand protection.
+A self-hosted Domain Ops Radar for tracking wanted domain opportunities, managing owned domain portfolios, monitoring expiration and SSL risks, and turning domain events into actionable alerts.
 
 ## Features
 
-- **Status Monitoring**: Tracks `AVAILABLE`, `REGISTERED`, `EXPIRING`, `DROPPING` states using RDAP/WHOIS.
-- **Automated Scanning**: Hourly status checks + Daily summary emails (08:00).
-- **Beautiful UI**: Morandi color scheme, card-based layout, mobile responsive.
-- **Notifications**: Instant alerts on status change + Daily digest.
-- **No Auth**: Simplified open-access design for internal networks.
+- **Opportunity Tracking**: Monitor wanted domains for availability, expiration, and deletion opportunities
+- **Portfolio Management**: Track owned domains with status, expiration, and health monitoring
+- **Action Queue**: Event-driven workflow with open/snooze/dismiss/resolved states
+- **Status Monitoring**: Tracks `AVAILABLE`, `REGISTERED`, `EXPIRING`, `PENDING_DELETE` states using RDAP
+- **Automated Scanning**: Hourly status checks + Daily summary emails (08:00)
+- **Beautiful UI**: Morandi color scheme, card-based layout, mobile responsive
+- **Notifications**: Instant alerts on status change + Daily digest
+- **Optional Authentication**: Simple password gate for production deployments
 
 ## Quick Start (Docker)
 
@@ -16,7 +19,7 @@ A self-hosted, aesthetically pleasing domain status monitoring system built with
 
    ```bash
    git clone <repo>
-   cd domainwatchlist
+   cd domain-ops-radar
    cp .env.example .env
    mkdir data
    ```

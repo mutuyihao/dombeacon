@@ -8,6 +8,14 @@ export default defineNuxtConfig({
   devtools: { enabled: true },
   modules: [],
   css: [fileURLToPath(new URL("./assets/css/main.css", import.meta.url))],
+  app: {
+    head: {
+      title: "Domain Ops Radar",
+      meta: [
+        { name: "description", content: "Self-hosted Domain Ops Radar for tracking domain opportunities and portfolio management" },
+      ],
+    },
+  },
   vite: {
     plugins: [tsconfigPaths()],
   },
