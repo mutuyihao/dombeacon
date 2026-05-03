@@ -11,10 +11,10 @@
 
         <!-- Title -->
         <h1 class="text-2xl font-semibold text-center text-text-main mb-2">
-          Domain Ops Radar
+          {{ $t('common.appName') }}
         </h1>
         <p class="text-sm text-text-secondary text-center mb-8">
-          Enter password to continue
+          {{ $t('auth.enterPassword') }}
         </p>
 
         <!-- Error Message -->
@@ -29,7 +29,7 @@
         <form @submit.prevent="handleLogin">
           <div class="mb-6">
             <label for="password" class="block text-sm font-medium text-text-main mb-2">
-              Password
+              {{ $t('auth.password') }}
             </label>
             <input
               id="password"
@@ -37,7 +37,7 @@
               type="password"
               required
               class="w-full px-4 py-2 border border-card-border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent bg-white text-text-main"
-              placeholder="Enter your password"
+              :placeholder="$t('auth.enterPassword')"
               :disabled="loading"
             />
           </div>
@@ -47,7 +47,7 @@
             :disabled="loading"
             class="w-full bg-accent hover:bg-accent-hover text-white font-medium py-2 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {{ loading ? "Signing in..." : "Sign In" }}
+            {{ loading ? $t('auth.loggingIn') : $t('auth.login') }}
           </button>
         </form>
       </div>
@@ -58,6 +58,8 @@
 <script setup>
 import { ref } from "vue";
 import { Radar as RadarIcon } from "lucide-vue-next";
+
+const { t } = useI18n();
 
 definePageMeta({
   layout: false,
@@ -82,7 +84,7 @@ const handleLogin = async () => {
       await navigateTo("/domains");
     }
   } catch (e) {
-    error.value = e.data?.message || "Invalid password";
+    error.value = e.data?.message || t('auth.invalidPassword');
   } finally {
     loading.value = false;
   }

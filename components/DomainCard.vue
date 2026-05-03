@@ -5,15 +5,15 @@
         <h3 class="text-lg font-medium text-text-main truncate select-all">{{ domain.domain }}</h3>
         <div class="flex items-center gap-2 mt-1">
           <span :class="['px-2 py-0.5 rounded text-[10px] font-medium', watchKindClass]">
-            {{ domain.watchKind === 'OWNED' ? 'Owned' : 'Wanted' }}
+            {{ domain.watchKind === 'OWNED' ? $t('domain.owned') : $t('domain.wanted') }}
           </span>
           <span :class="['px-2 py-0.5 rounded text-[10px] font-medium', priorityClass]">
-            {{ domain.priority }}
+            {{ $t(`domain.${domain.priority.toLowerCase()}`) }}
           </span>
         </div>
       </div>
       <span :class="['px-2.5 py-0.5 rounded-full text-xs font-medium tracking-wide border', statusClass]">
-        {{ domain.status }}
+        {{ $t(`domain.status.${domain.status.toLowerCase()}`) }}
       </span>
     </div>
 

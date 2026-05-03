@@ -1,33 +1,33 @@
 <template>
   <div class="container mx-auto px-4 py-8 max-w-7xl">
     <div class="flex justify-between items-center mb-6">
-      <h1 class="text-2xl font-semibold text-text-main">Action Queue</h1>
+      <h1 class="text-2xl font-semibold text-text-main">{{ $t('action.title') }}</h1>
       <div class="flex gap-2">
         <select
           v-model="statusFilter"
           class="px-3 py-2 bg-card border border-card-border rounded-lg text-sm focus:outline-none focus:border-accent"
         >
-          <option value="">All Status</option>
-          <option value="OPEN">Open</option>
-          <option value="SNOOZED">Snoozed</option>
-          <option value="DISMISSED">Dismissed</option>
-          <option value="RESOLVED">Resolved</option>
+          <option value="">{{ $t('common.all') }} {{ $t('common.status') }}</option>
+          <option value="OPEN">{{ $t('action.status.open') }}</option>
+          <option value="SNOOZED">{{ $t('action.status.snoozed') }}</option>
+          <option value="DISMISSED">{{ $t('action.status.dismissed') }}</option>
+          <option value="RESOLVED">{{ $t('action.status.resolved') }}</option>
         </select>
         <select
           v-model="priorityFilter"
           class="px-3 py-2 bg-card border border-card-border rounded-lg text-sm focus:outline-none focus:border-accent"
         >
-          <option value="">All Priority</option>
-          <option value="HIGH">High</option>
-          <option value="MEDIUM">Medium</option>
-          <option value="LOW">Low</option>
+          <option value="">{{ $t('common.all') }} {{ $t('common.priority') }}</option>
+          <option value="HIGH">{{ $t('domain.high') }}</option>
+          <option value="MEDIUM">{{ $t('domain.medium') }}</option>
+          <option value="LOW">{{ $t('domain.low') }}</option>
         </select>
       </div>
     </div>
 
     <!-- Loading State -->
     <div v-if="loading" class="text-center py-12 text-text-secondary">
-      Loading actions...
+      {{ $t('common.loading') }}
     </div>
 
     <!-- Empty State -->
@@ -35,7 +35,7 @@
       v-else-if="!actions || actions.length === 0"
       class="text-center py-12 text-text-secondary"
     >
-      <p>No actions found</p>
+      <p>{{ $t('action.noActions') }}</p>
     </div>
 
     <!-- Actions Grid -->
@@ -59,23 +59,23 @@
             </NuxtLink>
             <div class="flex items-center gap-2 mt-1">
               <span :class="['px-2 py-0.5 rounded text-[10px] font-medium', actionTypeClass(action.actionType)]">
-                {{ formatActionType(action.actionType) }}
+                {{ $t(`action.types.${action.actionType.toLowerCase()}`) }}
               </span>
               <span :class="['px-2 py-0.5 rounded text-[10px] font-medium', priorityClass(action.priority)]">
-                {{ action.priority }}
+                {{ $t(`domain.${action.priority.toLowerCase()}`) }}
               </span>
             </div>
           </div>
           <span :class="['px-2.5 py-0.5 rounded-full text-xs font-medium border', statusClass(action.status)]">
-            {{ action.status }}
+            {{ $t(`action.status.${action.status.toLowerCase()}`) }}
           </span>
         </div>
 
         <!-- Metadata -->
         <div class="text-sm text-text-secondary mb-4">
-          <p>Triggered: {{ formatDate(action.triggeredAt) }}</p>
-          <p v-if="action.snoozedUntil">Snoozed until: {{ formatDate(action.snoozedUntil) }}</p>
-          <p v-if="action.metadata?.expiresAt">Expires: {{ formatDate(action.metadata.expiresAt) }}</p>
+          <p>{{ $t('action.triggeredAt') }}: {{ formatDate(action.triggeredAt) }}</p>
+          <p v-if="action.snoozedUntil">{{ $t('action.snoozedUntil') }}: {{ formatDate(action.snoozedUntil) }}</p>
+          <p v-if="action.metadata?.expiresAt">{{ $t('domain.expiresAt') }}: {{ formatDate(action.metadata.expiresAt) }}</p>
         </div>
 
         <!-- Actions -->
@@ -85,21 +85,21 @@
             @click="snoozeAction(action.id)"
             class="flex-1 px-3 py-1.5 text-xs bg-background hover:bg-accent/10 border border-card-border rounded-lg transition-colors"
           >
-            Snooze
+            {{ $t('action.snooze') }}
           </button>
           <button
             v-if="action.status === 'OPEN'"
             @click="dismissAction(action.id)"
             class="flex-1 px-3 py-1.5 text-xs bg-background hover:bg-accent/10 border border-card-border rounded-lg transition-colors"
           >
-            Dismiss
+            {{ $t('action.dismiss') }}
           </button>
           <button
             v-if="action.status === 'OPEN' || action.status === 'SNOOZED'"
             @click="resolveAction(action.id)"
             class="flex-1 px-3 py-1.5 text-xs bg-accent hover:bg-accent-hover text-white rounded-lg transition-colors"
           >
-            Resolve
+            {{ $t('action.resolve') }}
           </button>
         </div>
       </div>
@@ -110,6 +110,8 @@
 <script setup>
 import { ref, computed, watch } from "vue";
 import { format } from "date-fns";
+
+const { t } = useI18n();
 
 const loading = ref(true);
 const actions = ref([]);
@@ -137,7 +139,7 @@ watch([statusFilter, priorityFilter], fetchActions);
 onMounted(fetchActions);
 
 const snoozeAction = async (id) => {
-  const days = prompt("Snooze for how many days?", "7");
+  const days = prompt(t('action.snoozeDays'), "7");
   if (!days) return;
 
   const snoozedUntil = new Date();
@@ -150,7 +152,7 @@ const snoozeAction = async (id) => {
     });
     await fetchActions();
   } catch (error) {
-    alert("Failed to snooze action");
+    alert(t('action.snoozeError'));
   }
 };
 
@@ -162,7 +164,7 @@ const dismissAction = async (id) => {
     });
     await fetchActions();
   } catch (error) {
-    alert("Failed to dismiss action");
+    alert(t('action.dismissError'));
   }
 };
 
@@ -174,7 +176,7 @@ const resolveAction = async (id) => {
     });
     await fetchActions();
   } catch (error) {
-    alert("Failed to resolve action");
+    alert(t('action.resolveError'));
   }
 };
 

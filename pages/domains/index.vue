@@ -24,17 +24,17 @@
       <div class="flex w-full md:w-auto gap-3">
           <div class="relative flex-1 md:w-64">
               <SearchIcon class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-weak" />
-              <input 
-                v-model="search" 
-                type="text" 
-                placeholder="Search domains..." 
+              <input
+                v-model="search"
+                type="text"
+                :placeholder="$t('common.search')"
                 class="w-full pl-9 pr-4 py-2 bg-card border border-card-border rounded-xl focus:outline-none focus:border-accent transition-colors text-sm"
               >
           </div>
           <button @click="isAddModalOpen = true" class="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-xl shadow-sm text-sm font-medium transition-colors">
               <PlusIcon class="w-4 h-4" />
-              <span class="hidden sm:inline">Add Domain</span>
-              <span class="sm:hidden">Add</span>
+              <span class="hidden sm:inline">{{ $t('domain.addDomain') }}</span>
+              <span class="sm:hidden">{{ $t('common.add') }}</span>
           </button>
       </div>
     </div>
@@ -58,8 +58,8 @@
         <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-card mb-4">
             <InboxIcon class="w-8 h-8 text-text-weak" />
         </div>
-        <h3 class="text-lg font-medium text-text-main">No domains found</h3>
-        <p class="text-text-secondary mt-1">Try adjusting your filters or add a new domain.</p>
+        <h3 class="text-lg font-medium text-text-main">{{ $t('domain.noDomains') }}</h3>
+        <p class="text-text-secondary mt-1">{{ $t('domain.noDomainsHint') }}</p>
     </div>
 
     <!-- Pagination -->
@@ -76,12 +76,14 @@ import { Search as SearchIcon, Plus as PlusIcon, Inbox as InboxIcon } from 'luci
 // Components auto-imported by Nuxt if in components/ dir? Yes usually.
 
 const tabs = [
-    { label: 'All', value: 'ALL' },
-    { label: 'Available', value: 'AVAILABLE' },
-    { label: 'Registered', value: 'REGISTERED' },
-    { label: 'Expiring', value: 'EXPIRING' },
-    { label: 'Dropping', value: 'DROPPING' },
+    { label: computed(() => $t('common.all')), value: 'ALL' },
+    { label: computed(() => $t('domain.status.available')), value: 'AVAILABLE' },
+    { label: computed(() => $t('domain.status.registered')), value: 'REGISTERED' },
+    { label: computed(() => $t('domain.status.expiring')), value: 'EXPIRING' },
+    { label: computed(() => $t('domain.status.pending_delete')), value: 'PENDING_DELETE' },
 ];
+
+const { t } = useI18n();
 
 const currentStatus = ref('ALL');
 const search = ref('');
@@ -119,12 +121,12 @@ const refreshDomain = async (id) => {
 };
 
 const deleteDomain = async (id) => {
-    if(!confirm('Are you sure you want to delete this domain?')) return;
+    if(!confirm(t('domain.confirmDelete'))) return;
     try {
         await $fetch(`/api/domains/${id}`, { method: 'DELETE' });
         refresh();
     } catch (e) {
-        alert('Delete failed');
+        alert(t('domain.deleteError'));
     }
 };
 </script>

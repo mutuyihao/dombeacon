@@ -6,7 +6,22 @@ import tsconfigPaths from "vite-tsconfig-paths";
 export default defineNuxtConfig({
   compatibilityDate: "2025-07-15",
   devtools: { enabled: true },
-  modules: [],
+  modules: ["@nuxtjs/i18n"],
+  i18n: {
+    locales: [
+      { code: "en", iso: "en-US", file: "en-US.json", name: "English" },
+      { code: "zh", iso: "zh-CN", file: "zh-CN.json", name: "中文" },
+    ],
+    lazy: true,
+    langDir: "i18n/locales",
+    defaultLocale: "zh",
+    strategy: "no_prefix",
+    detectBrowserLanguage: {
+      useCookie: true,
+      cookieKey: "i18n_redirected",
+      redirectOn: "root",
+    },
+  },
   css: [fileURLToPath(new URL("./assets/css/main.css", import.meta.url))],
   app: {
     head: {

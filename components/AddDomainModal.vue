@@ -28,48 +28,48 @@
               class="w-full max-w-md transform overflow-hidden rounded-2xl bg-card p-6 text-left align-middle shadow-xl transition-all border border-card-border"
             >
               <DialogTitle as="h3" class="text-lg font-medium leading-6 text-text-main mb-4">
-                Add Domain
+                {{ $t('domain.addDomain') }}
               </DialogTitle>
-              
+
               <form @submit.prevent="submit" class="space-y-4">
                   <div>
-                      <label class="block text-sm font-medium text-text-secondary mb-1">Domain Name</label>
+                      <label class="block text-sm font-medium text-text-secondary mb-1">{{ $t('domain.domainName') }}</label>
                       <input v-model="form.domain" type="text" placeholder="example.com" class="w-full px-3 py-2 bg-background border border-card-border rounded-lg focus:outline-none focus:border-accent transition-colors" required>
                   </div>
 
                   <div class="grid grid-cols-2 gap-3">
                     <div>
-                      <label class="block text-sm font-medium text-text-secondary mb-1">Watch Kind</label>
+                      <label class="block text-sm font-medium text-text-secondary mb-1">{{ $t('domain.watchKind') }}</label>
                       <select v-model="form.watchKind" class="w-full px-3 py-2 bg-background border border-card-border rounded-lg focus:outline-none focus:border-accent transition-colors">
-                        <option value="WANTED">Wanted</option>
-                        <option value="OWNED">Owned</option>
+                        <option value="WANTED">{{ $t('domain.wanted') }}</option>
+                        <option value="OWNED">{{ $t('domain.owned') }}</option>
                       </select>
                     </div>
                     <div>
-                      <label class="block text-sm font-medium text-text-secondary mb-1">Priority</label>
+                      <label class="block text-sm font-medium text-text-secondary mb-1">{{ $t('domain.priority') }}</label>
                       <select v-model="form.priority" class="w-full px-3 py-2 bg-background border border-card-border rounded-lg focus:outline-none focus:border-accent transition-colors">
-                        <option value="LOW">Low</option>
-                        <option value="MEDIUM">Medium</option>
-                        <option value="HIGH">High</option>
+                        <option value="LOW">{{ $t('domain.low') }}</option>
+                        <option value="MEDIUM">{{ $t('domain.medium') }}</option>
+                        <option value="HIGH">{{ $t('domain.high') }}</option>
                       </select>
                     </div>
                   </div>
 
                   <div>
-                      <label class="block text-sm font-medium text-text-secondary mb-1">Note (Optional)</label>
+                      <label class="block text-sm font-medium text-text-secondary mb-1">{{ $t('domain.note') }}</label>
                       <input v-model="form.note" type="text" class="w-full px-3 py-2 bg-background border border-card-border rounded-lg focus:outline-none focus:border-accent transition-colors">
                   </div>
                   <div>
-                      <label class="block text-sm font-medium text-text-secondary mb-1">Tags (Comma separated)</label>
+                      <label class="block text-sm font-medium text-text-secondary mb-1">{{ $t('domain.tags') }}</label>
                       <input v-model="tagsInput" type="text" placeholder="premium, watch" class="w-full px-3 py-2 bg-background border border-card-border rounded-lg focus:outline-none focus:border-accent transition-colors">
                   </div>
 
                   <div class="mt-4 flex justify-end gap-3">
                     <button type="button" class="px-4 py-2 text-sm text-text-secondary hover:bg-black/5 rounded-lg transition-colors" @click="closeModal">
-                        Cancel
+                        {{ $t('common.cancel') }}
                     </button>
                     <button type="submit" class="px-4 py-2 text-sm text-white bg-accent hover:bg-accent-hover rounded-lg shadow-sm transition-colors" :disabled="loading">
-                        {{ loading ? 'Saving...' : 'Add Domain' }}
+                        {{ loading ? $t('common.loading') : $t('domain.addDomain') }}
                     </button>
                   </div>
               </form>
