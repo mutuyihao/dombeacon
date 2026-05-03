@@ -33,12 +33,12 @@ const parseRdap = (
 
   // 2. Check 'status' array
   // RDAP statuses: 'active', 'inactive', 'pending delete', etc.
-  // Our Enums: AVAILABLE, REGISTERED, EXPIRING, DROPPING, UNKNOWN
+  // Our Enums: AVAILABLE, REGISTERED, EXPIRING, PENDING_DELETE, UNKNOWN
 
   let status = "REGISTERED";
   const rdapStatus = data.status || [];
 
-  // Rule: Dropping
+  // Rule: Pending Delete (formerly DROPPING)
   if (
     rdapStatus.some(
       (s: string) =>
@@ -46,7 +46,7 @@ const parseRdap = (
         s.toLowerCase().includes("redemption"),
     )
   ) {
-    status = "DROPPING";
+    status = "PENDING_DELETE";
   } else if (expiresAt) {
     const now = new Date();
     const diffDays = (expiresAt.getTime() - now.getTime()) / (1000 * 3600 * 24);
@@ -97,11 +97,11 @@ export const checkDomain = async (domain: string, domainId: number) => {
     }
 
     if (!response.ok) {
-      // Error or rate limit
-      // Log error
-      console.error(`RDAP Check failed for ${domain}: ${response.status}`);
-      return; // Retry later or mark UNKNOWN
-      // For now, let's update to UNKNOWN if it's 500s? Or just skip update.
+      // Error or rate limit - update error fields without changing status
+      const errorMsg = `RDAP Check failed: HTTP ${response.status}`;
+      console.error(`${errorMsg} for ${domain}`);
+      await updateError(domainId, errorMsg);
+      return null;
     }
 
     const data = await response.json();
@@ -118,7 +118,9 @@ export const checkDomain = async (domain: string, domainId: number) => {
       "Parsed successfully",
     );
   } catch (error: any) {
-    console.error(`Check error for ${domain}`, error);
+    const errorMsg = `Network error: ${error.message}`;
+    console.error(`Check error for ${domain}:`, error);
+    await updateError(domainId, errorMsg);
     return null;
   }
 };
@@ -146,7 +148,7 @@ async function updateStatus(
   const oldStatus = current?.status || null;
   const isChanged = oldStatus !== status;
 
-  // Upsert latest
+  // Upsert latest - clear error fields on successful scan
   await db
     .insert(domainStatusLatest)
     .values({
@@ -159,6 +161,8 @@ async function updateStatus(
       source,
       rawSnapshot,
       parseReason: reason,
+      lastError: null,
+      lastErrorAt: null,
     })
     .onConflictDoUpdate({
       target: domainStatusLatest.domainId,
@@ -171,6 +175,8 @@ async function updateStatus(
         source,
         rawSnapshot,
         parseReason: reason,
+        lastError: null,
+        lastErrorAt: null,
       },
     });
 
@@ -191,4 +197,18 @@ async function updateStatus(
     oldStatus,
     newStatus: status,
   };
+}
+
+// Update error fields without changing status
+async function updateError(domainId: number, errorMsg: string) {
+  const db = useDb();
+  const now = new Date();
+
+  await db
+    .update(domainStatusLatest)
+    .set({
+      lastError: errorMsg,
+      lastErrorAt: now,
+    })
+    .where(eq(domainStatusLatest.domainId, domainId));
 }
