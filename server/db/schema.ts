@@ -120,3 +120,15 @@ export const webhookConfigs = sqliteTable("webhook_configs", {
     () => new Date(),
   ),
 });
+
+// Server酱配置表 (v1.1)
+export const serverchanConfigs = sqliteTable("serverchan_configs", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  name: text("name").notNull(),
+  sendKey: text("send_key").notNull(), // Server酱 SendKey
+  enabled: integer("enabled", { mode: "boolean" }).default(true),
+  eventTypes: text("event_types"), // JSON array: which events to send
+  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(
+    () => new Date(),
+  ),
+});

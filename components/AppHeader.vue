@@ -22,6 +22,9 @@
         <NuxtLink to="/webhooks" active-class="text-accent" class="hover:text-text-main transition-colors">
           {{ $t('nav.webhooks') }}
         </NuxtLink>
+        <NuxtLink to="/serverchan" active-class="text-accent" class="hover:text-text-main transition-colors">
+          {{ $t('nav.serverchan') }}
+        </NuxtLink>
         <NuxtLink to="/settings" active-class="text-accent" class="hover:text-text-main transition-colors">
           {{ $t('nav.settings') }}
         </NuxtLink>

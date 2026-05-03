@@ -24,6 +24,7 @@
     "actions": "Action Queue",
     "tasks": "Tasks",
     "webhooks": "Webhooks",
+    "serverchan": "Server酱",
     "settings": "Settings"
   },
   "auth": {
@@ -205,5 +206,45 @@
     },
     "allEvents": "All Events",
     "selectEvents": "Select Event Types"
+  },
+  "serverchan": {
+    "title": "Server酱 Configuration",
+    "addServerchan": "Add Server酱",
+    "editServerchan": "Edit Server酱",
+    "deleteServerchan": "Delete Server酱",
+    "confirmDelete": "Confirm delete this Server酱 config?",
+    "name": "Name",
+    "sendKey": "SendKey",
+    "sendKeyPlaceholder": "Enter Server酱 SendKey",
+    "sendKeyHint": "Get from https://sct.ftqq.com",
+    "eventTypes": "Event Types",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "testServerchan": "Test Server酱",
+    "testing": "Testing...",
+    "testSuccess": "Test successful",
+    "testFailed": "Test failed",
+    "addSuccess": "Server酱 added successfully",
+    "addError": "Failed to add Server酱",
+    "deleteSuccess": "Server酱 deleted successfully",
+    "deleteError": "Failed to delete Server酱",
+    "noServerchan": "No Server酱 configured",
+    "noServerchanHint": "Add Server酱 to receive WeChat notifications",
+    "nameRequired": "Name is required",
+    "sendKeyRequired": "SendKey is required",
+    "invalidSendKey": "Invalid SendKey format",
+    "events": {
+      "wanted_available": "Wanted Domain Available",
+      "wanted_dropping": "Wanted Domain Dropping",
+      "owned_expiring": "Owned Domain Expiring",
+      "status_change": "Status Change",
+      "expiring_soon": "Expiring Soon",
+      "dropping_alert": "Dropping Alert",
+      "daily_summary": "Daily Summary"
+    },
+    "allEvents": "All Events",
+    "selectEvents": "Select Event Types",
+    "howToGetSendKey": "How to get SendKey?",
+    "sendKeyGuide": "1. Visit https://sct.ftqq.com\n2. Login with WeChat\n3. Get your SendKey from the SendKey page"
   }
 }

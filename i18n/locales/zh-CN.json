@@ -24,6 +24,7 @@
     "actions": "行动队列",
     "tasks": "任务",
     "webhooks": "Webhooks",
+    "serverchan": "Server酱",
     "settings": "设置"
   },
   "auth": {
@@ -205,5 +206,45 @@
     },
     "allEvents": "所有事件",
     "selectEvents": "选择事件类型"
+  },
+  "serverchan": {
+    "title": "Server酱配置",
+    "addServerchan": "添加 Server酱",
+    "editServerchan": "编辑 Server酱",
+    "deleteServerchan": "删除 Server酱",
+    "confirmDelete": "确认删除此 Server酱配置？",
+    "name": "名称",
+    "sendKey": "SendKey",
+    "sendKeyPlaceholder": "请输入 Server酱 SendKey",
+    "sendKeyHint": "从 https://sct.ftqq.com 获取",
+    "eventTypes": "事件类型",
+    "enabled": "启用",
+    "disabled": "禁用",
+    "testServerchan": "测试 Server酱",
+    "testing": "测试中...",
+    "testSuccess": "测试成功",
+    "testFailed": "测试失败",
+    "addSuccess": "Server酱添加成功",
+    "addError": "Server酱添加失败",
+    "deleteSuccess": "Server酱删除成功",
+    "deleteError": "Server酱删除失败",
+    "noServerchan": "暂无 Server酱配置",
+    "noServerchanHint": "添加 Server酱以接收微信通知",
+    "nameRequired": "名称不能为空",
+    "sendKeyRequired": "SendKey 不能为空",
+    "invalidSendKey": "SendKey 格式不正确",
+    "events": {
+      "wanted_available": "想要的域名可注册",
+      "wanted_dropping": "想要的域名待删除",
+      "owned_expiring": "拥有的域名即将过期",
+      "status_change": "状态变更",
+      "expiring_soon": "即将过期",
+      "dropping_alert": "待删除警报",
+      "daily_summary": "每日摘要"
+    },
+    "allEvents": "所有事件",
+    "selectEvents": "选择事件类型",
+    "howToGetSendKey": "如何获取 SendKey？",
+    "sendKeyGuide": "1. 访问 https://sct.ftqq.com\n2. 使用微信扫码登录\n3. 在「SendKey」页面获取您的 SendKey"
   }
 }
