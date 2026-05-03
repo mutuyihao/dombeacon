@@ -1,6 +1,7 @@
-import { domains, taskLocks, taskRuns } from "../db/schema";
+import { domains, taskLocks, taskRuns, domainStatusLatest } from "../db/schema";
 import { eq, lt } from "drizzle-orm";
 import { checkDomain } from "./scanner";
+import { createAction } from "./actions";
 
 const LOCK_TTL_MS = 1000 * 60 * 30; // 30 minutes
 
@@ -66,6 +67,7 @@ export const runDomainScan = async () => {
   let fail = 0;
   const errors: any[] = [];
   const newlyDropping: any[] = [];
+  const actionsCreated: any[] = [];
 
   try {
     const db = useDb();
@@ -77,13 +79,95 @@ export const runDomainScan = async () => {
     for (const d of activeDomains) {
       try {
         const result = await checkDomain(d.domain, d.id);
-        if (result?.changed && result.newStatus === "DROPPING") {
-          newlyDropping.push({ domain: d.domain, id: d.id });
+
+        // Create actions based on status changes and domain type
+        if (result) {
+          // WANTED domain became AVAILABLE
+          if (d.watchKind === "WANTED" && result.newStatus === "AVAILABLE" && result.changed) {
+            const action = await createAction({
+              domainId: d.id,
+              actionType: "WANTED_AVAILABLE",
+              priority: d.priority,
+              metadata: {
+                oldStatus: result.oldStatus,
+                newStatus: result.newStatus,
+                domain: d.domain,
+              },
+            });
+            actionsCreated.push(action);
+          }
+
+          // WANTED domain entered PENDING_DELETE
+          if (d.watchKind === "WANTED" && result.newStatus === "PENDING_DELETE" && result.changed) {
+            const action = await createAction({
+              domainId: d.id,
+              actionType: "WANTED_DROPPING",
+              priority: d.priority,
+              metadata: {
+                oldStatus: result.oldStatus,
+                newStatus: result.newStatus,
+                domain: d.domain,
+              },
+            });
+            actionsCreated.push(action);
+            newlyDropping.push({ domain: d.domain, id: d.id });
+          }
+
+          // OWNED domain is EXPIRING (check expiration date)
+          if (d.watchKind === "OWNED" && result.newStatus === "EXPIRING") {
+            // Get expiration date from status
+            const statusInfo = await db
+              .select()
+              .from(domainStatusLatest)
+              .where(eq(domainStatusLatest.domainId, d.id))
+              .get();
+
+            if (statusInfo?.expiresAt) {
+              const action = await createAction({
+                domainId: d.id,
+                actionType: "OWNED_EXPIRING",
+                priority: d.priority,
+                metadata: {
+                  expiresAt: statusInfo.expiresAt.toISOString(),
+                  domain: d.domain,
+                },
+              });
+              actionsCreated.push(action);
+            }
+          }
+        } else {
+          // Scan failed - create SCAN_FAILED action
+          const action = await createAction({
+            domainId: d.id,
+            actionType: "SCAN_FAILED",
+            priority: d.priority,
+            metadata: {
+              domain: d.domain,
+              error: "Scan returned null",
+            },
+          });
+          actionsCreated.push(action);
         }
+
         success++;
       } catch (e: any) {
         fail++;
         errors.push({ domain: d.domain, error: e.message });
+
+        // Create SCAN_FAILED action for exceptions
+        try {
+          await createAction({
+            domainId: d.id,
+            actionType: "SCAN_FAILED",
+            priority: d.priority,
+            metadata: {
+              domain: d.domain,
+              error: e.message,
+            },
+          });
+        } catch (actionError) {
+          console.error("Failed to create SCAN_FAILED action:", actionError);
+        }
       }
       checked++;
       await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -115,6 +199,7 @@ export const runDomainScan = async () => {
         fail,
         errors: errors.slice(0, 10),
         newlyDropping: newlyDropping.length,
+        actionsCreated: actionsCreated.length,
       }),
     });
   }
