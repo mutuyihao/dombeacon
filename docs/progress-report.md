@@ -123,7 +123,68 @@ await notifyWebhooks({
 
 ---
 
-### 3. 数据库 Schema 更新 ✅
+### 4. Server酱集成 ✅ (v1.1)
+
+**新增功能**:
+- ✅ Server酱配置表 (`serverchanConfigs`)
+- ✅ Server酱发送工具 (`serverchan.ts`)
+- ✅ Server酱 API 端点（CRUD + Test）
+- ✅ 事件类型过滤
+- ✅ 微信通知支持
+- ✅ Markdown 消息格式化
+- ✅ SendKey 安全遮罩
+
+**API 端点**:
+- `GET /api/serverchan` - 获取所有配置
+- `POST /api/serverchan` - 创建配置
+- `DELETE /api/serverchan/:id` - 删除配置
+- `POST /api/serverchan/:id/test` - 测试 Server酱
+
+**消息格式**:
+```typescript
+{
+  title: "🎉 域名可注册: example.com",
+  desp: "## 域名可注册通知\n\n**域名**: example.com\n\n...",
+  short: "example.com 现在可以注册了！"
+}
+```
+
+**集成到扫描流程**:
+```typescript
+// 发送 Server酱 通知
+await notifyServerchan({
+  domainId: d.id,
+  actionId: action.id,
+  eventType: "WANTED_AVAILABLE",
+  eventData: { ... }
+});
+```
+
+**UI 组件**:
+- `pages/serverchan.vue` - 主页面
+- `components/ServerchanModal.vue` - 添加/编辑模态框
+
+**支持的事件类型**:
+1. `wanted_available` - 想要的域名可注册
+2. `wanted_dropping` - 想要的域名待删除
+3. `owned_expiring` - 拥有的域名即将过期
+4. `status_change` - 状态变更
+5. `expiring_soon` - 即将过期
+6. `dropping_alert` - 待删除警报
+7. `daily_summary` - 每日摘要
+
+**功能特性**:
+- 实时测试 Server酱 连接
+- SendKey 安全遮罩显示
+- 事件类型多选
+- 启用/禁用开关
+- Toast 通知反馈
+- 空状态提示
+- SendKey 获取指南
+
+---
+
+### 5. 数据库 Schema 更新 ✅
 
 **新增表**:
 
@@ -158,6 +219,18 @@ CREATE TABLE webhook_configs (
 );
 ```
 
+**serverchanConfigs** - Server酱配置
+```sql
+CREATE TABLE serverchan_configs (
+  id INTEGER PRIMARY KEY,
+  name TEXT NOT NULL,
+  send_key TEXT NOT NULL,
+  enabled BOOLEAN DEFAULT TRUE,
+  event_types TEXT,  -- JSON array
+  created_at TIMESTAMP
+);
+```
+
 ---
 
 ## 蓝图实现进度更新
@@ -175,13 +248,13 @@ CREATE TABLE webhook_configs (
 | 认证系统 | ✅ | 100% |
 | UI/UX | ✅ | 100% |
 
-### v1.1 功能：60% ⚠️
+### v1.1 功能：80% ⚠️
 
 | 功能 | 状态 | 完成度 |
 |------|------|--------|
 | Webhook 通知 | ✅ | 100% |
 | Webhook UI | ✅ | 100% |
-| Server酱 | ⏳ | 0% |
+| Server酱 | ✅ | 100% |
 | SSL 检测 | ⏳ | 0% |
 | 成本追踪 | ⏳ | 0% |
 | CSV 导入导出 | ⏳ | 0% |
@@ -201,12 +274,14 @@ CREATE TABLE webhook_configs (
    - [x] 双语支持
    - [x] Morandi 设计风格
 
-2. **Server酱集成** ⏳
-   - [ ] Server酱配置表
-   - [ ] SendKey 配置 UI
-   - [ ] 消息发送工具
-   - [ ] 集成到通知流程
-   - [ ] 测试功能
+2. **Server酱集成** ✅
+   - [x] Server酱配置表
+   - [x] SendKey 配置 UI
+   - [x] 消息发送工具
+   - [x] 集成到通知流程
+   - [x] 测试功能
+   - [x] 双语支持
+   - [x] Markdown 消息格式化
 
 3. **SSL 证书检测** ⏳
    - [ ] SSL 状态表
@@ -306,7 +381,7 @@ CREATE TABLE webhook_configs (
 1. ✅ 完成通知系统增强
 2. ✅ 完成 Webhook 后端实现
 3. ✅ 创建 Webhook 管理 UI
-4. ⏳ 实现 Server酱集成
+4. ✅ 实现 Server酱集成
 
 ### 短期目标（2周内）
 
@@ -345,22 +420,24 @@ commit 6e23f86 - feat: comprehensive UI/UX improvements
 1. **通知系统增强** - 去重、事件追踪、改进模板
 2. **Webhook 支持** - 完整的后端实现和 API
 3. **Webhook 管理 UI** - 完整的前端配置界面
-4. **数据库扩展** - 新增两个关键表
+4. **Server酱集成** - 微信通知支持
+5. **数据库扩展** - 新增三个关键表
 
 **当前状态**：
 - v1 核心功能 95% 完成
-- v1.1 功能 60% 完成
+- v1.1 功能 80% 完成
 - Webhook 功能完全实现（后端 + 前端）
+- Server酱功能完全实现（后端 + 前端）
 - 项目已具备生产可用性
 
 **下一步重点**：
-- Server酱集成
 - SSL 证书检测
 - 成本追踪功能
+- CSV 导入导出
 
 **技术说明**：
 - Nuxt 4.2.2 在 Windows 上存在已知构建问题
 - 建议使用 WSL、Docker 或等待 Nuxt 4.3+ 修复
 - 所有代码已完成并经过代码审查
 
-项目正在按照蓝图稳步推进，Webhook 功能已全面完成！🎉
+项目正在按照蓝图稳步推进，通知系统已全面完成！🎉
