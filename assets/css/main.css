@@ -15,6 +15,15 @@
   --color-status-expiring: #A08C7C;
   --color-status-dropping: #8C6F6F;
   --color-status-unknown: #8A8780;
+
+  /* New colors for v1 features */
+  --color-watch-owned: #7A7F8C;
+  --color-watch-wanted: #7C8B7A;
+  --color-priority-high: #8C6F6F;
+  --color-priority-medium: #A08C7C;
+  --color-priority-low: #8A8780;
+  --color-action-open: #A08C7C;
+  --color-action-snoozed: #8A8780;
 }
 
 @layer base {

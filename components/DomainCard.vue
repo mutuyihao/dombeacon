@@ -1,7 +1,17 @@
 <template>
-  <div class="bg-card border border-card-border rounded-2xl p-5 shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-md transition-shadow hover:border-accent/20 group relative">
+  <div :class="['bg-card border border-card-border rounded-2xl p-5 shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-md transition-shadow hover:border-accent/20 group relative', priorityBorderClass]">
     <div class="flex justify-between items-start mb-3">
-      <h3 class="text-lg font-medium text-text-main truncate pr-2 select-all">{{ domain.domain }}</h3>
+      <div class="flex-1 pr-2">
+        <h3 class="text-lg font-medium text-text-main truncate select-all">{{ domain.domain }}</h3>
+        <div class="flex items-center gap-2 mt-1">
+          <span :class="['px-2 py-0.5 rounded text-[10px] font-medium', watchKindClass]">
+            {{ domain.watchKind === 'OWNED' ? 'Owned' : 'Wanted' }}
+          </span>
+          <span :class="['px-2 py-0.5 rounded text-[10px] font-medium', priorityClass]">
+            {{ domain.priority }}
+          </span>
+        </div>
+      </div>
       <span :class="['px-2.5 py-0.5 rounded-full text-xs font-medium tracking-wide border', statusClass]">
         {{ domain.status }}
       </span>
@@ -52,8 +62,32 @@ const statusClass = computed(() => {
     case 'AVAILABLE': return 'bg-[#7C8B7A]/10 text-[#7C8B7A] border-[#7C8B7A]/20';
     case 'REGISTERED': return 'bg-[#7A7F8C]/10 text-[#7A7F8C] border-[#7A7F8C]/20';
     case 'EXPIRING': return 'bg-[#A08C7C]/10 text-[#A08C7C] border-[#A08C7C]/20';
-    case 'DROPPING': return 'bg-[#8C6F6F]/10 text-[#8C6F6F] border-[#8C6F6F]/20';
+    case 'PENDING_DELETE': return 'bg-[#8C6F6F]/10 text-[#8C6F6F] border-[#8C6F6F]/20';
     default: return 'bg-[#8A8780]/10 text-[#8A8780] border-[#8A8780]/20';
+  }
+});
+
+const watchKindClass = computed(() => {
+  return props.domain.watchKind === 'OWNED'
+    ? 'bg-[#7A7F8C]/10 text-[#7A7F8C] border border-[#7A7F8C]/20'
+    : 'bg-[#7C8B7A]/10 text-[#7C8B7A] border border-[#7C8B7A]/20';
+});
+
+const priorityClass = computed(() => {
+  switch (props.domain.priority) {
+    case 'HIGH': return 'bg-[#8C6F6F]/10 text-[#8C6F6F] border border-[#8C6F6F]/20';
+    case 'MEDIUM': return 'bg-[#A08C7C]/10 text-[#A08C7C] border border-[#A08C7C]/20';
+    case 'LOW': return 'bg-[#8A8780]/10 text-[#8A8780] border border-[#8A8780]/20';
+    default: return 'bg-[#8A8780]/10 text-[#8A8780] border border-[#8A8780]/20';
+  }
+});
+
+const priorityBorderClass = computed(() => {
+  switch (props.domain.priority) {
+    case 'HIGH': return 'border-l-[3px] border-l-[#8C6F6F]';
+    case 'MEDIUM': return 'border-l-[3px] border-l-[#A08C7C]';
+    case 'LOW': return 'border-l-[3px] border-l-[#8A8780]';
+    default: return '';
   }
 });
 

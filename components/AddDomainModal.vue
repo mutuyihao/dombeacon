@@ -36,6 +36,25 @@
                       <label class="block text-sm font-medium text-text-secondary mb-1">Domain Name</label>
                       <input v-model="form.domain" type="text" placeholder="example.com" class="w-full px-3 py-2 bg-background border border-card-border rounded-lg focus:outline-none focus:border-accent transition-colors" required>
                   </div>
+
+                  <div class="grid grid-cols-2 gap-3">
+                    <div>
+                      <label class="block text-sm font-medium text-text-secondary mb-1">Watch Kind</label>
+                      <select v-model="form.watchKind" class="w-full px-3 py-2 bg-background border border-card-border rounded-lg focus:outline-none focus:border-accent transition-colors">
+                        <option value="WANTED">Wanted</option>
+                        <option value="OWNED">Owned</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-text-secondary mb-1">Priority</label>
+                      <select v-model="form.priority" class="w-full px-3 py-2 bg-background border border-card-border rounded-lg focus:outline-none focus:border-accent transition-colors">
+                        <option value="LOW">Low</option>
+                        <option value="MEDIUM">Medium</option>
+                        <option value="HIGH">High</option>
+                      </select>
+                    </div>
+                  </div>
+
                   <div>
                       <label class="block text-sm font-medium text-text-secondary mb-1">Note (Optional)</label>
                       <input v-model="form.note" type="text" class="w-full px-3 py-2 bg-background border border-card-border rounded-lg focus:outline-none focus:border-accent transition-colors">
@@ -76,6 +95,8 @@ const loading = ref(false);
 const tagsInput = ref('');
 const form = reactive({
     domain: '',
+    watchKind: 'WANTED',
+    priority: 'MEDIUM',
     note: ''
 });
 
@@ -94,6 +115,8 @@ const submit = async () => {
         });
         // Clear
         form.domain = '';
+        form.watchKind = 'WANTED';
+        form.priority = 'MEDIUM';
         form.note = '';
         tagsInput.value = '';
         emit('saved');
