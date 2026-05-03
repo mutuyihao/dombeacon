@@ -3,6 +3,7 @@ import { eq, lt, or, and } from "drizzle-orm";
 import { checkDomain } from "./scanner";
 import { createAction } from "./actions";
 import { sendNotification } from "./mail";
+import { notifyWebhooks } from "./webhook";
 
 const LOCK_TTL_MS = 1000 * 60 * 30; // 30 minutes
 
@@ -109,6 +110,21 @@ export const runDomainScan = async () => {
                 newStatus: result.newStatus,
               },
               deduplicateHours: 24,
+            });
+
+            // Send webhook notification
+            await notifyWebhooks({
+              domainId: d.id,
+              actionId: action.id,
+              eventType: "WANTED_AVAILABLE",
+              eventData: {
+                domain: d.domain,
+                watchKind: d.watchKind,
+                priority: d.priority,
+                oldStatus: result.oldStatus,
+                newStatus: result.newStatus,
+                actionId: action.id,
+              },
             });
           }
 
