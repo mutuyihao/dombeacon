@@ -7,13 +7,16 @@
           <span :class="['px-2 py-0.5 rounded text-[10px] font-medium', watchKindClass]">
             {{ domain.watchKind === 'OWNED' ? $t('domain.owned') : $t('domain.wanted') }}
           </span>
-          <span :class="['px-2 py-0.5 rounded text-[10px] font-medium', priorityClass]">
+          <span v-if="domain.priority" :class="['px-2 py-0.5 rounded text-[10px] font-medium', priorityClass]">
             {{ $t(`domain.${domain.priority.toLowerCase()}`) }}
           </span>
         </div>
       </div>
-      <span :class="['px-2.5 py-0.5 rounded-full text-xs font-medium tracking-wide border', statusClass]">
+      <span v-if="domain.status" :class="['px-2.5 py-0.5 rounded-full text-xs font-medium tracking-wide border', statusClass]">
         {{ $t(`domain.status.${domain.status.toLowerCase()}`) }}
+      </span>
+      <span v-else class="px-2.5 py-0.5 rounded-full text-xs font-medium tracking-wide border bg-[#8A8780]/10 text-[#8A8780] border-[#8A8780]/20">
+        {{ $t('domain.status.unknown') }}
       </span>
     </div>
 
