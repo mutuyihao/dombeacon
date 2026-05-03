@@ -14,6 +14,8 @@ export default defineEventHandler(async (event) => {
     const status = query.status as string; // AVAILABLE, REGISTERED, etc.
     const tag = query.tag as string;
     const groupId = query.group as string;
+    const watchKind = query.watchKind as string; // OWNED, WANTED
+    const priority = query.priority as string; // LOW, MEDIUM, HIGH
 
     // Build conditions
     const conditions = [];
@@ -33,6 +35,14 @@ export default defineEventHandler(async (event) => {
       conditions.push(eq(domains.groupName, groupId));
     }
 
+    if (query.watchKind) {
+      conditions.push(eq(domains.watchKind, watchKind));
+    }
+
+    if (query.priority) {
+      conditions.push(eq(domains.priority, priority));
+    }
+
     // Tags is JSON, so strict SQL filtering is hard in SQLite without extensions,
     // but we can use LIKE on the stringified JSON or filter in app.
     // For MVP/SQLite, LIKE '%"tag"%' is a hacky but working solution for simple array.
@@ -44,6 +54,8 @@ export default defineEventHandler(async (event) => {
       .select({
         id: domains.id,
         domain: domains.domain,
+        watchKind: domains.watchKind,
+        priority: domains.priority,
         note: domains.note,
         tagsJson: domains.tagsJson,
         groupName: domains.groupName,

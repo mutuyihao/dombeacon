@@ -15,6 +15,8 @@ export default defineEventHandler(async (event) => {
       .insert(domains)
       .values({
         domain: domainName,
+        watchKind: body.watchKind || "WANTED",
+        priority: body.priority || "MEDIUM",
         note: body.note || "",
         tagsJson: JSON.stringify(body.tags || []),
         groupName: body.group || null,
