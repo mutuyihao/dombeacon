@@ -163,3 +163,41 @@ export const sslStatusHistory = sqliteTable("ssl_status_history", {
   daysUntilExpiry: integer("days_until_expiry"),
   checkedAt: integer("checked_at", { mode: "timestamp" }),
 });
+
+// 域名成本表 (v1.1)
+export const domainCosts = sqliteTable("domain_costs", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  domainId: integer("domain_id")
+    .references(() => domains.id, { onDelete: "cascade" })
+    .notNull(),
+  costType: text("cost_type").notNull(), // 'REGISTRATION' | 'RENEWAL' | 'TRANSFER' | 'PRIVACY' | 'OTHER'
+  amount: integer("amount").notNull(), // Stored in cents (USD * 100)
+  currency: text("currency").notNull().default("USD"), // ISO 4217 currency code
+  registrar: text("registrar"),
+  paymentDate: integer("payment_date", { mode: "timestamp" }).notNull(),
+  periodStart: integer("period_start", { mode: "timestamp" }),
+  periodEnd: integer("period_end", { mode: "timestamp" }),
+  note: text("note"),
+  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(
+    () => new Date(),
+  ),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(
+    () => new Date(),
+  ),
+});
+
+// 域名预算表 (v1.1)
+export const domainBudgets = sqliteTable("domain_budgets", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  name: text("name").notNull(),
+  amount: integer("amount").notNull(), // Stored in cents
+  currency: text("currency").notNull().default("USD"),
+  period: text("period").notNull().default("YEARLY"), // 'MONTHLY' | 'QUARTERLY' | 'YEARLY'
+  startDate: integer("start_date", { mode: "timestamp" }).notNull(),
+  endDate: integer("end_date", { mode: "timestamp" }),
+  alertThreshold: integer("alert_threshold").default(80), // Percentage
+  enabled: integer("enabled", { mode: "boolean" }).default(true),
+  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(
+    () => new Date(),
+  ),
+});
