@@ -75,7 +75,20 @@
     "noDomainsHint": "Try adjusting your filters or add a new domain",
     "deleteError": "Delete failed",
     "domainRequired": "Domain name is required",
-    "invalidDomain": "Invalid domain format"
+    "invalidDomain": "Invalid domain format",
+    "information": "Information",
+    "nameservers": "Nameservers",
+    "noNameservers": "No nameservers",
+    "metadata": "Metadata",
+    "noNotes": "No notes",
+    "noTags": "No tags",
+    "timeline": "Timeline",
+    "noHistory": "No history yet",
+    "rawSnapshot": "Raw Snapshot",
+    "noSnapshot": "No snapshot data",
+    "loadError": "Failed to load domain",
+    "checking": "Checking...",
+    "editNotImplemented": "Edit feature coming soon"
   },
   "action": {
     "title": "Action Queue",

@@ -75,7 +75,20 @@
     "noDomainsHint": "尝试调整筛选条件或添加新域名",
     "deleteError": "删除失败",
     "domainRequired": "域名不能为空",
-    "invalidDomain": "域名格式不正确"
+    "invalidDomain": "域名格式不正确",
+    "information": "基本信息",
+    "nameservers": "域名服务器",
+    "noNameservers": "无域名服务器",
+    "metadata": "元数据",
+    "noNotes": "无备注",
+    "noTags": "无标签",
+    "timeline": "历史记录",
+    "noHistory": "暂无历史记录",
+    "rawSnapshot": "原始快照",
+    "noSnapshot": "无快照数据",
+    "loadError": "加载域名信息失败",
+    "checking": "检查中...",
+    "editNotImplemented": "编辑功能即将推出"
   },
   "action": {
     "title": "行动队列",
