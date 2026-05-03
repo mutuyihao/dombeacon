@@ -10,6 +10,7 @@ A self-hosted Domain Ops Radar for tracking wanted domain opportunities, managin
 - **Status Monitoring**: Tracks `AVAILABLE`, `REGISTERED`, `EXPIRING`, `PENDING_DELETE` states using RDAP
 - **Automated Scanning**: Hourly status checks + Daily summary emails (08:00)
 - **Beautiful UI**: Morandi color scheme, card-based layout, mobile responsive
+- **Bilingual Support**: Full Chinese (zh-CN) and English (en-US) interface with language switcher
 - **Notifications**: Instant alerts on status change + Daily digest
 - **Optional Authentication**: Simple password gate for production deployments
 
@@ -55,6 +56,20 @@ Go to `/settings` to configure:
 ### Database
 
 The database path can be configured via `DATABASE_PATH` environment variable (default: `./data/domains.db`).
+
+### Language / 语言
+
+The application supports both Chinese (中文) and English:
+
+- **Default Language**: Chinese (zh-CN)
+- **Switch Language**: Click the language button (中/EN) in the header
+- **Persistence**: Language preference is saved in a cookie
+
+应用支持中英文双语：
+
+- **默认语言**：中文
+- **切换语言**：点击页面顶部的语言按钮（中/EN）
+- **持久化**：语言偏好保存在 Cookie 中
 
 ## Usage
 
@@ -109,6 +124,7 @@ See [docs/README.md](docs/README.md) for full API documentation.
 - **Framework**: Nuxt 3 (Vue 3 + Nitro)
 - **Database**: SQLite (via Drizzle ORM)
 - **Styling**: Tailwind CSS (Custom Morandi Tokens)
+- **i18n**: @nuxtjs/i18n (Chinese & English)
 - **Scheduling**: Node-Cron + DB Locks
 - **Email**: Nodemailer
 
