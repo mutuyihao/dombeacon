@@ -94,27 +94,27 @@ const icon = computed(() => {
 
 const iconBgClass = computed(() => {
   switch (props.variant) {
-    case 'danger': return 'bg-[#8C6F6F]/10';
-    case 'warning': return 'bg-[#A08C7C]/10';
-    case 'info': return 'bg-[#7A7F8C]/10';
-    default: return 'bg-[#8A8780]/10';
+    case 'danger': return 'bg-status-dropping/10';
+    case 'warning': return 'bg-status-expiring/10';
+    case 'info': return 'bg-status-registered/10';
+    default: return 'bg-status-unknown/10';
   }
 });
 
 const iconClass = computed(() => {
   switch (props.variant) {
-    case 'danger': return 'text-[#8C6F6F]';
-    case 'warning': return 'text-[#A08C7C]';
-    case 'info': return 'text-[#7A7F8C]';
-    default: return 'text-[#8A8780]';
+    case 'danger': return 'text-status-dropping';
+    case 'warning': return 'text-status-expiring';
+    case 'info': return 'text-status-registered';
+    default: return 'text-status-unknown';
   }
 });
 
 const confirmClass = computed(() => {
   switch (props.variant) {
-    case 'danger': return 'bg-[#8C6F6F] hover:bg-[#8C6F6F]/90';
-    case 'warning': return 'bg-[#A08C7C] hover:bg-[#A08C7C]/90';
-    case 'info': return 'bg-[#7A7F8C] hover:bg-[#7A7F8C]/90';
+    case 'danger': return 'bg-status-dropping hover:bg-status-dropping/90';
+    case 'warning': return 'bg-status-expiring hover:bg-status-expiring/90';
+    case 'info': return 'bg-status-registered hover:bg-status-registered/90';
     default: return 'bg-accent hover:bg-accent-hover';
   }
 });

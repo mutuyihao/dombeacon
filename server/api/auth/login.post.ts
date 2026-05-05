@@ -1,31 +1,52 @@
+import {
+  ADMIN_SESSION_COOKIE,
+  ADMIN_SESSION_MAX_AGE_SECONDS,
+  clearLoginFailures,
+  createAdminSessionToken,
+  getLoginClientKey,
+  getLoginRateLimitState,
+  isPasswordMatch,
+  recordLoginFailure,
+} from "../../utils/auth";
+
 export default defineEventHandler(async (event) => {
-  const body = await readBody(event);
-  const { password } = body;
+  try {
+    const body = await readBody(event);
+    const password = String(body?.password || "");
+    const clientKey = getLoginClientKey(event);
 
-  const adminPassword = process.env.ADMIN_PASSWORD;
+    const adminPassword = (process.env.ADMIN_PASSWORD || "").trim();
 
-  if (!adminPassword) {
-    throw createError({
-      statusCode: 400,
-      message: "Authentication is not configured",
+    if (!adminPassword) {
+      return fail("Authentication is not configured", 40001);
+    }
+
+    const rateLimit = getLoginRateLimitState(clientKey);
+    if (rateLimit.limited) {
+      return fail(
+        `Too many failed login attempts. Try again in ${rateLimit.remainingSeconds}s`,
+        42901,
+      );
+    }
+
+    if (!isPasswordMatch(password, adminPassword)) {
+      recordLoginFailure(clientKey);
+      return fail("Invalid password", 40101);
+    }
+
+    clearLoginFailures(clientKey);
+    const token = createAdminSessionToken(adminPassword);
+
+    setCookie(event, ADMIN_SESSION_COOKIE, token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: ADMIN_SESSION_MAX_AGE_SECONDS,
+      path: "/",
     });
+
+    return success({ loggedIn: true });
+  } catch (e: any) {
+    return fail(e.message || "Login failed", 50000);
   }
-
-  if (password !== adminPassword) {
-    throw createError({
-      statusCode: 401,
-      message: "Invalid password",
-    });
-  }
-
-  // Set session cookie
-  setCookie(event, "admin_session", adminPassword, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: 60 * 60 * 24 * 7, // 7 days
-    path: "/",
-  });
-
-  return { success: true };
 });

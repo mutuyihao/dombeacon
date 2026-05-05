@@ -2,20 +2,11 @@ import { testServerchan } from "~/server/utils/serverchan";
 
 export default defineEventHandler(async (event) => {
   const id = parseInt(getRouterParam(event, "id") || "0");
+  if (!id) return fail("Invalid ServerChan id", 40000);
 
   try {
-    const success = await testServerchan(id);
-
-    return {
-      success,
-      message: success
-        ? "Server酱 test successful"
-        : "Server酱 test failed - check logs",
-    };
+    return success(await testServerchan(id));
   } catch (error: any) {
-    throw createError({
-      statusCode: 400,
-      message: error.message,
-    });
+    return fail(error.message || "ServerChan test failed", 40000);
   }
 });

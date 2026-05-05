@@ -18,27 +18,21 @@ export default defineEventHandler(async (event) => {
 
     // Validate required fields
     if (!domainId || !costType || amount === undefined || !paymentDate) {
-      throw createError({
-        statusCode: 400,
-        message: "Missing required fields: domainId, costType, amount, paymentDate",
-      });
+      return fail(
+        "Missing required fields: domainId, costType, amount, paymentDate",
+        40000,
+      );
     }
 
     // Validate cost type
     const validCostTypes = ["REGISTRATION", "RENEWAL", "TRANSFER", "PRIVACY", "OTHER"];
     if (!validCostTypes.includes(costType)) {
-      throw createError({
-        statusCode: 400,
-        message: "Invalid costType",
-      });
+      return fail("Invalid costType", 40000);
     }
 
     // Validate amount (in cents)
     if (typeof amount !== "number" || amount < 0) {
-      throw createError({
-        statusCode: 400,
-        message: "Amount must be a non-negative number (in cents)",
-      });
+      return fail("Amount must be a non-negative number (in cents)", 40000);
     }
 
     // Insert cost record
@@ -57,15 +51,9 @@ export default defineEventHandler(async (event) => {
       })
       .returning();
 
-    return {
-      success: true,
-      data: newCost,
-    };
+    return success(newCost);
   } catch (error: any) {
     console.error("Failed to create cost:", error);
-    throw createError({
-      statusCode: error.statusCode || 500,
-      message: error.message || "Failed to create cost",
-    });
+    return fail(error.message || "Failed to create cost", 50000);
   }
 });

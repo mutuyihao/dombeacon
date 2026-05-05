@@ -1,11 +1,22 @@
 import { webhookConfigs, notificationEvents } from "../db/schema";
 import { eq } from "drizzle-orm";
+import { useDb } from "./db";
 
 export interface WebhookPayload {
   event: string;
   timestamp: string;
   data: any;
 }
+
+export interface WebhookSendResult {
+  ok: boolean;
+  requestUrl: string;
+  errorMessage: string | null;
+  httpStatus?: number;
+  truncated?: boolean;
+}
+
+const MAX_GET_DATA_ENCODED_LEN = 1500;
 
 /**
  * Send webhook notification
@@ -18,37 +29,73 @@ export const sendWebhook = async (
     headers?: Record<string, string>;
     timeout?: number;
   } = {},
-): Promise<boolean> => {
+): Promise<WebhookSendResult> => {
   const { method = "POST", headers = {}, timeout = 10000 } = options;
+  const upperMethod = String(method || "POST").toUpperCase();
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+  let requestUrl = url;
+  let truncated = false;
 
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeout);
+    const reqHeaders: Record<string, string> = {
+      "User-Agent": "DomBeacon/1.0",
+      ...headers,
+    };
 
-    const response = await fetch(url, {
-      method,
-      headers: {
-        "Content-Type": "application/json",
-        "User-Agent": "Domain-Ops-Radar/1.0",
-        ...headers,
-      },
-      body: JSON.stringify(payload),
+    const init: RequestInit = {
+      method: upperMethod,
+      headers: reqHeaders,
       signal: controller.signal,
-    });
+    };
 
-    clearTimeout(timeoutId);
+    if (upperMethod === "GET") {
+      const u = new URL(url);
+      u.searchParams.set("event", payload.event);
+      u.searchParams.set("timestamp", payload.timestamp);
 
-    if (!response.ok) {
-      console.error(
-        `Webhook failed: ${response.status} ${response.statusText}`,
-      );
-      return false;
+      const dataStr = JSON.stringify(payload.data ?? null);
+      const encodedLen = encodeURIComponent(dataStr).length;
+      if (encodedLen <= MAX_GET_DATA_ENCODED_LEN) {
+        u.searchParams.set("data", dataStr);
+      } else {
+        truncated = true;
+      }
+
+      requestUrl = u.toString();
+      // Important: no body for GET
+    } else {
+      reqHeaders["Content-Type"] = "application/json";
+      init.body = JSON.stringify(payload);
     }
 
-    return true;
+    const response = await fetch(requestUrl, init);
+
+    if (!response.ok) {
+      const msg = `Webhook failed: HTTP ${response.status} ${response.statusText || ""}`.trim();
+      console.error(msg);
+      return {
+        ok: false,
+        requestUrl,
+        errorMessage: msg,
+        httpStatus: response.status,
+        truncated,
+      };
+    }
+
+    return { ok: true, requestUrl, errorMessage: null, truncated };
   } catch (error: any) {
-    console.error("Webhook send error:", error.message);
-    return false;
+    const name = String(error?.name || "");
+    const msg =
+      name === "AbortError"
+        ? `Webhook timeout after ${timeout}ms`
+        : `Webhook send error: ${error?.message || String(error)}`;
+    console.error(msg);
+    return { ok: false, requestUrl, errorMessage: msg, truncated };
+  } finally {
+    clearTimeout(timeoutId);
   }
 };
 
@@ -107,7 +154,7 @@ export const notifyWebhooks = async (params: {
       ? JSON.parse(webhook.headersJson)
       : {};
 
-    const success = await sendWebhook(webhook.url, payload, {
+    const result = await sendWebhook(webhook.url, payload, {
       method: webhook.method,
       headers,
     });
@@ -119,19 +166,23 @@ export const notifyWebhooks = async (params: {
       actionId: actionId || null,
       eventType,
       channel: "WEBHOOK",
-      status: success ? "SENT" : "FAILED",
-      sentAt: success ? new Date() : null,
-      failedAt: success ? null : new Date(),
-      errorMessage: success ? null : "Webhook request failed",
+      status: result.ok ? "SENT" : "FAILED",
+      sentAt: result.ok ? new Date() : null,
+      failedAt: result.ok ? null : new Date(),
+      errorMessage: result.ok
+        ? null
+        : result.errorMessage || "Webhook request failed",
       metadata: JSON.stringify({
         webhookId: webhook.id,
         webhookName: webhook.name,
-        url: webhook.url,
+        url: result.requestUrl || webhook.url,
+        truncated: result.truncated === true,
+        httpStatus: result.httpStatus || null,
       }),
       createdAt: new Date(),
     });
 
-    if (success) successCount++;
+    if (result.ok) successCount++;
   }
 
   return successCount;
@@ -156,7 +207,7 @@ export const testWebhook = async (webhookId: number): Promise<boolean> => {
     event: "TEST",
     timestamp: new Date().toISOString(),
     data: {
-      message: "This is a test webhook from Domain Ops Radar",
+      message: "This is a test webhook from DomBeacon (域灯)",
       webhookId: webhook.id,
       webhookName: webhook.name,
     },
@@ -166,8 +217,10 @@ export const testWebhook = async (webhookId: number): Promise<boolean> => {
     ? JSON.parse(webhook.headersJson)
     : {};
 
-  return await sendWebhook(webhook.url, testPayload, {
+  const result = await sendWebhook(webhook.url, testPayload, {
     method: webhook.method,
     headers,
   });
+
+  return result.ok;
 };

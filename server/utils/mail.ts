@@ -191,7 +191,7 @@ export const getTemplate = (
   data: any,
 ): MailTemplate => {
   const baseUrl = process.env.BASE_URL || "http://localhost:3000";
-  const appName = "Domain Ops Radar";
+  const appName = "DomBeacon (域灯)";
 
   if (type === "instant") {
     const { domain, oldStatus, newStatus } = data;
@@ -244,6 +244,8 @@ export const getTemplate = (
       WANTED_AVAILABLE: "🎯 Wanted Domain Available",
       WANTED_DROPPING: "⚠️ Wanted Domain Dropping",
       OWNED_EXPIRING: "⏰ Owned Domain Expiring",
+      SSL_EXPIRING: "🔒 SSL Expiring Soon",
+      SSL_INVALID: "🔒 SSL Invalid",
       SCAN_FAILED: "❌ Scan Failed",
     };
 

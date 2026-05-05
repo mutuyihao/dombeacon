@@ -34,7 +34,7 @@
                   <!-- Name -->
                   <div>
                     <label class="block text-sm font-medium text-text-main mb-2">
-                      {{ $t('webhook.name') }} <span class="text-red-500">*</span>
+                      {{ $t('webhook.name') }} <span class="text-status-dropping">*</span>
                     </label>
                     <input
                       v-model="form.name"
@@ -48,7 +48,7 @@
                   <!-- URL -->
                   <div>
                     <label class="block text-sm font-medium text-text-main mb-2">
-                      {{ $t('webhook.url') }} <span class="text-red-500">*</span>
+                      {{ $t('webhook.url') }} <span class="text-status-dropping">*</span>
                     </label>
                     <input
                       v-model="form.url"
@@ -122,7 +122,7 @@
                         <button
                           type="button"
                           @click="removeHeader(index)"
-                          class="px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          class="px-3 py-2 text-status-dropping hover:bg-status-dropping/10 rounded-lg transition-colors"
                         >
                           <XIcon class="w-4 h-4" />
                         </button>
@@ -196,6 +196,8 @@ const availableEvents = [
   'wanted_available',
   'wanted_dropping',
   'owned_expiring',
+  'ssl_expiring',
+  'ssl_invalid',
   'status_change',
   'expiring_soon',
   'dropping_alert',

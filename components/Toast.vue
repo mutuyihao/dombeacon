@@ -38,13 +38,13 @@ const toasts = useState('toasts', () => []);
 const toastClass = (type) => {
   switch (type) {
     case 'success':
-      return 'bg-[#7C8B7A]/95 text-white border-[#7C8B7A]';
+      return 'bg-status-available/95 text-white border-status-available';
     case 'error':
-      return 'bg-[#8C6F6F]/95 text-white border-[#8C6F6F]';
+      return 'bg-status-dropping/95 text-white border-status-dropping';
     case 'warning':
-      return 'bg-[#A08C7C]/95 text-white border-[#A08C7C]';
+      return 'bg-status-expiring/95 text-white border-status-expiring';
     case 'info':
-      return 'bg-[#7A7F8C]/95 text-white border-[#7A7F8C]';
+      return 'bg-status-registered/95 text-white border-status-registered';
     default:
       return 'bg-card/95 text-text-main border-card-border';
   }

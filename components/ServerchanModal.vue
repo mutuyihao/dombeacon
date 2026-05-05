@@ -34,7 +34,7 @@
                   <!-- Name -->
                   <div>
                     <label class="block text-sm font-medium text-text-main mb-2">
-                      {{ $t('serverchan.name') }} <span class="text-red-500">*</span>
+                      {{ $t('serverchan.name') }} <span class="text-status-dropping">*</span>
                     </label>
                     <input
                       v-model="form.name"
@@ -48,7 +48,7 @@
                   <!-- SendKey -->
                   <div>
                     <label class="block text-sm font-medium text-text-main mb-2">
-                      {{ $t('serverchan.sendKey') }} <span class="text-red-500">*</span>
+                      {{ $t('serverchan.sendKey') }} <span class="text-status-dropping">*</span>
                     </label>
                     <input
                       v-model="form.sendKey"
@@ -63,10 +63,10 @@
                   </div>
 
                   <!-- How to get SendKey -->
-                  <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <div class="bg-accent/10 border border-accent/20 rounded-lg p-3">
                     <div class="flex items-start gap-2">
-                      <InfoIcon class="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                      <div class="text-xs text-blue-800">
+                      <InfoIcon class="w-4 h-4 text-accent mt-0.5 flex-shrink-0" />
+                      <div class="text-xs text-text-main">
                         <p class="font-medium mb-1">{{ $t('serverchan.howToGetSendKey') }}</p>
                         <pre class="whitespace-pre-wrap">{{ $t('serverchan.sendKeyGuide') }}</pre>
                       </div>
@@ -137,71 +137,6 @@
 
 <script setup>
 import { Dialog, DialogPanel, DialogTitle, TransitionRoot, TransitionChild } from '@headlessui/vue';
-import { Info as InfoIcon } from 'lucide-vue-next';
-
-const props = defineProps({
-  isOpen: Boolean,
-  config: Object,
-});
-
-const emit = defineEmits(['close', 'save']);
-
-const { t } = useI18n();
-const saving = ref(false);
-
-const availableEvents = [
-  'wanted_available',
-  'wanted_dropping',
-  'owned_expiring',
-  'status_change',
-  'expiring_soon',
-  'dropping_alert',
-  'daily_summary',
-];
-
-const form = ref({
-  name: '',
-  sendKey: '',
-  eventTypes: [],
-  enabled: true,
-});
-
-// Initialize form when config prop changes
-watch(() => props.config, (config) => {
-  if (config) {
-    form.value = {
-      name: config.name || '',
-      sendKey: config.sendKey || '',
-      eventTypes: config.eventTypes ? JSON.parse(config.eventTypes) : [],
-      enabled: config.enabled ?? true,
-    };
-  } else {
-    form.value = {
-      name: '',
-      sendKey: '',
-      eventTypes: [],
-      enabled: true,
-    };
-  }
-}, { immediate: true });
-
-const handleSubmit = async () => {
-  // Validate
-  if (!form.value.name || !form.value.sendKey) {
-    return;
-  }
-
-  const configData = {
-    name: form.value.name,
-    sendKey: form.value.sendKey,
-    eventTypes: form.value.eventTypes,
-    enabled: form.value.enabled,
-  };
-
-  emit('save', configData);
-};
-</script>
-
 import { Info as InfoIcon } from 'lucide-vue-next';
 
 const props = defineProps({

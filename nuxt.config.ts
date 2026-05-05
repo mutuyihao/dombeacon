@@ -25,10 +25,31 @@ export default defineNuxtConfig({
   css: [fileURLToPath(new URL("./assets/css/main.css", import.meta.url))],
   app: {
     head: {
-      title: "Domain Ops Radar",
+      title: "DomBeacon (域灯)",
       meta: [
-        { name: "description", content: "Self-hosted Domain Ops Radar for tracking domain opportunities and portfolio management" },
+        {
+          name: "description",
+          content:
+            "Self-hosted domain ops beacon for tracking wanted domain opportunities, managing owned portfolios, monitoring expiration and SSL risks, and turning domain events into actionable alerts.",
+        },
+        // Default (light) theme color; `useTheme()` will update it on the client
+        // when the user selects dark mode or system resolves to dark.
+        { name: "theme-color", content: "#EDF5F3" },
+        { name: "apple-mobile-web-app-capable", content: "yes" },
+        { name: "apple-mobile-web-app-status-bar-style", content: "default" },
+        { name: "apple-mobile-web-app-title", content: "DomBeacon" },
       ],
+      link: [
+        { rel: "manifest", href: "/manifest.webmanifest" },
+        { rel: "apple-touch-icon", href: "/icons/icon-192.svg" },
+      ],
+    },
+  },
+  runtimeConfig: {
+    vapidPrivateKey: process.env.VAPID_PRIVATE_KEY || "",
+    vapidSubject: process.env.VAPID_SUBJECT || "mailto:admin@example.com",
+    public: {
+      vapidPublicKey: process.env.VAPID_PUBLIC_KEY || "",
     },
   },
   vite: {

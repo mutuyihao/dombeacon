@@ -7,20 +7,32 @@ export interface ServerchanMessage {
   short?: string; // Short message for notification
 }
 
+export interface ServerchanSendResult {
+  ok: boolean;
+  error?: string;
+  status?: number;
+  statusText?: string;
+  code?: number;
+  message?: string;
+}
+
+const SERVERCHAN_API_BASE = "https://sctapi.ftqq.com";
+
 /**
  * Send Server酱 notification
- * API: https://sct.ftqq.com/{SendKey}.send
+ * API: https://sctapi.ftqq.com/{SendKey}.send
  */
-export const sendServerchan = async (
+export const sendServerchanDetailed = async (
   sendKey: string,
   message: ServerchanMessage,
   timeout: number = 10000,
-): Promise<boolean> => {
-  const url = `https://sct.ftqq.com/${sendKey}.send`;
+): Promise<ServerchanSendResult> => {
+  const url = `${SERVERCHAN_API_BASE}/${encodeURIComponent(sendKey)}.send`;
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeout);
+    timeoutId = setTimeout(() => controller.abort(), timeout);
 
     const formData = new URLSearchParams();
     formData.append("title", message.title);
@@ -36,30 +48,68 @@ export const sendServerchan = async (
       signal: controller.signal,
     });
 
-    clearTimeout(timeoutId);
-
     if (!response.ok) {
-      console.error(`Server酱 request failed: ${response.status} ${response.statusText}`);
-      return false;
+      const body = await response.text().catch(() => "");
+      const error = `HTTP ${response.status} ${response.statusText}${
+        body ? `: ${body.slice(0, 300)}` : ""
+      }`;
+      console.error(`Server酱 request failed: ${error}`);
+      return {
+        ok: false,
+        error,
+        status: response.status,
+        statusText: response.statusText,
+      };
     }
 
-    const result = await response.json();
+    const text = await response.text();
+    let result: any = {};
+    try {
+      result = text ? JSON.parse(text) : {};
+    } catch {
+      const error = `Invalid Server酱 response: ${text.slice(0, 300)}`;
+      console.error(error);
+      return { ok: false, error };
+    }
 
     // Server酱 API returns { code: 0, message: "success", data: {...} }
-    if (result.code !== 0) {
-      console.error(`Server酱 API error: ${result.message}`);
-      return false;
+    if (Number(result.code) !== 0) {
+      const apiMessage =
+        result.message || result.msg || `Server酱 API code ${result.code}`;
+      console.error(`Server酱 API error: ${apiMessage}`);
+      return {
+        ok: false,
+        error: apiMessage,
+        code: Number(result.code),
+        message: apiMessage,
+      };
     }
 
-    return true;
+    return {
+      ok: true,
+      code: 0,
+      message: result.message || result.msg || "success",
+    };
   } catch (error: any) {
     if (error.name === "AbortError") {
       console.error("Server酱 request timeout");
+      return { ok: false, error: `Server酱 request timeout after ${timeout}ms` };
     } else {
       console.error("Server酱 request error:", error.message);
+      return { ok: false, error: error.message || "Server酱 request error" };
     }
-    return false;
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
   }
+};
+
+export const sendServerchan = async (
+  sendKey: string,
+  message: ServerchanMessage,
+  timeout: number = 10000,
+): Promise<boolean> => {
+  const result = await sendServerchanDetailed(sendKey, message, timeout);
+  return result.ok;
 };
 
 /**
@@ -92,7 +142,9 @@ export const formatServerchanMessage = (
   eventType: string,
   eventData: any,
 ): ServerchanMessage => {
-  const { domain, watchKind, priority, oldStatus, newStatus, expiresAt } = eventData;
+  const { domain, watchKind, priority, oldStatus, newStatus, expiresAt } =
+    eventData;
+  const { issuer, validTo, daysUntilExpiry } = eventData || {};
 
   let title = "";
   let desp = "";
@@ -132,6 +184,40 @@ export const formatServerchanMessage = (
         desp += `**过期时间**: ${new Date(expiresAt).toLocaleString("zh-CN")}\n\n`;
       }
       desp += `请及时续费以避免域名丢失！`;
+      break;
+
+    case "SSL_EXPIRING":
+      title = `🔒 SSL 证书即将过期: ${domain}`;
+      short =
+        daysUntilExpiry != null
+          ? `${domain} SSL 将在 ${daysUntilExpiry} 天后过期`
+          : `${domain} SSL 即将过期`;
+      desp = `## SSL 证书到期提醒\n\n`;
+      desp += `**域名**: ${domain}\n\n`;
+      desp += `**类型**: 已拥有\n\n`;
+      desp += `**优先级**: ${priority}\n\n`;
+      if (issuer) desp += `**签发者**: ${issuer}\n\n`;
+      if (validTo) {
+        desp += `**到期时间**: ${new Date(validTo).toLocaleString("zh-CN")}\n\n`;
+      }
+      if (daysUntilExpiry != null) {
+        desp += `**剩余天数**: ${daysUntilExpiry}\n\n`;
+      }
+      desp += `请尽快续签/替换证书，避免线上故障。`;
+      break;
+
+    case "SSL_INVALID":
+      title = `🔒 SSL 证书无效: ${domain}`;
+      short = `${domain} SSL 证书无效`;
+      desp = `## SSL 证书告警\n\n`;
+      desp += `**域名**: ${domain}\n\n`;
+      desp += `**类型**: 已拥有\n\n`;
+      desp += `**优先级**: ${priority}\n\n`;
+      if (issuer) desp += `**签发者**: ${issuer}\n\n`;
+      if (validTo) {
+        desp += `**到期时间**: ${new Date(validTo).toLocaleString("zh-CN")}\n\n`;
+      }
+      desp += `证书链/域名匹配可能存在问题，请尽快检查。`;
       break;
 
     case "STATUS_CHANGE":
@@ -265,7 +351,9 @@ export const notifyServerchan = async (params: {
 /**
  * Test Server酱 configuration
  */
-export const testServerchan = async (id: number): Promise<boolean> => {
+export const testServerchan = async (
+  id: number,
+): Promise<ServerchanSendResult> => {
   const db = useDb();
   const config = await db
     .select()
@@ -278,90 +366,10 @@ export const testServerchan = async (id: number): Promise<boolean> => {
   }
 
   const testMessage: ServerchanMessage = {
-    title: "🧪 Domain Ops Radar 测试通知",
+    title: "🧪 DomBeacon（域灯）测试通知",
     desp: `## 测试通知\n\n这是来自 **${config.name}** 的测试消息。\n\n如果您收到此消息，说明 Server酱 配置正常工作！\n\n---\n\n*发送时间: ${new Date().toLocaleString("zh-CN")}*`,
-    short: "Domain Ops Radar 测试通知",
+    short: "DomBeacon（域灯）测试通知",
   };
 
-  return await sendServerchan(config.sendKey, testMessage);
-};
-
-  let successCount = 0;
-
-  for (const config of configs) {
-    try {
-      // Record event as PENDING
-      const [event] = await db
-        .insert(notificationEvents)
-        .values({
-          domainId: domainId || null,
-          actionId: actionId || null,
-          eventType,
-          channel: "SERVERCHAN",
-          status: "PENDING",
-          metadata: JSON.stringify({
-            configId: config.id,
-            configName: config.name,
-          }),
-        })
-        .returning();
-
-      // Send notification
-      const success = await sendServerchan(config.sendKey, message);
-
-      if (success) {
-        // Update event as SENT
-        await db
-          .update(notificationEvents)
-          .set({
-            status: "SENT",
-            sentAt: new Date(),
-          })
-          .where(eq(notificationEvents.id, event.id));
-
-        successCount++;
-        console.log(`Server酱 notification sent: ${config.name} - ${message.title}`);
-      } else {
-        // Update event as FAILED
-        await db
-          .update(notificationEvents)
-          .set({
-            status: "FAILED",
-            failedAt: new Date(),
-            errorMessage: "Server酱 API request failed",
-          })
-          .where(eq(notificationEvents.id, event.id));
-
-        console.error(`Server酱 notification failed: ${config.name}`);
-      }
-    } catch (error: any) {
-      console.error(`Error sending Server酱 notification to ${config.name}:`, error.message);
-    }
-  }
-
-  return successCount;
-};
-
-/**
- * Test Server酱 configuration
- */
-export const testServerchan = async (id: number): Promise<boolean> => {
-  const db = useDb();
-  const config = await db
-    .select()
-    .from(serverchanConfigs)
-    .where(eq(serverchanConfigs.id, id))
-    .get();
-
-  if (!config) {
-    throw new Error("Server酱 configuration not found");
-  }
-
-  const testMessage: ServerchanMessage = {
-    title: "🧪 Domain Ops Radar 测试通知",
-    desp: `## 测试通知\n\n这是来自 **${config.name}** 的测试消息。\n\n如果您收到此消息，说明 Server酱 配置正常工作！\n\n---\n\n*发送时间: ${new Date().toLocaleString("zh-CN")}*`,
-    short: "Domain Ops Radar 测试通知",
-  };
-
-  return await sendServerchan(config.sendKey, testMessage);
+  return await sendServerchanDetailed(config.sendKey, testMessage);
 };

@@ -34,7 +34,7 @@
                   <!-- Domain Selection -->
                   <div>
                     <label class="block text-sm font-medium text-text-main mb-2">
-                      {{ $t('costs.domain') }} <span class="text-red-500">*</span>
+                      {{ $t('costs.domain') }} <span class="text-status-dropping">*</span>
                     </label>
                     <select
                       v-model="form.domainId"
@@ -49,7 +49,7 @@
                   <!-- Cost Type -->
                   <div>
                     <label class="block text-sm font-medium text-text-main mb-2">
-                      {{ $t('costs.type') }} <span class="text-red-500">*</span>
+                      {{ $t('costs.type') }} <span class="text-status-dropping">*</span>
                     </label>
                     <select
                       v-model="form.costType"
@@ -66,7 +66,7 @@
                   <div class="grid grid-cols-3 gap-4">
                     <div class="col-span-2">
                       <label class="block text-sm font-medium text-text-main mb-2">
-                        {{ $t('costs.amount') }} <span class="text-red-500">*</span>
+                        {{ $t('costs.amount') }} <span class="text-status-dropping">*</span>
                       </label>
                       <input
                         v-model="form.amount"
@@ -107,7 +107,7 @@
                   <!-- Payment Date -->
                   <div>
                     <label class="block text-sm font-medium text-text-main mb-2">
-                      {{ $t('costs.paymentDate') }} <span class="text-red-500">*</span>
+                      {{ $t('costs.paymentDate') }} <span class="text-status-dropping">*</span>
                     </label>
                     <input
                       v-model="form.paymentDate"

@@ -2,6 +2,7 @@ import {
   domains,
   domainStatusLatest,
   domainStatusHistory,
+  sslStatusLatest,
 } from "../../db/schema";
 import { eq, desc } from "drizzle-orm";
 
@@ -26,27 +27,64 @@ export default defineEventHandler(async (event) => {
       .where(eq(domainStatusLatest.domainId, domainId))
       .get();
 
-    // History (last 50 items)
-    const history = await db
+    const sslLatest = await db
+      .select()
+      .from(sslStatusLatest)
+      .where(eq(sslStatusLatest.domainId, domainId))
+      .get();
+
+    // History (paginated - first page)
+    const historyLimit = 50;
+    const historyRows = await db
       .select()
       .from(domainStatusHistory)
       .where(eq(domainStatusHistory.domainId, domainId))
-      .orderBy(desc(domainStatusHistory.checkedAt))
-      .limit(50)
+      .orderBy(desc(domainStatusHistory.id))
+      .limit(historyLimit + 1)
       .all();
+
+    const historyHasMore = historyRows.length > historyLimit;
+    const history = historyHasMore
+      ? historyRows.slice(0, historyLimit)
+      : historyRows;
+    const historyNextCursor = historyHasMore
+      ? (history[history.length - 1]?.id ?? null)
+      : null;
+
+    const parsedLatest = (() => {
+      if (!latest) return null;
+      let nameservers: any = [];
+      try {
+        nameservers = JSON.parse(latest.nameserversJson || "[]");
+      } catch {
+        nameservers = [];
+      }
+
+      let rdapSummary: any = null;
+      if (latest.rdapSummaryJson) {
+        try {
+          rdapSummary = JSON.parse(latest.rdapSummaryJson);
+        } catch {
+          rdapSummary = null;
+        }
+      }
+
+      return {
+        ...latest,
+        nameservers,
+        rdapSummary,
+      };
+    })();
 
     return success({
       domain: {
         ...domain,
         tags: JSON.parse(domain.tagsJson || "[]"),
       },
-      latest: latest
-        ? {
-            ...latest,
-            nameservers: JSON.parse(latest.nameserversJson || "[]"),
-          }
-        : null,
+      latest: parsedLatest,
+      sslLatest,
       history,
+      historyNextCursor,
     });
   } catch (e: any) {
     return fail(e.message || "System Error", 50000);

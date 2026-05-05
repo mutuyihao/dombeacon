@@ -109,9 +109,13 @@ export const updateSSLStatus = async (
 
   const currentStatus = current[0];
   let changed = false;
+  const shouldPreserveExistingCert =
+    !!result.error && currentStatus?.hasSSL === true;
 
   // Detect changes
-  if (currentStatus) {
+  if (shouldPreserveExistingCert) {
+    changed = false;
+  } else if (currentStatus) {
     changed =
       currentStatus.hasSSL !== result.hasSSL ||
       currentStatus.isValid !== result.isValid ||
@@ -122,17 +126,35 @@ export const updateSSLStatus = async (
   }
 
   // Prepare data
-  const statusData = {
-    hasSSL: result.hasSSL,
-    isValid: result.isValid,
-    issuer: result.issuer || null,
-    validFrom: result.validFrom || null,
-    validTo: result.validTo || null,
-    daysUntilExpiry: result.daysUntilExpiry ?? null,
-    checkedAt: now,
-    lastError: result.error || null,
-    lastErrorAt: result.error ? now : null,
-  };
+  let statusData;
+  if (shouldPreserveExistingCert && currentStatus) {
+    // Network failures during automatic scans should not destroy the last
+    // known-good certificate snapshot. Keep the successful cert facts and
+    // record the failed attempt separately.
+    statusData = {
+      hasSSL: currentStatus.hasSSL,
+      isValid: currentStatus.isValid,
+      issuer: currentStatus.issuer,
+      validFrom: currentStatus.validFrom,
+      validTo: currentStatus.validTo,
+      daysUntilExpiry: currentStatus.daysUntilExpiry,
+      checkedAt: currentStatus.checkedAt,
+      lastError: result.error || null,
+      lastErrorAt: now,
+    };
+  } else {
+    statusData = {
+      hasSSL: result.hasSSL,
+      isValid: result.isValid,
+      issuer: result.issuer || null,
+      validFrom: result.validFrom || null,
+      validTo: result.validTo || null,
+      daysUntilExpiry: result.daysUntilExpiry ?? null,
+      checkedAt: now,
+      lastError: result.error || null,
+      lastErrorAt: result.error ? now : null,
+    };
+  }
 
   // Update latest status
   if (currentStatus) {

@@ -96,9 +96,7 @@ export default defineEventHandler(async (event) => {
       )
       .groupBy(domainCosts.registrar);
 
-    return {
-      success: true,
-      data: {
+    return success({
         year,
         total,
         count,
@@ -106,13 +104,9 @@ export default defineEventHandler(async (event) => {
         byMonth,
         topDomains,
         byRegistrar,
-      },
-    };
+    });
   } catch (error: any) {
     console.error("Failed to fetch cost summary:", error);
-    throw createError({
-      statusCode: 500,
-      message: error.message || "Failed to fetch cost summary",
-    });
+    return fail(error.message || "Failed to fetch cost summary", 50000);
   }
 });

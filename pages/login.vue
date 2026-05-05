@@ -1,26 +1,33 @@
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-background px-4">
-    <div class="w-full max-w-md">
-      <div class="bg-card border border-card-border rounded-lg p-8 shadow-sm">
+  <div class="relative flex min-h-screen items-center justify-center overflow-hidden bg-background px-4">
+    <div aria-hidden="true" class="pointer-events-none fixed inset-0 z-0">
+      <div class="absolute inset-0 bg-app-grid opacity-70" />
+      <div class="absolute left-1/2 top-[-10rem] h-96 w-96 -translate-x-1/2 rounded-full bg-[var(--app-aura-primary)] blur-3xl" />
+      <div class="absolute bottom-[-8rem] right-[-6rem] h-80 w-80 rounded-full bg-[var(--app-aura-secondary)] blur-3xl" />
+    </div>
+
+    <div class="relative z-10 w-full max-w-md">
+      <div class="glass-panel rounded-[2rem] p-8">
         <!-- Logo -->
         <div class="flex justify-center mb-6">
-          <div class="w-16 h-16 rounded-lg bg-accent flex items-center justify-center text-white">
-            <RadarIcon class="w-10 h-10" />
+          <div class="relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-[1.5rem] bg-accent text-white shadow-[0_24px_50px_-30px_var(--color-accent)]">
+            <div class="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.52),transparent_36%),linear-gradient(135deg,rgba(255,255,255,0.16),transparent_55%)]" />
+            <RadarIcon class="relative h-9 w-9" />
           </div>
         </div>
 
         <!-- Title -->
-        <h1 class="text-2xl font-semibold text-center text-text-main mb-2">
+        <h1 class="mb-2 text-center font-display text-3xl font-semibold text-text-main">
           {{ $t('common.appName') }}
         </h1>
-        <p class="text-sm text-text-secondary text-center mb-8">
+        <p class="mb-8 text-center text-sm text-text-secondary">
           {{ $t('auth.enterPassword') }}
         </p>
 
         <!-- Error Message -->
         <div
           v-if="error"
-          class="mb-4 p-3 bg-red-50 border border-red-200 rounded text-sm text-red-700"
+          class="mb-4 p-3 bg-status-dropping/10 border border-status-dropping/20 rounded text-sm text-status-dropping"
         >
           {{ error }}
         </div>
@@ -36,7 +43,7 @@
               v-model="password"
               type="password"
               required
-              class="w-full px-4 py-2 border border-card-border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent bg-white text-text-main"
+              class="w-full rounded-xl border border-card-border bg-background/70 px-4 py-3 text-text-main focus:border-transparent focus:outline-none focus:ring-2 focus:ring-accent"
               :placeholder="$t('auth.enterPassword')"
               :disabled="loading"
             />
@@ -45,7 +52,7 @@
           <button
             type="submit"
             :disabled="loading"
-            class="w-full bg-accent hover:bg-accent-hover text-white font-medium py-2 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            class="w-full rounded-xl bg-accent px-4 py-3 font-semibold text-white shadow-[0_18px_36px_-24px_var(--color-accent)] transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50"
           >
             {{ loading ? $t('auth.loggingIn') : $t('auth.login') }}
           </button>
@@ -79,12 +86,14 @@ const handleLogin = async () => {
       body: { password: password.value },
     });
 
-    if (response.success) {
-      // Redirect to domains page
+    if (response?.code === 0) {
       await navigateTo("/domains");
+      return;
     }
+
+    error.value = response?.msg || t("auth.invalidPassword");
   } catch (e) {
-    error.value = e.data?.message || t('auth.invalidPassword');
+    error.value = e?.data?.msg || e?.data?.message || t("auth.invalidPassword");
   } finally {
     loading.value = false;
   }

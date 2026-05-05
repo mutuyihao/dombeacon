@@ -1,28 +1,31 @@
+# syntax=docker/dockerfile:1.7
+
 FROM node:22-alpine AS builder
+
+ENV PNPM_HOME=/pnpm
+ENV PATH="$PNPM_HOME:$PATH"
+RUN corepack enable
 
 WORKDIR /app
 
-COPY package*.json ./
-RUN npm install
+RUN apk add --no-cache python3 make g++ sqlite
+
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm config set store-dir /pnpm/store
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store pnpm install --frozen-lockfile
 
 COPY . .
-RUN npm run build
+RUN pnpm run build
 # Prune dev dependencies if possible or just rely on output
 
 FROM node:22-alpine
 
 WORKDIR /app
 
-# SQLite needs these
-RUN apk add --no-cache python3 make g++ sqlite
+# Runtime only needs SQLite libraries; native modules are built in the builder stage.
+RUN apk add --no-cache sqlite
 
 COPY --from=builder /app/.output ./.output
-COPY --from=builder /app/package*.json ./
-
-# Install production dependencies for server (if needed by nitro externals, usually bundled)
-# But better-sqlite3 might need rebuild or installation in runtime container if bindings differ.
-# Safest is to install deps.
-RUN npm install --production
 
 ENV NUXT_HOST=0.0.0.0
 ENV NUXT_PORT=3000

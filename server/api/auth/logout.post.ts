@@ -1,4 +1,6 @@
+import { ADMIN_SESSION_COOKIE } from "../../utils/auth";
+
 export default defineEventHandler(async (event) => {
-  deleteCookie(event, "admin_session");
-  return { success: true };
+  deleteCookie(event, ADMIN_SESSION_COOKIE, { path: "/" });
+  return success({ loggedOut: true });
 });

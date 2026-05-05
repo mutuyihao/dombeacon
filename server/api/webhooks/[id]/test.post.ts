@@ -2,20 +2,15 @@ import { testWebhook } from "~/server/utils/webhook";
 
 export default defineEventHandler(async (event) => {
   const id = parseInt(getRouterParam(event, "id") || "0");
+  if (!id) return fail("Invalid webhook id", 40000);
 
   try {
-    const success = await testWebhook(id);
+    const ok = await testWebhook(id);
 
-    return {
-      success,
-      message: success
-        ? "Webhook test successful"
-        : "Webhook test failed - check logs",
-    };
+    return ok
+      ? success({ ok: true })
+      : success({ ok: false, error: "Webhook test failed - check logs" });
   } catch (error: any) {
-    throw createError({
-      statusCode: 400,
-      message: error.message,
-    });
+    return fail(error.message || "Webhook test failed", 40000);
   }
 });

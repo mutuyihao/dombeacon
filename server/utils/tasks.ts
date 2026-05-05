@@ -1,13 +1,22 @@
-import { domains, taskLocks, taskRuns, domainStatusLatest } from "../db/schema";
+import {
+  domains,
+  taskLocks,
+  taskRuns,
+  domainStatusLatest,
+  sslStatusLatest,
+} from "../db/schema";
 import { eq, lt, or, and } from "drizzle-orm";
 import { checkDomain } from "./scanner";
 import { createAction } from "./actions";
 import { sendNotification } from "./mail";
 import { notifyWebhooks } from "./webhook";
 import { notifyServerchan } from "./serverchan";
+import { notifyPush } from "./push";
 import { scanDomainSSL } from "./ssl";
 
 const LOCK_TTL_MS = 1000 * 60 * 30; // 30 minutes
+const SCAN_BATCH_SIZE = 5; // Domains processed in parallel per batch
+const SCAN_BATCH_DELAY_MS = 1000; // Delay between batches to spare RDAP/SSL targets
 
 async function acquireLock(taskName: string): Promise<boolean> {
   const db = useDb();
@@ -59,6 +68,371 @@ async function releaseLock(taskName: string) {
   await db.delete(taskLocks).where(eq(taskLocks.taskName, taskName));
 }
 
+/**
+ * Fan out a notification to all configured channels in parallel.
+ * Returns the number of channels that succeeded.
+ */
+const fanoutNotification = async (params: {
+  domainId?: number;
+  actionId?: number;
+  eventType: string;
+  templateType?: "instant" | "daily" | "dropping_alert" | "action_created";
+  templateData?: any;
+  eventData: any;
+  deduplicateHours?: number;
+  channels?: {
+    email?: boolean;
+    webhook?: boolean;
+    serverchan?: boolean;
+    push?: boolean;
+  };
+}) => {
+  const channels = params.channels ?? {
+    email: true,
+    webhook: true,
+    serverchan: true,
+    push: true,
+  };
+
+  const tasks: Promise<any>[] = [];
+
+  if (channels.email && params.templateType) {
+    tasks.push(
+      sendNotification({
+        domainId: params.domainId,
+        actionId: params.actionId,
+        eventType: params.eventType,
+        templateType: params.templateType,
+        templateData: params.templateData,
+        deduplicateHours: params.deduplicateHours,
+      }),
+    );
+  }
+  if (channels.webhook) {
+    tasks.push(
+      notifyWebhooks({
+        domainId: params.domainId,
+        actionId: params.actionId,
+        eventType: params.eventType,
+        eventData: params.eventData,
+      }),
+    );
+  }
+  if (channels.serverchan) {
+    tasks.push(
+      notifyServerchan({
+        domainId: params.domainId,
+        actionId: params.actionId,
+        eventType: params.eventType,
+        eventData: params.eventData,
+      }),
+    );
+  }
+  if (channels.push) {
+    tasks.push(
+      notifyPush({
+        domainId: params.domainId,
+        actionId: params.actionId,
+        eventType: params.eventType,
+        eventData: params.eventData,
+      }),
+    );
+  }
+
+  await Promise.allSettled(tasks);
+};
+
+/**
+ * Process a single domain: RDAP scan + SSL status + actions + fan-out notifications.
+ * Returns a summary that the outer scanner aggregates.
+ */
+const processDomain = async (
+  d: typeof domains.$inferSelect,
+): Promise<{
+  ok: boolean;
+  newlyDropping?: { domain: string; id: number };
+  actionIds: number[];
+  error?: string;
+}> => {
+  const db = useDb();
+  const actionIds: number[] = [];
+  let newlyDropping: { domain: string; id: number } | undefined;
+
+  try {
+    const result = await checkDomain(d.domain, d.id);
+
+    // Update SSL status for every active domain. Only owned domains create
+    // SSL actions/notifications, because those are account-owner obligations.
+    try {
+      const prevSSL = await db
+        .select()
+        .from(sslStatusLatest)
+        .where(eq(sslStatusLatest.domainId, d.id))
+        .get();
+
+      const sslResult = await scanDomainSSL(d.id, d.domain);
+
+      if (d.watchKind === "OWNED") {
+        const isExpiring =
+          sslResult.hasSSL &&
+          sslResult.daysUntilExpiry !== undefined &&
+          sslResult.daysUntilExpiry < 30;
+        const isInvalid = sslResult.hasSSL && !sslResult.isValid;
+
+        const prevDays = prevSSL?.daysUntilExpiry ?? null;
+        const prevIsValid = prevSSL?.isValid ?? null;
+        const prevHasSSL = prevSSL?.hasSSL ?? null;
+
+        const becameExpiring =
+          isExpiring && (prevDays === null || prevDays >= 30);
+        const becameInvalid =
+          isInvalid && (prevHasSSL !== true || prevIsValid !== false);
+
+        if (isExpiring) {
+          const action = await createAction({
+            domainId: d.id,
+            actionType: "SSL_EXPIRING",
+            priority: d.priority,
+            metadata: {
+              daysUntilExpiry: sslResult.daysUntilExpiry,
+              validTo: sslResult.validTo?.toISOString(),
+              issuer: sslResult.issuer,
+              domain: d.domain,
+            },
+          });
+
+          if (becameExpiring) {
+            actionIds.push(action.id);
+            await fanoutNotification({
+              domainId: d.id,
+              actionId: action.id,
+              eventType: "SSL_EXPIRING",
+              templateType: "action_created",
+              templateData: {
+                domain: d.domain,
+                actionType: "SSL_EXPIRING",
+                priority: d.priority,
+              },
+              eventData: {
+                domain: d.domain,
+                watchKind: d.watchKind,
+                priority: d.priority,
+                issuer: sslResult.issuer,
+                validTo: sslResult.validTo?.toISOString(),
+                daysUntilExpiry: sslResult.daysUntilExpiry,
+                actionId: action.id,
+              },
+              deduplicateHours: 24,
+            });
+          }
+        }
+
+        if (isInvalid) {
+          const action = await createAction({
+            domainId: d.id,
+            actionType: "SSL_INVALID",
+            priority: d.priority,
+            metadata: {
+              issuer: sslResult.issuer,
+              validTo: sslResult.validTo?.toISOString(),
+              domain: d.domain,
+            },
+          });
+
+          if (becameInvalid) {
+            actionIds.push(action.id);
+            await fanoutNotification({
+              domainId: d.id,
+              actionId: action.id,
+              eventType: "SSL_INVALID",
+              templateType: "action_created",
+              templateData: {
+                domain: d.domain,
+                actionType: "SSL_INVALID",
+                priority: d.priority,
+              },
+              eventData: {
+                domain: d.domain,
+                watchKind: d.watchKind,
+                priority: d.priority,
+                issuer: sslResult.issuer,
+                validTo: sslResult.validTo?.toISOString(),
+                actionId: action.id,
+              },
+              deduplicateHours: 24,
+            });
+          }
+        }
+      }
+    } catch (sslError: any) {
+      console.error(`SSL check failed for ${d.domain}:`, sslError.message);
+    }
+
+    // `checkDomain()` returns `null` only on scan failure (network error / non-404 non-OK).
+    // Any non-null value means the scan succeeded and includes status transition info.
+    if (result !== null) {
+      // WANTED → AVAILABLE
+      if (
+        d.watchKind === "WANTED" &&
+        result.newStatus === "AVAILABLE" &&
+        result.changed
+      ) {
+        const action = await createAction({
+          domainId: d.id,
+          actionType: "WANTED_AVAILABLE",
+          priority: d.priority,
+          metadata: {
+            oldStatus: result.oldStatus,
+            newStatus: result.newStatus,
+            domain: d.domain,
+          },
+        });
+        actionIds.push(action.id);
+
+        await fanoutNotification({
+          domainId: d.id,
+          actionId: action.id,
+          eventType: "WANTED_AVAILABLE",
+          templateType: "instant",
+          templateData: {
+            domain: d.domain,
+            oldStatus: result.oldStatus,
+            newStatus: result.newStatus,
+          },
+          eventData: {
+            domain: d.domain,
+            watchKind: d.watchKind,
+            priority: d.priority,
+            oldStatus: result.oldStatus,
+            newStatus: result.newStatus,
+            actionId: action.id,
+          },
+          deduplicateHours: 24,
+        });
+      }
+
+      // WANTED → PENDING_DELETE
+      if (
+        d.watchKind === "WANTED" &&
+        result.newStatus === "PENDING_DELETE" &&
+        result.changed
+      ) {
+        const action = await createAction({
+          domainId: d.id,
+          actionType: "WANTED_DROPPING",
+          priority: d.priority,
+          metadata: {
+            oldStatus: result.oldStatus,
+            newStatus: result.newStatus,
+            domain: d.domain,
+          },
+        });
+        actionIds.push(action.id);
+        newlyDropping = { domain: d.domain, id: d.id };
+
+        await fanoutNotification({
+          domainId: d.id,
+          actionId: action.id,
+          eventType: "WANTED_DROPPING",
+          templateType: "instant",
+          templateData: {
+            domain: d.domain,
+            oldStatus: result.oldStatus,
+            newStatus: result.newStatus,
+          },
+          eventData: {
+            domain: d.domain,
+            watchKind: d.watchKind,
+            priority: d.priority,
+            oldStatus: result.oldStatus,
+            newStatus: result.newStatus,
+            actionId: action.id,
+          },
+          deduplicateHours: 24,
+        });
+      }
+
+      // OWNED → EXPIRING
+      if (d.watchKind === "OWNED" && result.newStatus === "EXPIRING") {
+        const statusInfo = await db
+          .select()
+          .from(domainStatusLatest)
+          .where(eq(domainStatusLatest.domainId, d.id))
+          .get();
+
+        if (statusInfo?.expiresAt) {
+          const action = await createAction({
+            domainId: d.id,
+            actionType: "OWNED_EXPIRING",
+            priority: d.priority,
+            metadata: {
+              expiresAt: statusInfo.expiresAt.toISOString(),
+              domain: d.domain,
+            },
+          });
+          actionIds.push(action.id);
+
+          await fanoutNotification({
+            domainId: d.id,
+            actionId: action.id,
+            eventType: "OWNED_EXPIRING",
+            templateType: "instant",
+            templateData: {
+              domain: d.domain,
+              oldStatus: result.oldStatus,
+              newStatus: result.newStatus,
+              expiresAt: statusInfo.expiresAt,
+            },
+            eventData: {
+              domain: d.domain,
+              watchKind: d.watchKind,
+              priority: d.priority,
+              expiresAt: statusInfo.expiresAt.toISOString(),
+              actionId: action.id,
+            },
+            deduplicateHours: 72,
+          });
+        }
+      }
+    } else {
+      // Scan returned null → SCAN_FAILED
+      const action = await createAction({
+        domainId: d.id,
+        actionType: "SCAN_FAILED",
+        priority: d.priority,
+        metadata: { domain: d.domain, error: "Scan returned null" },
+      });
+      actionIds.push(action.id);
+    }
+
+    return { ok: true, actionIds, newlyDropping };
+  } catch (e: any) {
+    try {
+      const action = await createAction({
+        domainId: d.id,
+        actionType: "SCAN_FAILED",
+        priority: d.priority,
+        metadata: { domain: d.domain, error: e.message },
+      });
+      actionIds.push(action.id);
+    } catch (actionError) {
+      console.error("Failed to create SCAN_FAILED action:", actionError);
+    }
+    return { ok: false, actionIds, error: e.message };
+  }
+};
+
+/**
+ * Chunk an array into fixed-size batches.
+ */
+function chunk<T>(arr: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) {
+    out.push(arr.slice(i, i + size));
+  }
+  return out;
+}
+
 export const runDomainScan = async () => {
   if (!(await acquireLock("hourly-scan"))) {
     console.log("Hourly scan locked, skipping.");
@@ -70,8 +444,8 @@ export const runDomainScan = async () => {
   let success = 0;
   let fail = 0;
   const errors: any[] = [];
-  const newlyDropping: any[] = [];
-  const actionsCreated: any[] = [];
+  const newlyDropping: { domain: string; id: number }[] = [];
+  const actionsCreated: number[] = [];
 
   try {
     const db = useDb();
@@ -80,230 +454,54 @@ export const runDomainScan = async () => {
       .from(domains)
       .where(eq(domains.isActive, true));
 
-    for (const d of activeDomains) {
-      try {
-        const result = await checkDomain(d.domain, d.id);
+    const batches = chunk(activeDomains, SCAN_BATCH_SIZE);
 
-        // Check SSL certificate for OWNED domains
-        if (d.watchKind === "OWNED") {
-          try {
-            const sslResult = await scanDomainSSL(d.id, d.domain);
+    for (let i = 0; i < batches.length; i++) {
+      const batch = batches[i];
+      const results = await Promise.allSettled(
+        batch.map((d) => processDomain(d)),
+      );
 
-            // Create action if SSL is expiring soon (< 30 days)
-            if (sslResult.hasSSL && sslResult.daysUntilExpiry !== undefined && sslResult.daysUntilExpiry < 30) {
-              await createAction({
-                domainId: d.id,
-                actionType: "SSL_EXPIRING",
-                priority: d.priority,
-                metadata: {
-                  daysUntilExpiry: sslResult.daysUntilExpiry,
-                  validTo: sslResult.validTo?.toISOString(),
-                  issuer: sslResult.issuer,
-                  domain: d.domain,
-                },
-              });
-            }
-
-            // Create action if SSL is invalid
-            if (sslResult.hasSSL && !sslResult.isValid) {
-              await createAction({
-                domainId: d.id,
-                actionType: "SSL_INVALID",
-                priority: d.priority,
-                metadata: {
-                  issuer: sslResult.issuer,
-                  validTo: sslResult.validTo?.toISOString(),
-                  domain: d.domain,
-                },
-              });
-            }
-          } catch (sslError: any) {
-            console.error(`SSL check failed for ${d.domain}:`, sslError.message);
+      results.forEach((r, idx) => {
+        const d = batch[idx];
+        checked++;
+        if (r.status === "fulfilled") {
+          if (r.value.ok) {
+            success++;
+          } else {
+            fail++;
+            errors.push({ domain: d.domain, error: r.value.error });
           }
-        }
-
-        // Create actions based on status changes and domain type
-        if (result) {
-          // WANTED domain became AVAILABLE
-          if (d.watchKind === "WANTED" && result.newStatus === "AVAILABLE" && result.changed) {
-            const action = await createAction({
-              domainId: d.id,
-              actionType: "WANTED_AVAILABLE",
-              priority: d.priority,
-              metadata: {
-                oldStatus: result.oldStatus,
-                newStatus: result.newStatus,
-                domain: d.domain,
-              },
-            });
-            actionsCreated.push(action);
-
-            // Send instant notification
-            await sendNotification({
-              domainId: d.id,
-              actionId: action.id,
-              eventType: "STATUS_CHANGE",
-              templateType: "instant",
-              templateData: {
-                domain: d.domain,
-                oldStatus: result.oldStatus,
-                newStatus: result.newStatus,
-              },
-              deduplicateHours: 24,
-            });
-
-            // Send webhook notification
-            await notifyWebhooks({
-              domainId: d.id,
-              actionId: action.id,
-              eventType: "WANTED_AVAILABLE",
-              eventData: {
-                domain: d.domain,
-                watchKind: d.watchKind,
-                priority: d.priority,
-                oldStatus: result.oldStatus,
-                newStatus: result.newStatus,
-                actionId: action.id,
-              },
-            });
-
-            // Send Server酱 notification
-            await notifyServerchan({
-              domainId: d.id,
-              actionId: action.id,
-              eventType: "WANTED_AVAILABLE",
-              eventData: {
-                domain: d.domain,
-                watchKind: d.watchKind,
-                priority: d.priority,
-                oldStatus: result.oldStatus,
-                newStatus: result.newStatus,
-                actionId: action.id,
-              },
-            });
-          }
-
-          // WANTED domain entered PENDING_DELETE
-          if (d.watchKind === "WANTED" && result.newStatus === "PENDING_DELETE" && result.changed) {
-            const action = await createAction({
-              domainId: d.id,
-              actionType: "WANTED_DROPPING",
-              priority: d.priority,
-              metadata: {
-                oldStatus: result.oldStatus,
-                newStatus: result.newStatus,
-                domain: d.domain,
-              },
-            });
-            actionsCreated.push(action);
-            newlyDropping.push({ domain: d.domain, id: d.id });
-
-            // Send instant notification
-            await sendNotification({
-              domainId: d.id,
-              actionId: action.id,
-              eventType: "STATUS_CHANGE",
-              templateType: "instant",
-              templateData: {
-                domain: d.domain,
-                oldStatus: result.oldStatus,
-                newStatus: result.newStatus,
-              },
-              deduplicateHours: 24,
-            });
-          }
-
-          // OWNED domain is EXPIRING (check expiration date)
-          if (d.watchKind === "OWNED" && result.newStatus === "EXPIRING") {
-            // Get expiration date from status
-            const statusInfo = await db
-              .select()
-              .from(domainStatusLatest)
-              .where(eq(domainStatusLatest.domainId, d.id))
-              .get();
-
-            if (statusInfo?.expiresAt) {
-              const action = await createAction({
-                domainId: d.id,
-                actionType: "OWNED_EXPIRING",
-                priority: d.priority,
-                metadata: {
-                  expiresAt: statusInfo.expiresAt.toISOString(),
-                  domain: d.domain,
-                },
-              });
-              actionsCreated.push(action);
-
-              // Send instant notification
-              await sendNotification({
-                domainId: d.id,
-                actionId: action.id,
-                eventType: "EXPIRING_SOON",
-                templateType: "instant",
-                templateData: {
-                  domain: d.domain,
-                  oldStatus: result.oldStatus,
-                  newStatus: result.newStatus,
-                  expiresAt: statusInfo.expiresAt,
-                },
-                deduplicateHours: 72, // Less frequent for expiring domains
-              });
-            }
-          }
+          if (r.value.newlyDropping) newlyDropping.push(r.value.newlyDropping);
+          actionsCreated.push(...r.value.actionIds);
         } else {
-          // Scan failed - create SCAN_FAILED action
-          const action = await createAction({
-            domainId: d.id,
-            actionType: "SCAN_FAILED",
-            priority: d.priority,
-            metadata: {
-              domain: d.domain,
-              error: "Scan returned null",
-            },
-          });
-          actionsCreated.push(action);
+          fail++;
+          errors.push({ domain: d.domain, error: String(r.reason) });
         }
+      });
 
-        success++;
-      } catch (e: any) {
-        fail++;
-        errors.push({ domain: d.domain, error: e.message });
-
-        // Create SCAN_FAILED action for exceptions
-        try {
-          await createAction({
-            domainId: d.id,
-            actionType: "SCAN_FAILED",
-            priority: d.priority,
-            metadata: {
-              domain: d.domain,
-              error: e.message,
-            },
-          });
-        } catch (actionError) {
-          console.error("Failed to create SCAN_FAILED action:", actionError);
-        }
+      // Throttle between batches (skip after last)
+      if (i < batches.length - 1) {
+        await new Promise((resolve) =>
+          setTimeout(resolve, SCAN_BATCH_DELAY_MS),
+        );
       }
-      checked++;
-      await new Promise((resolve) => setTimeout(resolve, 1000));
     }
 
-    // Trigger alert if newly dropping domains found
+    // Aggregate dropping alert (single notification across all newly dropping)
     if (newlyDropping.length > 0) {
-      await sendNotification({
+      await fanoutNotification({
         eventType: "DROPPING_ALERT",
         templateType: "dropping_alert",
-        templateData: {
-          domains: newlyDropping,
-        },
-        deduplicateHours: 0, // Always send dropping alerts
+        templateData: { domains: newlyDropping },
+        eventData: { domains: newlyDropping },
+        deduplicateHours: 0,
       });
     }
   } catch (e: any) {
     errors.push({ general: e.message });
   } finally {
     await releaseLock("hourly-scan");
-    const duration = Date.now() - start;
 
     // Log run
     const db = useDb();
@@ -354,18 +552,24 @@ export const runDailySummary = async () => {
       )
       .limit(50);
 
-    // Send daily summary
-    await sendNotification({
+    const totalDomains = await db
+      .select()
+      .from(domains)
+      .where(eq(domains.isActive, true))
+      .then((r) => r.length);
+
+    // Send daily summary across all channels
+    await fanoutNotification({
       eventType: "DAILY_SUMMARY",
       templateType: "daily",
-      templateData: {
-        domains: notableDomains,
-        totalDomains: await db.select().from(domains).where(eq(domains.isActive, true)).then(r => r.length),
-      },
-      deduplicateHours: 20, // Once per day
+      templateData: { domains: notableDomains, totalDomains },
+      eventData: { domains: notableDomains, totalDomains },
+      deduplicateHours: 20,
     });
 
-    console.log(`Daily summary sent with ${notableDomains.length} notable domains`);
+    console.log(
+      `Daily summary sent with ${notableDomains.length} notable domains`,
+    );
   } finally {
     await releaseLock("daily-summary");
     // Log run

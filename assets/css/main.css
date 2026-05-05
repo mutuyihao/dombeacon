@@ -3,29 +3,82 @@
 /* Custom theme - Tailwind CSS v4 uses CSS variables */
 /* 自定义主题 - Tailwind CSS v4 使用 CSS 变量 */
 @theme {
-  --color-background: #F4F2EE;
-  --color-card: #FAF8F4;
-  --color-card-border: #E7E2DA;
-  --color-text-main: #2B2B2B;
-  --color-text-secondary: #6B6B6B;
-  --color-text-weak: #9A9A9A;
-  --color-accent: #4B5B6B;
-  --color-accent-hover: #3F4E5D;
-  --color-status-available: #7C8B7A;
-  --color-status-registered: #7A7F8C;
-  --color-status-expiring: #A08C7C;
-  --color-status-dropping: #8C6F6F;
-  --color-status-unknown: #8A8780;
+  --font-sans: "Aptos", "IBM Plex Sans", "Segoe UI Variable", sans-serif;
+  --font-display: "Fraunces", "Cormorant Garamond", "Georgia", serif;
+  --font-mono: "JetBrains Mono", "SFMono-Regular", "Cascadia Code", monospace;
+
+  --color-background: #F5F3EE;
+  --color-card: #FFFEFA;
+  --color-card-border: #DED9CC;
+  --color-text-main: #12201F;
+  --color-text-secondary: #65736F;
+  --color-text-weak: #8A948F;
+  --color-text-tertiary: #A8AEA7;
+  --color-accent: #0E6B6F;
+  --color-accent-hover: #094F53;
+  --color-status-available: #0F8A5F;
+  --color-status-registered: #54718F;
+  --color-status-expiring: #B76818;
+  --color-status-dropping: #B9443E;
+  --color-status-unknown: #6E7B80;
 
   /* New colors for v1 features */
   /* v1 功能新增颜色 */
-  --color-watch-owned: #7A7F8C;
-  --color-watch-wanted: #7C8B7A;
-  --color-priority-high: #8C6F6F;
-  --color-priority-medium: #A08C7C;
-  --color-priority-low: #8A8780;
-  --color-action-open: #A08C7C;
-  --color-action-snoozed: #8A8780;
+  --color-watch-owned: #3F6F95;
+  --color-watch-wanted: #0F8A5F;
+  --color-priority-high: #B9443E;
+  --color-priority-medium: #B76818;
+  --color-priority-low: #697C83;
+  --color-action-open: #B76818;
+  --color-action-snoozed: #6E7B80;
+}
+
+@layer theme {
+  :root {
+    color-scheme: light;
+    --app-aura-primary: rgba(14, 107, 111, 0.1);
+    --app-aura-secondary: rgba(183, 104, 24, 0.08);
+    --app-grid-line: rgba(18, 32, 31, 0.045);
+    --app-grid-dot: rgba(18, 32, 31, 0.06);
+    --shadow-card: 0 20px 60px -42px rgba(18, 32, 31, 0.44), 0 4px 18px -15px rgba(18, 32, 31, 0.28);
+    --shadow-lifted: 0 30px 80px -46px rgba(18, 32, 31, 0.54), 0 12px 32px -26px rgba(18, 32, 31, 0.36);
+    --surface-frost: rgba(255, 254, 250, 0.86);
+    --surface-soft: rgba(255, 254, 250, 0.64);
+  }
+
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+
+    --color-background: #071211;
+    --color-card: #101B1A;
+    --color-card-border: #273532;
+    --color-text-main: #EFF7F2;
+    --color-text-secondary: #AEBDB6;
+    --color-text-weak: #7F908B;
+    --color-text-tertiary: #65756F;
+    --color-accent: #53C7BC;
+    --color-accent-hover: #7ADFD5;
+    --color-status-available: #59D28F;
+    --color-status-registered: #7AA9D8;
+    --color-status-expiring: #F2A84B;
+    --color-status-dropping: #F07067;
+    --color-status-unknown: #8EA1A5;
+    --color-watch-owned: #7AA9D8;
+    --color-watch-wanted: #59D28F;
+    --color-priority-high: #F07067;
+    --color-priority-medium: #F2A84B;
+    --color-priority-low: #9CB4B7;
+    --color-action-open: #F2A84B;
+    --color-action-snoozed: #8EA1A5;
+    --app-aura-primary: rgba(83, 199, 188, 0.16);
+    --app-aura-secondary: rgba(242, 168, 75, 0.1);
+    --app-grid-line: rgba(239, 247, 242, 0.055);
+    --app-grid-dot: rgba(239, 247, 242, 0.065);
+    --shadow-card: 0 24px 80px -54px rgba(83, 199, 188, 0.28), 0 14px 38px -28px rgba(0, 0, 0, 0.82);
+    --shadow-lifted: 0 34px 110px -56px rgba(83, 199, 188, 0.38), 0 22px 56px -34px rgba(0, 0, 0, 0.9);
+    --surface-frost: rgba(16, 27, 26, 0.86);
+    --surface-soft: rgba(16, 27, 26, 0.62);
+  }
 }
 
 @layer base {
@@ -38,6 +91,13 @@
 
   body {
     @apply bg-background text-text-main font-sans antialiased;
+    min-height: 100vh;
+    font-feature-settings: "cv02", "cv03", "cv04", "ss01";
+    text-rendering: optimizeLegibility;
+  }
+
+  h1, h2, h3, p {
+    text-wrap: pretty;
   }
 
   /* Custom scrollbar styling (optional, for better aesthetics) */
@@ -68,11 +128,11 @@
 
   /* Button animations and interactions */
   button, a {
-    @apply transition-all duration-200;
+    @apply transition-all duration-200 ease-out;
   }
 
   button:active:not(:disabled), a:active {
-    @apply scale-95;
+    @apply scale-[0.985];
   }
 
   button:disabled {
@@ -81,7 +141,7 @@
 
   /* Focus visible for accessibility */
   *:focus-visible {
-    @apply outline-none ring-2 ring-accent ring-offset-2 ring-offset-background;
+    @apply outline-none ring-2 ring-accent/30 ring-offset-2 ring-offset-background;
   }
 
   /* Smooth transitions for interactive elements */
@@ -91,5 +151,47 @@
 
   input:focus, select:focus, textarea:focus {
     @apply outline-none border-accent ring-2 ring-accent/20;
+  }
+}
+
+@layer components {
+  .glass-panel {
+    @apply border border-card-border/60 bg-card/90 backdrop-blur-xl shadow-[var(--shadow-card)];
+  }
+
+  .glass-panel-hover {
+    @apply transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-accent/25 hover:shadow-[var(--shadow-lifted)];
+  }
+
+  .editorial-panel {
+    @apply bg-card/95 shadow-[var(--shadow-card)];
+  }
+
+  .eyebrow {
+    @apply text-[10px] font-bold uppercase tracking-[0.22em] text-text-secondary;
+  }
+
+  .text-link {
+    @apply inline-flex items-center gap-1 text-sm font-semibold text-accent hover:text-accent-hover;
+  }
+}
+
+@layer utilities {
+  .bg-app-grid {
+    background-image:
+      linear-gradient(to right, var(--app-grid-line) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--app-grid-line) 1px, transparent 1px),
+      radial-gradient(circle at center, var(--app-grid-dot) 1px, transparent 1px);
+    background-position: 0 0, 0 0, 12px 12px;
+    background-size: 44px 44px, 44px 44px, 24px 24px;
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
   }
 }

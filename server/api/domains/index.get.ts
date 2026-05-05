@@ -1,25 +1,34 @@
-import { eq, desc, asc, like, and, or } from "drizzle-orm";
-import { domains, domainStatusLatest } from "../../db/schema";
+import { eq, desc, like, and, or, sql, lt, gt, isNull } from "drizzle-orm";
+import {
+  domains,
+  domainStatusLatest,
+  sslStatusLatest,
+} from "../../db/schema";
 
 export default defineEventHandler(async (event) => {
   const query = getQuery(event);
   const db = useDb();
 
   try {
-    const page = Number(query.page) || 1;
-    const limit = Number(query.limit) || 50;
+    const page = Math.max(1, Number(query.page) || 1);
+    const limit = Math.min(200, Math.max(1, Number(query.limit) || 50));
     const offset = (page - 1) * limit;
 
     const search = query.search as string;
     const status = query.status as string; // AVAILABLE, REGISTERED, etc.
     const tag = query.tag as string;
+    const tags = query.tags as string; // comma-separated
     const groupId = query.group as string;
     const watchKind = query.watchKind as string; // OWNED, WANTED
     const priority = query.priority as string; // LOW, MEDIUM, HIGH
+    const sslState = query.sslState as string; // expiring | invalid | none
+    const expiringDays = query.expiringDays
+      ? Number(query.expiringDays)
+      : null;
 
     // Build conditions
-    const conditions = [];
-    if (query.search) {
+    const conditions: any[] = [];
+    if (search) {
       conditions.push(
         or(
           like(domains.domain, `%${search}%`),
@@ -28,29 +37,72 @@ export default defineEventHandler(async (event) => {
       );
     }
 
-    // Status filter requires joining or subquery logic if we filter strictly.
-    // We will join always.
-
-    if (query.group) {
+    if (groupId) {
       conditions.push(eq(domains.groupName, groupId));
     }
 
-    if (query.watchKind) {
+    if (watchKind) {
       conditions.push(eq(domains.watchKind, watchKind));
     }
 
-    if (query.priority) {
+    if (priority) {
       conditions.push(eq(domains.priority, priority));
     }
 
-    // Tags is JSON, so strict SQL filtering is hard in SQLite without extensions,
-    // but we can use LIKE on the stringified JSON or filter in app.
-    // For MVP/SQLite, LIKE '%"tag"%' is a hacky but working solution for simple array.
-    if (query.tag) {
-      conditions.push(like(domains.tagsJson, `%${tag}%`));
+    const tagContains = (value: string) =>
+      sql`exists (
+        select 1
+        from json_each(coalesce(${domains.tagsJson}, '[]'))
+        where json_each.value = ${value}
+      )`;
+
+    // Tags: support both legacy single `tag` and new multi `tags` (comma-separated, AND-match).
+    // Match exact JSON array elements instead of fuzzy substrings.
+    const singleTag = tag?.trim();
+    if (singleTag) {
+      conditions.push(tagContains(singleTag));
+    }
+    if (tags) {
+      const tagList = tags
+        .split(",")
+        .map((t) => t.trim())
+        .filter(Boolean);
+      for (const t of tagList) {
+        conditions.push(tagContains(t));
+      }
     }
 
-    let baseQuery = db
+    if (status && status !== "ALL") {
+      conditions.push(eq(domainStatusLatest.status, status));
+    }
+
+    // expiringDays: domains whose expiresAt is within N days from now
+    if (expiringDays != null && !isNaN(expiringDays)) {
+      const cutoff = new Date(Date.now() + expiringDays * 24 * 60 * 60 * 1000);
+      conditions.push(lt(domainStatusLatest.expiresAt, cutoff));
+      conditions.push(gt(domainStatusLatest.expiresAt, new Date()));
+    }
+
+    // SSL state filtering
+    const needSslJoin = !!sslState;
+    if (sslState === "expiring") {
+      // hasSSL=true & 0 < daysUntilExpiry < 30
+      conditions.push(eq(sslStatusLatest.hasSSL, true));
+      conditions.push(lt(sslStatusLatest.daysUntilExpiry, 30));
+      conditions.push(gt(sslStatusLatest.daysUntilExpiry, 0));
+    } else if (sslState === "invalid") {
+      conditions.push(eq(sslStatusLatest.hasSSL, true));
+      conditions.push(eq(sslStatusLatest.isValid, false));
+    } else if (sslState === "none") {
+      // Either no row in sslStatusLatest, or hasSSL=false
+      conditions.push(
+        or(isNull(sslStatusLatest.domainId), eq(sslStatusLatest.hasSSL, false)),
+      );
+    }
+
+    const whereExpr = conditions.length > 0 ? and(...conditions) : undefined;
+
+    const baseSelect = db
       .select({
         id: domains.id,
         domain: domains.domain,
@@ -71,35 +123,48 @@ export default defineEventHandler(async (event) => {
         eq(domains.id, domainStatusLatest.domainId),
       );
 
-    if (status && status !== "ALL") {
-      // If status is specified, we filter on the joined table
-      // Note: Drizzle syntax for where on active query builder
-      // We need to construct where clause.
-      // Drizzle's db.select().from().where() pattern:
-      // We need to combine domain conditions and status condition.
-      conditions.push(eq(domainStatusLatest.status, status));
-    }
-
-    const resultQuery = baseQuery
-      .where(and(...conditions))
+    const itemsQuery = (
+      needSslJoin
+        ? baseSelect.leftJoin(
+            sslStatusLatest,
+            eq(domains.id, sslStatusLatest.domainId),
+          )
+        : baseSelect
+    )
       .limit(limit)
       .offset(offset)
-      .orderBy(desc(domains.createdAt)); // Default sort
+      .orderBy(desc(domains.createdAt));
 
-    const items = await resultQuery.all();
+    const items = whereExpr
+      ? await itemsQuery.where(whereExpr).all()
+      : await itemsQuery.all();
 
-    // Count total for pagination (separate query or just basic count)
-    // For simply MVP, maybe skip count or do a separate count query.
-    // Let's do a quick count query.
-    // const total = await db.select({ count: sql<number>`count(*)` }).from(domains)...
+    // Total count for pagination (mirrors the same join + filters)
+    const countSelectBase = db
+      .select({ count: sql<number>`count(*)` })
+      .from(domains)
+      .leftJoin(
+        domainStatusLatest,
+        eq(domains.id, domainStatusLatest.domainId),
+      );
+    const countSelect = needSslJoin
+      ? countSelectBase.leftJoin(
+          sslStatusLatest,
+          eq(domains.id, sslStatusLatest.domainId),
+        )
+      : countSelectBase;
+    const totalRow = whereExpr
+      ? await countSelect.where(whereExpr).get()
+      : await countSelect.get();
+    const total = Number(totalRow?.count || 0);
 
-    // Transform items if needed (parse tagsJson)
+    // Parse tagsJson into a tags array for the frontend
     const data = items.map((item) => ({
       ...item,
       tags: JSON.parse(item.tagsJson || "[]"),
     }));
 
-    return success({ items, page, limit });
+    return success({ items: data, total, page, limit });
   } catch (e: any) {
     return fail(e.message || "System Error", 50000);
   }

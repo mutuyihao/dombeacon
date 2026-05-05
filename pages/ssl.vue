@@ -70,7 +70,7 @@
                   getPriorityClass(status.priority)
                 ]"
               >
-                {{ $t(`common.priority.${status.priority}`) }}
+                {{ $t(`domain.${String(status.priority || 'MEDIUM').toLowerCase()}`) }}
               </span>
             </div>
 
@@ -104,9 +104,9 @@
               </div>
 
               <!-- Error Message -->
-              <div v-if="status.lastError" class="flex items-start gap-2 text-red-600 text-xs mt-2">
+              <div v-if="status.lastError" class="flex items-start gap-2 text-status-dropping text-xs mt-2">
                 <AlertCircleIcon class="w-4 h-4 mt-0.5" />
-                <span>{{ status.lastError }}</span>
+                <span>{{ getLastErrorText(status) }}</span>
               </div>
             </div>
           </div>
@@ -133,8 +133,6 @@
       <p class="text-text-secondary">{{ $t('ssl.noData') }}</p>
     </div>
 
-    <!-- Toast Notifications -->
-    <Toast ref="toast" />
   </div>
 </template>
 
@@ -149,7 +147,7 @@ import {
 } from 'lucide-vue-next';
 
 const { t } = useI18n();
-const toast = ref(null);
+const toast = useToast();
 
 const loading = ref(true);
 const refreshing = ref(false);
@@ -160,20 +158,23 @@ const activeFilter = ref('all');
 // Filter definitions
 const filters = computed(() => [
   { value: 'all', count: sslStatuses.value.length },
-  { value: 'expiring', count: sslStatuses.value.filter(s => s.hasSSL && s.daysUntilExpiry !== null && s.daysUntilExpiry < 30).length },
-  { value: 'invalid', count: sslStatuses.value.filter(s => s.hasSSL && !s.isValid).length },
-  { value: 'nossl', count: sslStatuses.value.filter(s => !s.hasSSL).length },
+  { value: 'unchecked', count: sslStatuses.value.filter(s => !s.checkedAt).length },
+  { value: 'expiring', count: sslStatuses.value.filter(s => s.checkedAt && s.hasSSL && s.daysUntilExpiry !== null && s.daysUntilExpiry < 30).length },
+  { value: 'invalid', count: sslStatuses.value.filter(s => s.checkedAt && s.hasSSL && !s.isValid).length },
+  { value: 'nossl', count: sslStatuses.value.filter(s => s.checkedAt && !s.hasSSL).length },
 ]);
 
 // Filtered statuses
 const filteredStatuses = computed(() => {
   switch (activeFilter.value) {
+    case 'unchecked':
+      return sslStatuses.value.filter(s => !s.checkedAt);
     case 'expiring':
-      return sslStatuses.value.filter(s => s.hasSSL && s.daysUntilExpiry !== null && s.daysUntilExpiry < 30);
+      return sslStatuses.value.filter(s => s.checkedAt && s.hasSSL && s.daysUntilExpiry !== null && s.daysUntilExpiry < 30);
     case 'invalid':
-      return sslStatuses.value.filter(s => s.hasSSL && !s.isValid);
+      return sslStatuses.value.filter(s => s.checkedAt && s.hasSSL && !s.isValid);
     case 'nossl':
-      return sslStatuses.value.filter(s => !s.hasSSL);
+      return sslStatuses.value.filter(s => s.checkedAt && !s.hasSSL);
     default:
       return sslStatuses.value;
   }
@@ -187,7 +188,7 @@ const fetchSSLStatuses = async () => {
     sslStatuses.value = response.data || [];
   } catch (error) {
     console.error('Failed to fetch SSL statuses:', error);
-    toast.value?.show(t('ssl.fetchError'), 'error');
+    toast.error(t('ssl.fetchError'));
   } finally {
     loading.value = false;
   }
@@ -200,11 +201,11 @@ const checkSSL = async (domainId) => {
     await $fetch(`/api/ssl/${domainId}/check`, {
       method: 'POST',
     });
-    toast.value?.show(t('ssl.checkSuccess'), 'success');
+    toast.success(t('ssl.checkSuccess'));
     await fetchSSLStatuses();
   } catch (error) {
     console.error('Failed to check SSL:', error);
-    toast.value?.show(t('ssl.checkError'), 'error');
+    toast.error(t('ssl.checkError'));
   } finally {
     checkingId.value = null;
   }
@@ -219,11 +220,11 @@ const refreshAll = async () => {
       $fetch(`/api/ssl/${s.domainId}/check`, { method: 'POST' })
     );
     await Promise.allSettled(promises);
-    toast.value?.show(t('ssl.refreshSuccess'), 'success');
+    toast.success(t('ssl.refreshSuccess'));
     await fetchSSLStatuses();
   } catch (error) {
     console.error('Failed to refresh SSL statuses:', error);
-    toast.value?.show(t('ssl.refreshError'), 'error');
+    toast.error(t('ssl.refreshError'));
   } finally {
     refreshing.value = false;
   }
@@ -231,15 +232,17 @@ const refreshAll = async () => {
 
 // Helper functions
 const getSSLStatusClass = (status) => {
-  if (!status.hasSSL) return 'bg-gray-100 text-gray-600 border-gray-200';
-  if (!status.isValid) return 'bg-red-100 text-red-700 border-red-200';
+  if (!status.checkedAt) return 'bg-status-unknown/10 text-status-unknown border-status-unknown/20';
+  if (!status.hasSSL) return 'bg-status-unknown/10 text-status-unknown border-status-unknown/20';
+  if (!status.isValid) return 'bg-status-dropping/10 text-status-dropping border-status-dropping/20';
   if (status.daysUntilExpiry !== null && status.daysUntilExpiry < 30) {
-    return 'bg-yellow-100 text-yellow-700 border-yellow-200';
+    return 'bg-status-expiring/10 text-status-expiring border-status-expiring/20';
   }
-  return 'bg-green-100 text-green-700 border-green-200';
+  return 'bg-status-available/10 text-status-available border-status-available/20';
 };
 
 const getSSLStatusText = (status) => {
+  if (!status.checkedAt) return t('ssl.status.unchecked');
   if (!status.hasSSL) return t('ssl.status.noSSL');
   if (!status.isValid) return t('ssl.status.invalid');
   if (status.daysUntilExpiry !== null && status.daysUntilExpiry < 30) {
@@ -248,18 +251,25 @@ const getSSLStatusText = (status) => {
   return t('ssl.status.valid');
 };
 
+const getLastErrorText = (status) => {
+  if (status.hasSSL && status.lastError) {
+    return t('ssl.retainedAfterError', { error: status.lastError });
+  }
+  return status.lastError;
+};
+
 const getPriorityClass = (priority) => {
   const classes = {
-    HIGH: 'bg-red-100 text-red-700 border border-red-200',
-    MEDIUM: 'bg-yellow-100 text-yellow-700 border border-yellow-200',
-    LOW: 'bg-gray-100 text-gray-600 border border-gray-200',
+    HIGH: 'bg-priority-high/10 text-priority-high border border-priority-high/20',
+    MEDIUM: 'bg-priority-medium/10 text-priority-medium border border-priority-medium/20',
+    LOW: 'bg-priority-low/10 text-priority-low border border-priority-low/20',
   };
   return classes[priority] || classes.MEDIUM;
 };
 
 const getDaysUntilExpiryClass = (days) => {
-  if (days < 7) return 'text-red-600 font-semibold';
-  if (days < 30) return 'text-yellow-600 font-medium';
+  if (days < 7) return 'text-status-dropping font-semibold';
+  if (days < 30) return 'text-status-expiring font-medium';
   return 'text-text-secondary';
 };
 

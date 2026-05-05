@@ -1,6 +1,7 @@
 import { db } from "../../db";
 import { domains } from "../../db/schema";
 import { eq } from "drizzle-orm";
+import { isValidDomainName, normalizeDomainInput } from "~/utils/domain";
 
 interface ImportResult {
   success: number;
@@ -12,12 +13,10 @@ export default defineEventHandler(async (event) => {
   try {
     const body = await readBody(event);
     const { csvContent } = body;
+    const updateExisting = body?.updateExisting !== false;
 
     if (!csvContent || typeof csvContent !== "string") {
-      throw createError({
-        statusCode: 400,
-        message: "CSV content is required",
-      });
+      return fail("CSV content is required", 40000);
     }
 
     const result: ImportResult = {
@@ -30,10 +29,7 @@ export default defineEventHandler(async (event) => {
     const lines = csvContent.split("\n").filter((line) => line.trim());
 
     if (lines.length < 2) {
-      throw createError({
-        statusCode: 400,
-        message: "CSV file is empty or invalid",
-      });
+      return fail("CSV file is empty or invalid", 40000);
     }
 
     // Skip header row
@@ -42,10 +38,11 @@ export default defineEventHandler(async (event) => {
     for (let i = 0; i < dataLines.length; i++) {
       const line = dataLines[i].trim();
       if (!line) continue;
+      let fields: string[] = [];
 
       try {
         // Parse CSV line (handle quoted fields)
-        const fields = parseCSVLine(line);
+        fields = parseCSVLine(line);
 
         if (fields.length < 3) {
           result.failed++;
@@ -69,13 +66,14 @@ export default defineEventHandler(async (event) => {
           note,
           isActiveStr,
         ] = fields;
+        const normalizedDomain = normalizeDomainInput(domain);
 
         // Validate domain
-        if (!domain || !domain.match(/^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/)) {
+        if (!isValidDomainName(normalizedDomain)) {
           result.failed++;
           result.errors.push({
             row: i + 2,
-            domain: domain || "empty",
+            domain: normalizedDomain || "empty",
             error: "Invalid domain format",
           });
           continue;
@@ -86,7 +84,7 @@ export default defineEventHandler(async (event) => {
           result.failed++;
           result.errors.push({
             row: i + 2,
-            domain,
+            domain: normalizedDomain,
             error: "Invalid watchKind (must be OWNED or WANTED)",
           });
           continue;
@@ -97,7 +95,7 @@ export default defineEventHandler(async (event) => {
           result.failed++;
           result.errors.push({
             row: i + 2,
-            domain,
+            domain: normalizedDomain,
             error: "Invalid priority (must be LOW, MEDIUM, or HIGH)",
           });
           continue;
@@ -118,10 +116,20 @@ export default defineEventHandler(async (event) => {
         const existing = await db
           .select()
           .from(domains)
-          .where(eq(domains.domain, domain))
+          .where(eq(domains.domain, normalizedDomain))
           .limit(1);
 
         if (existing.length > 0) {
+          if (!updateExisting) {
+            result.failed++;
+            result.errors.push({
+              row: i + 2,
+              domain: normalizedDomain,
+              error: "Domain already exists",
+            });
+            continue;
+          }
+
           // Update existing domain
           await db
             .update(domains)
@@ -134,11 +142,11 @@ export default defineEventHandler(async (event) => {
               isActive,
               updatedAt: new Date(),
             })
-            .where(eq(domains.domain, domain));
+            .where(eq(domains.domain, normalizedDomain));
         } else {
           // Insert new domain
           await db.insert(domains).values({
-            domain,
+            domain: normalizedDomain,
             watchKind: watchKind || "WANTED",
             priority: priority || "MEDIUM",
             groupName: groupName || null,
@@ -159,16 +167,10 @@ export default defineEventHandler(async (event) => {
       }
     }
 
-    return {
-      success: true,
-      data: result,
-    };
+    return success(result);
   } catch (error: any) {
     console.error("Failed to import domains:", error);
-    throw createError({
-      statusCode: error.statusCode || 500,
-      message: error.message || "Failed to import domains",
-    });
+    return fail(error.message || "Failed to import domains", 50000);
   }
 });
 

@@ -4,10 +4,10 @@ import { eq } from "drizzle-orm";
 
 export default defineEventHandler(async (event) => {
   try {
-    // Get all SSL statuses with domain info
+    // List every active domain so the SSL page can show "not checked" rows.
     const sslStatuses = await db
       .select({
-        domainId: sslStatusLatest.domainId,
+        domainId: domains.id,
         domain: domains.domain,
         watchKind: domains.watchKind,
         priority: domains.priority,
@@ -21,19 +21,13 @@ export default defineEventHandler(async (event) => {
         lastError: sslStatusLatest.lastError,
         lastErrorAt: sslStatusLatest.lastErrorAt,
       })
-      .from(sslStatusLatest)
-      .leftJoin(domains, eq(sslStatusLatest.domainId, domains.id))
+      .from(domains)
+      .leftJoin(sslStatusLatest, eq(sslStatusLatest.domainId, domains.id))
       .where(eq(domains.isActive, true));
 
-    return {
-      success: true,
-      data: sslStatuses,
-    };
+    return success(sslStatuses);
   } catch (error: any) {
     console.error("Failed to fetch SSL statuses:", error);
-    throw createError({
-      statusCode: 500,
-      message: error.message || "Failed to fetch SSL statuses",
-    });
+    return fail(error.message || "Failed to fetch SSL statuses", 50000);
   }
 });

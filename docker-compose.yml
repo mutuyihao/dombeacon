@@ -1,18 +1,32 @@
-version: "3.8"
-
 services:
   app:
     build: .
-    image: domain-ops-radar:latest
-    container_name: domain-ops-radar
+    image: dombeacon:latest
+    container_name: dombeacon
     restart: unless-stopped
     ports:
       - "8080:3000"
     volumes:
       - ./data:/app/data
     environment:
-      - DATABASE_PATH=/app/data/domains.db
+      - DATABASE_PATH=/app/data/app.db
       - BASE_URL=http://localhost:8080
+      # Scheduler (single-instance default)
+      - ENABLE_SCHEDULER=1
+      - SCHEDULER_TIMEZONE=Asia/Shanghai
+      # Optional: also set container TZ for other libs/logs
+      - TZ=Asia/Shanghai
       # Optional: Set ADMIN_PASSWORD for authentication
       # - ADMIN_PASSWORD=your-secure-password
-    # Optional: Healthcheck
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:3000/api/health').then(async r => { const j = await r.json().catch(() => null); process.exit(r.ok && j && j.code === 0 ? 0 : 1) }).catch(() => process.exit(1))"
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s

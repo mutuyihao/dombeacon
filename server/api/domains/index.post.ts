@@ -1,4 +1,7 @@
 import { domains } from "../../db/schema";
+import { checkDomain } from "../../utils/scanner";
+import { scanDomainSSL } from "../../utils/ssl";
+import { isValidDomainName, normalizeDomainInput } from "~/utils/domain";
 
 export default defineEventHandler(async (event) => {
   const body = await readBody(event);
@@ -9,13 +12,17 @@ export default defineEventHandler(async (event) => {
       return fail("Domain is required", 40001);
     }
 
-    const domainName = body.domain.trim().toLowerCase();
+    const domainName = normalizeDomainInput(body.domain);
+    if (!isValidDomainName(domainName)) {
+      return fail("Invalid domain format", 40001);
+    }
+    const watchKind = body.watchKind || "WANTED";
 
     const result = await db
       .insert(domains)
       .values({
         domain: domainName,
-        watchKind: body.watchKind || "WANTED",
+        watchKind,
         priority: body.priority || "MEDIUM",
         note: body.note || "",
         tagsJson: JSON.stringify(body.tags || []),
@@ -23,6 +30,18 @@ export default defineEventHandler(async (event) => {
       })
       .returning()
       .get();
+
+    // Trigger an immediate scan so the UI isn't "empty" right after adding.
+    // Keep failures non-fatal for create.
+    try {
+      const scans: Promise<any>[] = [
+        checkDomain(domainName, result.id),
+        scanDomainSSL(result.id, domainName),
+      ];
+      await Promise.allSettled(scans);
+    } catch (scanError: any) {
+      console.error("Post-create scan failed:", scanError?.message || scanError);
+    }
 
     return success(result);
   } catch (e: any) {

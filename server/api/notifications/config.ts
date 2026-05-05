@@ -1,6 +1,23 @@
 import { notificationRules } from "../../db/schema";
 import { eq } from "drizzle-orm";
 
+const parseSmtpConfig = (value?: string | null) => {
+  try {
+    return value ? JSON.parse(value) : {};
+  } catch {
+    return {};
+  }
+};
+
+const sanitizeSmtpConfig = (config: any) => {
+  const { pass, ...safeConfig } = config || {};
+  return {
+    ...safeConfig,
+    pass: "",
+    passConfigured: Boolean(pass),
+  };
+};
+
 export const getRules = async () => {
   const db = useDb();
   const rules = await db.select().from(notificationRules).limit(1).get();
@@ -9,12 +26,16 @@ export const getRules = async () => {
       dailyEnabled: false,
       instantEnabled: false,
       targetEmail: "",
-      smtpConfig: {},
+      smtpConfig: { pass: "", passConfigured: false },
     };
 
+  const smtpConfig = parseSmtpConfig(rules.smtpConfigJson);
   return {
-    ...rules,
-    smtpConfig: rules.smtpConfigJson ? JSON.parse(rules.smtpConfigJson) : {},
+    id: rules.id,
+    dailyEnabled: Boolean(rules.dailyEnabled),
+    instantEnabled: Boolean(rules.instantEnabled),
+    targetEmail: rules.targetEmail || "",
+    smtpConfig: sanitizeSmtpConfig(smtpConfig),
   };
 };
 
@@ -32,11 +53,23 @@ export default defineEventHandler(async (event) => {
 
     // Upsert id=1
     const existing = await db.select().from(notificationRules).limit(1).get();
+    const currentSmtpConfig = parseSmtpConfig(existing?.smtpConfigJson);
+    const incomingSmtpConfig = body.smtpConfig || {};
+    const nextSmtpConfig = {
+      ...currentSmtpConfig,
+      ...incomingSmtpConfig,
+      pass:
+        incomingSmtpConfig.pass && String(incomingSmtpConfig.pass).trim()
+          ? incomingSmtpConfig.pass
+          : currentSmtpConfig.pass || "",
+    };
+    delete nextSmtpConfig.passConfigured;
+
     const values = {
-      instantEnabled: body.instantEnabled,
-      dailyEnabled: body.dailyEnabled,
-      targetEmail: body.targetEmail,
-      smtpConfigJson: JSON.stringify(body.smtpConfig || {}),
+      instantEnabled: Boolean(body.instantEnabled),
+      dailyEnabled: Boolean(body.dailyEnabled),
+      targetEmail: body.targetEmail || "",
+      smtpConfigJson: JSON.stringify(nextSmtpConfig),
     };
 
     if (existing) {

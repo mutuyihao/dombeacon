@@ -1,5 +1,6 @@
 import { actions, domains } from "../db/schema";
-import { eq, and, or, lt } from "drizzle-orm";
+import { eq, and, lt, sql, asc, desc } from "drizzle-orm";
+import { useDb } from "./db";
 
 export type ActionType =
   | "WANTED_AVAILABLE"
@@ -17,6 +18,8 @@ export interface CreateActionParams {
   priority: string;
   metadata?: Record<string, any>;
 }
+
+type Db = ReturnType<typeof useDb>;
 
 /**
  * Create a new action with deduplication
@@ -116,8 +119,8 @@ export async function getActionsWithDomains(filters?: {
   domainId?: number;
   limit?: number;
   offset?: number;
-}) {
-  const db = useDb();
+}, options?: { db?: Db }) {
+  const db = options?.db ?? useDb();
 
   let query = db
     .select({
@@ -143,8 +146,15 @@ export async function getActionsWithDomains(filters?: {
     query = query.where(and(...conditions)) as any;
   }
 
-  // Order by priority (HIGH > MEDIUM > LOW) and triggeredAt DESC
-  query = query.orderBy(actions.priority, actions.triggeredAt) as any;
+  // Order by priority (HIGH > MEDIUM > LOW) then triggeredAt DESC.
+  // Stored as strings, so we must map to a numeric weight.
+  const priorityWeight = sql<number>`case ${actions.priority}
+    when 'HIGH' then 0
+    when 'MEDIUM' then 1
+    when 'LOW' then 2
+    else 3
+  end`;
+  query = query.orderBy(asc(priorityWeight), desc(actions.triggeredAt)) as any;
 
   if (filters?.limit) {
     query = query.limit(filters.limit) as any;
@@ -154,4 +164,39 @@ export async function getActionsWithDomains(filters?: {
   }
 
   return await query.all();
+}
+
+/**
+ * Count actions for pagination.
+ * Note: This intentionally counts only the actions table; domain join isn't needed for current filters.
+ */
+export async function countActions(filters?: {
+  status?: ActionStatus;
+  priority?: string;
+  domainId?: number;
+}, options?: { db?: Db }) {
+  const db = options?.db ?? useDb();
+
+  const conditions = [];
+  if (filters?.status) {
+    conditions.push(eq(actions.status, filters.status));
+  }
+  if (filters?.priority) {
+    conditions.push(eq(actions.priority, filters.priority));
+  }
+  if (filters?.domainId) {
+    conditions.push(eq(actions.domainId, filters.domainId));
+  }
+
+  const whereExpr = conditions.length > 0 ? and(...conditions) : undefined;
+
+  const row = whereExpr
+    ? await db
+        .select({ count: sql<number>`count(*)` })
+        .from(actions)
+        .where(whereExpr)
+        .get()
+    : await db.select({ count: sql<number>`count(*)` }).from(actions).get();
+
+  return Number(row?.count || 0);
 }

@@ -1,6 +1,6 @@
-# Domain Ops Radar
+# DomBeacon (域灯)
 
-A self-hosted Domain Ops Radar for tracking wanted domain opportunities, managing owned domain portfolios, monitoring expiration and SSL risks, and turning domain events into actionable alerts.
+DomBeacon (域灯) is a self-hosted domain ops beacon for tracking wanted domain opportunities, managing owned domain portfolios, monitoring expiration and SSL risks, and turning domain events into actionable alerts.
 
 ## Features
 
@@ -20,7 +20,7 @@ A self-hosted Domain Ops Radar for tracking wanted domain opportunities, managin
 
    ```bash
    git clone <repo>
-   cd domain-ops-radar
+   cd dombeacon
    cp .env.example .env
    mkdir data
    ```
@@ -32,7 +32,7 @@ A self-hosted Domain Ops Radar for tracking wanted domain opportunities, managin
    ```
 
 3. **Access**
-   Open `http://localhost:3000`.
+   Open `http://localhost:8080` (Docker default).
 
 ## Configuration
 
@@ -55,7 +55,7 @@ Go to `/settings` to configure:
 
 ### Database
 
-The database path can be configured via `DATABASE_PATH` environment variable (default: `./data/domains.db`).
+The database path can be configured via `DATABASE_PATH` environment variable (default: `./data/app.db`). Relative paths are resolved from the process working directory; the parent folder is auto-created on first boot.
 
 ### Language / 语言
 
@@ -98,7 +98,7 @@ Actions can be:
 
 ### API Access
 
-See [docs/README.md](docs/README.md) for full API documentation.
+See [docs/README.md](docs/README.md) for the docs index and [docs/api.md](docs/api.md) for the endpoint list.
 
 ## Development Setup
 
@@ -118,10 +118,11 @@ See [docs/README.md](docs/README.md) for full API documentation.
    ```bash
    npm run dev
    ```
+   Open `http://localhost:3000` (dev).
 
 ## Tech Stack
 
-- **Framework**: Nuxt 3 (Vue 3 + Nitro)
+- **Framework**: Nuxt 4 (Vue 3 + Nitro)
 - **Database**: SQLite (via Drizzle ORM)
 - **Styling**: Tailwind CSS (Custom Morandi Tokens)
 - **i18n**: @nuxtjs/i18n (Chinese & English)

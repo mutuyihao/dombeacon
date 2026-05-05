@@ -7,10 +7,7 @@ export default defineEventHandler(async (event) => {
     const id = parseInt(event.context.params?.id || "0");
 
     if (!id) {
-      throw createError({
-        statusCode: 400,
-        message: "Invalid cost ID",
-      });
+      return fail("Invalid cost ID", 40000);
     }
 
     // Check if exists
@@ -21,23 +18,15 @@ export default defineEventHandler(async (event) => {
       .limit(1);
 
     if (!existing.length) {
-      throw createError({
-        statusCode: 404,
-        message: "Cost record not found",
-      });
+      return fail("Cost record not found", 40400);
     }
 
     // Delete
     await db.delete(domainCosts).where(eq(domainCosts.id, id));
 
-    return {
-      success: true,
-    };
+    return success({ deleted: true });
   } catch (error: any) {
     console.error("Failed to delete cost:", error);
-    throw createError({
-      statusCode: error.statusCode || 500,
-      message: error.message || "Failed to delete cost",
-    });
+    return fail(error.message || "Failed to delete cost", 50000);
   }
 });

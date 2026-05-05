@@ -31,15 +31,9 @@ export default defineEventHandler(async (event) => {
 
     const costs = await queryBuilder.orderBy(desc(domainCosts.paymentDate));
 
-    return {
-      success: true,
-      data: costs,
-    };
+    return success(costs);
   } catch (error: any) {
     console.error("Failed to fetch costs:", error);
-    throw createError({
-      statusCode: 500,
-      message: error.message || "Failed to fetch costs",
-    });
+    return fail(error.message || "Failed to fetch costs", 50000);
   }
 });
