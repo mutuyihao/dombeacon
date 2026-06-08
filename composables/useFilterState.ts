@@ -133,12 +133,8 @@ export const useFilterState = () => {
         label: `🔎 ${c.search}`,
         clear: () => (criteria.value.search = ""),
       });
-    if (c.status && c.status !== "ALL")
-      chips.push({
-        key: "status",
-        label: c.status,
-        clear: () => (criteria.value.status = ""),
-      });
+    // Status is already represented by the prominent quick tabs on /domains.
+    // Mirroring it as a chip made the toolbar height change on every tab toggle.
     if (c.watchKind)
       chips.push({
         key: "watchKind",

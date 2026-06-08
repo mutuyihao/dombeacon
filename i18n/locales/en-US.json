@@ -43,7 +43,8 @@
     "webhooks": "Webhooks",
     "serverchan": "Server酱",
     "notifications": "Notifications",
-    "settings": "Settings"
+    "settings": "Settings",
+    "more": "More"
   },
   "dashboard": {
     "kicker": "Overview",
@@ -95,6 +96,8 @@
     "loggingIn": "Signing in..."
   },
   "domain": {
+    "portfolio": "Portfolio",
+    "totalSuffix": "domains tracked",
     "addDomain": "Add Domain",
     "domainName": "Domain Name",
     "watchKind": "Watch Type",
@@ -256,6 +259,9 @@
     "installed": "Installed",
     "installAvailable": "Available",
     "installUnavailable": "Unavailable",
+    "costPreferences": "Cost Preferences",
+    "costCurrency": "Cost Currency",
+    "costCurrencyHint": "All cost totals and new records use this currency. The app does not convert exchange rates; enter amounts after your own accounting.",
     "notifications": "Notifications (SMTP)",
     "targetEmail": "Target Email",
     "smtpHost": "SMTP Host",
@@ -380,11 +386,14 @@
     "refreshAll": "Refresh All",
     "checkNow": "Check Now",
     "lastChecked": "Last Checked",
+    "checkedHost": "Checked host",
     "issuer": "Issuer",
+    "validationError": "Validation issue",
     "daysUntilExpiryLabel": "Days until expiry",
     "validFrom": "Valid From",
     "validTo": "Valid To",
     "daysUntilExpiry": "Expires in {days} days",
+    "daysShort": "days",
     "noData": "No SSL certificate data",
     "filters": {
       "all": "All",
@@ -401,8 +410,10 @@
       "noSSL": "No SSL"
     },
     "checkSuccess": "SSL check successful",
+    "checkWarning": "SSL check completed with a problem: {error}",
     "checkError": "SSL check failed",
     "refreshSuccess": "Refresh successful",
+    "refreshPartial": "Refresh completed, {failed} failed",
     "refreshError": "Refresh failed",
     "retainedAfterError": "Kept the last successful certificate snapshot; latest check failed: {error}"
   },
@@ -431,7 +442,8 @@
       "successMessage": "Successfully imported {count} domains",
       "failedMessage": "{count} domains failed to import",
       "error": "Import failed",
-      "invalidFile": "Please select a CSV file"
+      "invalidFile": "Please select a CSV file",
+      "fileTooLarge": "CSV files must be 10MB or smaller"
     },
     "format": {
       "title": "CSV Format Guide",
@@ -454,6 +466,7 @@
     "type": "Type",
     "amount": "Amount",
     "currency": "Currency",
+    "globalCurrencyHint": "Uses the global cost currency from Settings. Convert amounts yourself before saving.",
     "registrar": "Registrar",
     "registrarPlaceholder": "e.g. GoDaddy, Namecheap",
     "paymentDate": "Payment Date",

@@ -1,11 +1,17 @@
 import { desc } from "drizzle-orm";
 import { savedFilters } from "../../db/schema";
+import {
+  normalizeSavedFilterScope,
+  serializeSavedFilter,
+} from "../../utils/saved-filters";
 
 /**
  * List all saved filter presets.
  */
-export default defineEventHandler(async () => {
+export default defineEventHandler(async (event) => {
   try {
+    const query = getQuery(event);
+    const scope = query.scope ? normalizeSavedFilterScope(query.scope) : "";
     const db = useDb();
     const rows = await db
       .select()
@@ -13,13 +19,9 @@ export default defineEventHandler(async () => {
       .orderBy(desc(savedFilters.isDefault), desc(savedFilters.createdAt))
       .all();
 
-    const items = rows.map((r) => ({
-      id: r.id,
-      name: r.name,
-      isDefault: !!r.isDefault,
-      createdAt: r.createdAt,
-      criteria: r.criteriaJson ? JSON.parse(r.criteriaJson) : {},
-    }));
+    const items = rows
+      .map(serializeSavedFilter)
+      .filter((item) => !scope || item.scope === scope);
 
     return success({ items });
   } catch (e: any) {

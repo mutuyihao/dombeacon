@@ -42,7 +42,7 @@ export HTTPS_PROXY=http://proxy-server:port
 
 #### 方案 C: 手动拉取镜像
 ```bash
-docker pull node:22-alpine
+docker pull node:24-alpine
 docker-compose build
 ```
 
@@ -130,7 +130,7 @@ curl http://localhost:8080
 ### 减少镜像大小
 ```dockerfile
 # 使用 Alpine Linux (已采用)
-FROM node:22-alpine
+FROM node:24-alpine
 
 # 清理 npm 缓存
 RUN npm cache clean --force

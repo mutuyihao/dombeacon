@@ -1,5 +1,6 @@
 import { db } from "../../db";
 import { domainCosts } from "../../db/schema";
+import { getCostCurrency } from "../../utils/settings";
 
 export default defineEventHandler(async (event) => {
   try {
@@ -8,7 +9,6 @@ export default defineEventHandler(async (event) => {
       domainId,
       costType,
       amount,
-      currency,
       registrar,
       paymentDate,
       periodStart,
@@ -24,6 +24,11 @@ export default defineEventHandler(async (event) => {
       );
     }
 
+    const parsedDomainId = Number.parseInt(String(domainId), 10);
+    if (!Number.isFinite(parsedDomainId) || parsedDomainId <= 0) {
+      return fail("Invalid domainId", 40000);
+    }
+
     // Validate cost type
     const validCostTypes = ["REGISTRATION", "RENEWAL", "TRANSFER", "PRIVACY", "OTHER"];
     if (!validCostTypes.includes(costType)) {
@@ -31,22 +36,38 @@ export default defineEventHandler(async (event) => {
     }
 
     // Validate amount (in cents)
-    if (typeof amount !== "number" || amount < 0) {
+    if (typeof amount !== "number" || !Number.isFinite(amount) || amount < 0) {
       return fail("Amount must be a non-negative number (in cents)", 40000);
     }
+
+    const parsedPaymentDate = new Date(paymentDate);
+    const parsedPeriodStart = periodStart ? new Date(periodStart) : null;
+    const parsedPeriodEnd = periodEnd ? new Date(periodEnd) : null;
+
+    if (Number.isNaN(parsedPaymentDate.getTime())) {
+      return fail("Invalid paymentDate", 40000);
+    }
+    if (parsedPeriodStart && Number.isNaN(parsedPeriodStart.getTime())) {
+      return fail("Invalid periodStart", 40000);
+    }
+    if (parsedPeriodEnd && Number.isNaN(parsedPeriodEnd.getTime())) {
+      return fail("Invalid periodEnd", 40000);
+    }
+
+    const costCurrency = await getCostCurrency();
 
     // Insert cost record
     const [newCost] = await db
       .insert(domainCosts)
       .values({
-        domainId: parseInt(domainId),
+        domainId: parsedDomainId,
         costType,
         amount: Math.round(amount), // Ensure integer (cents)
-        currency: currency || "USD",
+        currency: costCurrency,
         registrar: registrar || null,
-        paymentDate: new Date(paymentDate),
-        periodStart: periodStart ? new Date(periodStart) : null,
-        periodEnd: periodEnd ? new Date(periodEnd) : null,
+        paymentDate: parsedPaymentDate,
+        periodStart: parsedPeriodStart,
+        periodEnd: parsedPeriodEnd,
         note: note || null,
       })
       .returning();

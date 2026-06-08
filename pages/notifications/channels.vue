@@ -1,114 +1,175 @@
 <template>
-  <div class="space-y-6">
-    <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-      <div>
-        <h1 class="text-2xl font-semibold text-text-main">{{ $t('settings.entryChannelsTitle') }}</h1>
-        <p class="mt-1 text-sm text-text-secondary">{{ $t('settings.entryChannelsDescription') }}</p>
-      </div>
-    </div>
+  <div class="flex min-h-full flex-col gap-6 md:h-full md:min-h-0 md:overflow-hidden">
 
-    <div class="rounded-2xl border border-card-border bg-card p-6 shadow-sm">
-      <h2 class="font-medium text-text-main mb-4 border-b border-card-border pb-2">
-        {{ $t('settings.notifications') }}
-      </h2>
-      <form @submit.prevent="save" class="space-y-4">
-        <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+    <header class="shrink-0">
+      <p class="eyebrow mb-2">Channels</p>
+      <h1 class="headline-display text-3xl md:text-4xl">{{ $t('settings.entryChannelsTitle') }}</h1>
+      <p class="mt-2 max-w-2xl text-sm text-text-secondary">{{ $t('settings.entryChannelsDescription') }}</p>
+    </header>
+
+    <div class="min-h-0 flex-1 space-y-12 overflow-y-auto pr-2">
+    <section>
+      <p class="eyebrow mb-3">Email</p>
+      <h2 class="headline-display text-3xl">{{ $t('settings.notifications') }}</h2>
+      <div class="hairline mt-6" />
+
+      <form @submit.prevent="save" class="space-y-8 pt-8">
+        <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
           <div class="md:col-span-2">
-            <label class="block text-sm font-medium mb-1">{{ $t('settings.targetEmail') }}</label>
-            <input v-model="form.targetEmail" type="email" class="w-full rounded-lg border border-card-border bg-background px-3 py-2" required>
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium mb-1">{{ $t('settings.smtpHost') }}</label>
-            <input v-model="form.smtpConfig.host" type="text" placeholder="smtp.gmail.com" class="w-full rounded-lg border border-card-border bg-background px-3 py-2">
+            <label class="block text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary mb-1">{{ $t('settings.targetEmail') }}</label>
+            <input v-model="form.targetEmail" type="email" class="input-bare" required />
           </div>
           <div>
-            <label class="block text-sm font-medium mb-1">{{ $t('settings.smtpPort') }}</label>
-            <input v-model.number="form.smtpConfig.port" type="number" placeholder="587" class="w-full rounded-lg border border-card-border bg-background px-3 py-2">
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium mb-1">{{ $t('settings.username') }}</label>
-            <input v-model="form.smtpConfig.user" type="text" class="w-full rounded-lg border border-card-border bg-background px-3 py-2">
+            <label class="block text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary mb-1">{{ $t('settings.smtpHost') }}</label>
+            <input v-model="form.smtpConfig.host" type="text" placeholder="smtp.gmail.com" class="input-bare font-mono" />
           </div>
           <div>
-            <label class="block text-sm font-medium mb-1">{{ $t('settings.password') }}</label>
+            <label class="block text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary mb-1">{{ $t('settings.smtpPort') }}</label>
+            <input v-model.number="form.smtpConfig.port" type="number" placeholder="587" class="input-bare font-mono" />
+          </div>
+          <div>
+            <label class="block text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary mb-1">{{ $t('settings.username') }}</label>
+            <input v-model="form.smtpConfig.user" type="text" class="input-bare" />
+          </div>
+          <div>
+            <label class="block text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary mb-1">{{ $t('settings.password') }}</label>
             <input
               v-model="form.smtpConfig.pass"
               type="password"
               :placeholder="form.smtpConfig.passConfigured ? $t('settings.passwordConfigured') : ''"
-              class="w-full rounded-lg border border-card-border bg-background px-3 py-2"
-            >
+              class="input-bare"
+            />
           </div>
-
           <div class="md:col-span-2">
-            <label class="block text-sm font-medium mb-1">{{ $t('settings.fromEmail') }}</label>
-            <input v-model="form.smtpConfig.from" type="email" placeholder="noreply@domain.com" class="w-full rounded-lg border border-card-border bg-background px-3 py-2">
+            <label class="block text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary mb-1">{{ $t('settings.fromEmail') }}</label>
+            <input v-model="form.smtpConfig.from" type="email" placeholder="noreply@domain.com" class="input-bare" />
           </div>
         </div>
 
-        <div class="grid grid-cols-1 gap-3 border-t border-card-border pt-4 sm:grid-cols-2">
-          <label class="flex items-center gap-2 cursor-pointer">
-            <input v-model="form.instantEnabled" type="checkbox" class="h-4 w-4 rounded border-card-border text-accent">
-            <span class="text-sm">{{ $t('settings.instantNotification') }}</span>
+        <div class="hairline" />
+
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <label class="flex cursor-pointer items-center gap-3 text-sm text-text-secondary">
+            <input v-model="form.instantEnabled" type="checkbox" class="h-4 w-4 accent-accent" />
+            {{ $t('settings.instantNotification') }}
           </label>
-          <label class="flex items-center gap-2 cursor-pointer">
-            <input v-model="form.dailyEnabled" type="checkbox" class="h-4 w-4 rounded border-card-border text-accent">
-            <span class="text-sm">{{ $t('settings.dailySummary') }}</span>
+          <label class="flex cursor-pointer items-center gap-3 text-sm text-text-secondary">
+            <input v-model="form.dailyEnabled" type="checkbox" class="h-4 w-4 accent-accent" />
+            {{ $t('settings.dailySummary') }}
           </label>
         </div>
 
-        <div class="flex justify-end pt-2">
-          <button
-            type="submit"
-            class="rounded-xl bg-accent px-6 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-hover disabled:opacity-50"
-            :disabled="saving"
-          >
+        <div class="hairline" />
+
+        <div>
+          <p class="eyebrow mb-3">Risk event presets</p>
+          <div class="grid gap-4 xl:grid-cols-2">
+            <article
+              v-for="eventDef in riskEventDefinitions"
+              :key="eventDef.key"
+              class="surface-flat p-5"
+            >
+              <div class="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <h3 class="headline-display text-2xl">{{ eventDef.label }}</h3>
+                  <p class="mt-2 max-w-xl text-sm leading-6 text-text-secondary">{{ eventDef.description }}</p>
+                </div>
+                <NuxtLink :to="eventDef.to" class="btn-text text-xs">
+                  Review
+                </NuxtLink>
+              </div>
+
+              <div class="mt-5 grid gap-3 sm:grid-cols-2">
+                <label
+                  v-for="channel in channelDefinitions"
+                  :key="`${eventDef.key}-${channel.key}`"
+                  class="rounded-2xl border border-hairline bg-card px-4 py-3"
+                >
+                  <span class="flex items-center justify-between gap-3">
+                    <span class="text-sm font-medium text-text-main">{{ channel.label }}</span>
+                    <input
+                      v-model="form.eventChannelPresets[eventDef.key][channel.key]"
+                      type="checkbox"
+                      class="h-4 w-4 accent-accent"
+                    />
+                  </span>
+                  <span class="mt-2 block font-mono text-[11px] text-text-tertiary">
+                    {{ formatDeliveryCell(eventDef.key, channel.name) }}
+                  </span>
+                  <span
+                    class="mt-2 flex items-start gap-2 text-xs leading-5"
+                    :class="diagnosticTextClass(eventDef.key, channel.name)"
+                  >
+                    <span
+                      class="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full"
+                      :class="diagnosticDotClass(eventDef.key, channel.name)"
+                    />
+                    <span>{{ channelDiagnostic(eventDef.key, channel.name).message || 'No diagnostic data yet.' }}</span>
+                  </span>
+                </label>
+              </div>
+
+              <div class="mt-4 rounded-2xl bg-surface-sunken px-4 py-3 text-xs leading-5 text-text-secondary">
+                <p>
+                  {{ eventDelivery(eventDef.key).dedupeKeysLastWindow || 0 }}
+                  dedupe keys active in {{ riskDeliverySummary.dedupeWindowHours || 24 }}h.
+                </p>
+                <p class="mt-1 font-mono text-text-tertiary">
+                  Last dedupe: {{ formatDate(eventDelivery(eventDef.key).lastDedupeAt || eventDelivery(eventDef.key).lastSentAt) }}
+                </p>
+              </div>
+            </article>
+          </div>
+          <p class="mt-3 text-xs leading-5 text-text-tertiary">
+            Presets gate risk fan-out before channel-specific filters. Webhook and ServerChan `eventTypes` still apply inside enabled channels.
+          </p>
+        </div>
+
+        <div class="flex justify-end">
+          <button type="submit" class="btn-primary disabled:opacity-50" :disabled="saving">
             {{ saving ? $t('settings.saving') : $t('settings.saveSettings') }}
           </button>
         </div>
       </form>
-    </div>
+    </section>
 
-    <div class="rounded-2xl border border-card-border bg-card p-6 shadow-sm">
-      <h2 class="font-medium text-text-main mb-2 border-b border-card-border pb-2">
-        {{ $t('settings.pushTitle') }}
-      </h2>
-      <p class="mb-4 text-xs text-text-secondary">{{ $t('settings.pushDescription') }}</p>
+    <section>
+      <p class="eyebrow mb-3">Web push</p>
+      <h2 class="headline-display text-3xl">{{ $t('settings.pushTitle') }}</h2>
+      <p class="mt-2 max-w-2xl text-sm text-text-secondary">{{ $t('settings.pushDescription') }}</p>
+      <div class="hairline mt-6" />
 
-      <div v-if="pushState === 'unsupported'" class="text-sm text-text-secondary">
-        {{ $t('settings.pushUnsupported') }}
-      </div>
-      <div v-else-if="pushState === 'not-configured'" class="text-sm text-text-secondary">
-        {{ $t('settings.pushNotConfigured') }}
-      </div>
-      <div v-else class="flex items-center justify-between gap-4">
-        <div>
-          <div class="text-sm font-medium text-text-main">
-            <span v-if="pushState === 'subscribed'">{{ $t('settings.pushSubscribed') }}</span>
-            <span v-else-if="pushState === 'denied'">{{ $t('settings.pushDenied') }}</span>
-            <span v-else>{{ $t('settings.pushIdle') }}</span>
+      <div class="pt-8">
+        <p v-if="pushState === 'unsupported'" class="text-sm text-text-secondary">
+          {{ $t('settings.pushUnsupported') }}
+        </p>
+        <p v-else-if="pushState === 'not-configured'" class="text-sm text-text-secondary">
+          {{ $t('settings.pushNotConfigured') }}
+        </p>
+        <div v-else class="flex items-start justify-between gap-6">
+          <div>
+            <p class="text-sm font-medium text-text-main">
+              <span v-if="pushState === 'subscribed'">{{ $t('settings.pushSubscribed') }}</span>
+              <span v-else-if="pushState === 'denied'">{{ $t('settings.pushDenied') }}</span>
+              <span v-else>{{ $t('settings.pushIdle') }}</span>
+            </p>
+            <p v-if="pushError" class="mt-1 text-xs text-status-dropping">{{ pushError }}</p>
           </div>
-          <div v-if="pushError" class="mt-1 text-xs text-status-dropping">{{ pushError }}</div>
+          <button v-if="pushState === 'subscribed'" type="button" @click="onUnsubscribe" class="btn-ghost">
+            {{ $t('settings.pushUnsubscribe') }}
+          </button>
+          <button
+            v-else-if="pushState !== 'denied'"
+            type="button"
+            @click="onSubscribe"
+            :disabled="pushState === 'subscribing'"
+            class="btn-primary disabled:opacity-50"
+          >
+            {{ pushState === 'subscribing' ? $t('settings.pushSubscribing') : $t('settings.pushSubscribe') }}
+          </button>
         </div>
-        <button
-          v-if="pushState === 'subscribed'"
-          type="button"
-          @click="onUnsubscribe"
-          class="rounded-xl border border-card-border px-4 py-2 text-sm font-medium text-text-main transition-colors hover:bg-card-border/30"
-        >
-          {{ $t('settings.pushUnsubscribe') }}
-        </button>
-        <button
-          v-else-if="pushState !== 'denied'"
-          type="button"
-          @click="onSubscribe"
-          :disabled="pushState === 'subscribing'"
-          class="rounded-xl bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-hover disabled:opacity-50"
-        >
-          {{ pushState === 'subscribing' ? $t('settings.pushSubscribing') : $t('settings.pushSubscribe') }}
-        </button>
       </div>
+    </section>
     </div>
   </div>
 </template>
@@ -116,8 +177,51 @@
 <script setup>
 const { t } = useI18n();
 const toast = useToast();
-const { data } = await useFetch('/api/notifications/config');
+const { data, refresh } = await useFetch('/api/notifications/config');
 const saving = ref(false);
+
+const riskEventDefinitions = [
+  {
+    key: 'SECURITY_FINDING_HIGH',
+    label: 'High security findings',
+    description: 'New high-severity DNS/RDAP findings on active owned domains.',
+    to: '/ops/security',
+  },
+  {
+    key: 'BRAND_WATCH_REGISTERED',
+    label: 'Registered Brand Watch hits',
+    description: 'Newly registered RDAP or CT lookalikes that still need review.',
+    to: '/brand-watch',
+  },
+];
+
+const channelDefinitions = [
+  { key: 'email', name: 'EMAIL', label: 'Email' },
+  { key: 'webhook', name: 'WEBHOOK', label: 'Webhook' },
+  { key: 'serverchan', name: 'SERVERCHAN', label: 'ServerChan' },
+  { key: 'push', name: 'PUSH', label: 'Web Push' },
+];
+
+const defaultEventChannelPresets = () =>
+  Object.fromEntries(
+    riskEventDefinitions.map((eventDef) => [
+      eventDef.key,
+      Object.fromEntries(channelDefinitions.map((channel) => [channel.key, true])),
+    ]),
+  );
+
+const normalizeEventChannelPresets = (value) => {
+  const presets = defaultEventChannelPresets();
+  const input = value || {};
+  riskEventDefinitions.forEach((eventDef) => {
+    channelDefinitions.forEach((channel) => {
+      if (typeof input?.[eventDef.key]?.[channel.key] === 'boolean') {
+        presets[eventDef.key][channel.key] = input[eventDef.key][channel.key];
+      }
+    });
+  });
+  return presets;
+};
 
 const form = reactive({
   targetEmail: '',
@@ -131,21 +235,81 @@ const form = reactive({
     passConfigured: false,
     from: '',
   },
+  eventChannelPresets: defaultEventChannelPresets(),
 });
 
-watchEffect(() => {
-  const d = data.value?.data;
-  if (!d) return;
-  form.targetEmail = d.targetEmail || '';
-  form.instantEnabled = Boolean(d.instantEnabled);
-  form.dailyEnabled = Boolean(d.dailyEnabled);
-  form.smtpConfig = {
-    ...form.smtpConfig,
-    ...(d.smtpConfig || {}),
-    pass: '',
-    passConfigured: Boolean(d.smtpConfig?.passConfigured),
-  };
+watch(
+  data,
+  (value) => {
+    const d = value?.data;
+    if (!d) return;
+    form.targetEmail = d.targetEmail || '';
+    form.instantEnabled = Boolean(d.instantEnabled);
+    form.dailyEnabled = Boolean(d.dailyEnabled);
+    form.smtpConfig = {
+      ...form.smtpConfig,
+      ...(d.smtpConfig || {}),
+      pass: '',
+      passConfigured: Boolean(d.smtpConfig?.passConfigured),
+    };
+    form.eventChannelPresets = normalizeEventChannelPresets(d.eventChannelPresets);
+  },
+  { immediate: true },
+);
+
+const riskDeliverySummary = computed(() => data.value?.data?.riskDeliverySummary || {
+  dedupeWindowHours: 24,
+  events: {},
 });
+
+const eventDelivery = (eventType) => riskDeliverySummary.value.events?.[eventType] || {};
+
+const channelDelivery = (eventType, channelName) =>
+  eventDelivery(eventType).channels?.[channelName] || {
+    total: 0,
+    sent: 0,
+    failed: 0,
+    pending: 0,
+    diagnostic: {},
+  };
+
+const channelDiagnostic = (eventType, channelName) =>
+  channelDelivery(eventType, channelName).diagnostic || {};
+
+const diagnosticSeverity = (eventType, channelName) =>
+  channelDiagnostic(eventType, channelName).severity || 'warning';
+
+const diagnosticTextClass = (eventType, channelName) => {
+  const severity = diagnosticSeverity(eventType, channelName);
+  if (severity === 'ok') return 'text-status-available';
+  if (severity === 'disabled') return 'text-text-tertiary';
+  return 'text-status-dropping';
+};
+
+const diagnosticDotClass = (eventType, channelName) => {
+  const severity = diagnosticSeverity(eventType, channelName);
+  if (severity === 'ok') return 'bg-status-available';
+  if (severity === 'disabled') return 'bg-text-tertiary';
+  return 'bg-status-dropping';
+};
+
+const formatDeliveryCell = (eventType, channelName) => {
+  const cell = channelDelivery(eventType, channelName);
+  const failed = Number(cell.failed || 0);
+  const pending = Number(cell.pending || 0);
+  const suffix = [
+    failed ? `${failed} failed` : '',
+    pending ? `${pending} pending` : '',
+  ].filter(Boolean).join(' / ');
+  return `${Number(cell.sent || 0)} sent${suffix ? ` / ${suffix}` : ''}`;
+};
+
+const formatDate = (value) => {
+  if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '-';
+  return date.toLocaleString();
+};
 
 const save = async () => {
   saving.value = true;
@@ -155,6 +319,7 @@ const save = async () => {
       body: form,
     });
     if (response?.code !== 0) throw new Error(response?.msg || t('settings.saveError'));
+    await refresh();
     toast.success(t('settings.saveSuccess'));
     form.smtpConfig.pass = '';
     form.smtpConfig.passConfigured =

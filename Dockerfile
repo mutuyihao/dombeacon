@@ -1,6 +1,8 @@
 # syntax=docker/dockerfile:1.7
 
-FROM node:22-alpine AS builder
+ARG NODE_IMAGE=node:24-alpine
+
+FROM ${NODE_IMAGE} AS builder
 
 ENV PNPM_HOME=/pnpm
 ENV PATH="$PNPM_HOME:$PATH"
@@ -18,7 +20,7 @@ COPY . .
 RUN pnpm run build
 # Prune dev dependencies if possible or just rely on output
 
-FROM node:22-alpine
+FROM ${NODE_IMAGE}
 
 WORKDIR /app
 

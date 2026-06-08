@@ -5,7 +5,10 @@ import { eq, desc } from "drizzle-orm";
 export default defineEventHandler(async (event) => {
   try {
     const query = getQuery(event);
-    const domainId = query.domainId ? parseInt(query.domainId as string) : null;
+    const domainId = query.domainId ? Number.parseInt(String(query.domainId), 10) : null;
+    if (query.domainId && (!Number.isFinite(domainId) || domainId <= 0)) {
+      return fail("Invalid domainId", 40000);
+    }
 
     let queryBuilder = db
       .select({

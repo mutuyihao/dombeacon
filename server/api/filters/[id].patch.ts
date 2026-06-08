@@ -1,5 +1,13 @@
-import { eq, ne, and } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { savedFilters } from "../../db/schema";
+import {
+  demoteDefaultSavedFilters,
+  getSavedFilterScope,
+  normalizeSavedFilterScope,
+  parseSavedFilterCriteria,
+  serializeSavedFilter,
+  withSavedFilterScope,
+} from "../../utils/saved-filters";
 
 /**
  * Update a saved filter preset.
@@ -16,13 +24,33 @@ export default defineEventHandler(async (event) => {
 
     const body = await readBody(event);
     const db = useDb();
+    const current = await db
+      .select()
+      .from(savedFilters)
+      .where(eq(savedFilters.id, id))
+      .get();
+    if (!current) return fail("Filter not found", 40400);
+
+    const currentCriteria = parseSavedFilterCriteria(current.criteriaJson);
+    const scope = normalizeSavedFilterScope(
+      body?.scope ||
+        body?.criteria?._scope ||
+        body?.criteria?.scope ||
+        getSavedFilterScope(currentCriteria),
+    );
 
     const updates: Record<string, any> = {};
     if (typeof body?.name === "string") {
-      updates.name = body.name.trim().slice(0, 80);
+      const name = body.name.trim().slice(0, 80);
+      if (!name) return fail("Name required", 40000);
+      updates.name = name;
     }
     if (body?.criteria && typeof body.criteria === "object") {
-      updates.criteriaJson = JSON.stringify(body.criteria);
+      updates.criteriaJson = JSON.stringify(withSavedFilterScope(body.criteria, scope));
+    } else if (body?.scope) {
+      updates.criteriaJson = JSON.stringify(
+        withSavedFilterScope(currentCriteria, scope),
+      );
     }
     if (typeof body?.isDefault === "boolean") {
       updates.isDefault = body.isDefault;
@@ -32,11 +60,12 @@ export default defineEventHandler(async (event) => {
       return fail("No updates provided", 40000);
     }
 
-    if (updates.isDefault === true) {
-      await db
-        .update(savedFilters)
-        .set({ isDefault: false })
-        .where(and(eq(savedFilters.isDefault, true), ne(savedFilters.id, id)));
+    const nextDefault =
+      typeof updates.isDefault === "boolean"
+        ? updates.isDefault
+        : !!current.isDefault;
+    if (nextDefault) {
+      await demoteDefaultSavedFilters(db, scope, id);
     }
 
     await db.update(savedFilters).set(updates).where(eq(savedFilters.id, id));
@@ -49,13 +78,7 @@ export default defineEventHandler(async (event) => {
 
     if (!fresh) return fail("Filter not found after update", 40400);
 
-    return success({
-      id: fresh.id,
-      name: fresh.name,
-      isDefault: !!fresh.isDefault,
-      createdAt: fresh.createdAt,
-      criteria: fresh.criteriaJson ? JSON.parse(fresh.criteriaJson) : {},
-    });
+    return success(serializeSavedFilter(fresh));
   } catch (e: any) {
     console.error("Update filter failed:", e);
     return fail(e.message || "Failed to update filter", 50000);

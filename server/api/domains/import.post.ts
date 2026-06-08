@@ -1,6 +1,7 @@
 import { db } from "../../db";
 import { domains } from "../../db/schema";
 import { eq } from "drizzle-orm";
+import { recordAuditEvent } from "../../utils/audit";
 import { isValidDomainName, normalizeDomainInput } from "~/utils/domain";
 
 interface ImportResult {
@@ -167,9 +168,30 @@ export default defineEventHandler(async (event) => {
       }
     }
 
+    await recordAuditEvent({
+      event,
+      eventType: "domains.import",
+      outcome: result.failed > 0 ? "partial_success" : "success",
+      actorType: "admin",
+      metadata: {
+        success: result.success,
+        failed: result.failed,
+        errorCount: result.errors.length,
+        rowCount: dataLines.length,
+        updateExisting,
+      },
+    });
+
     return success(result);
   } catch (error: any) {
     console.error("Failed to import domains:", error);
+    await recordAuditEvent({
+      event,
+      eventType: "domains.import",
+      outcome: "failure",
+      actorType: "admin",
+      metadata: { reason: error?.message || String(error) },
+    });
     return fail(error.message || "Failed to import domains", 50000);
   }
 });

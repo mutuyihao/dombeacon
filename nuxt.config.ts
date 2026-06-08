@@ -22,7 +22,13 @@ export default defineNuxtConfig({
       redirectOn: "root",
     },
   },
-  css: [fileURLToPath(new URL("./assets/css/main.css", import.meta.url))],
+  css: [
+    "@fontsource-variable/inter/index.css",
+    "@fontsource-variable/fraunces/opsz.css",
+    "@fontsource/jetbrains-mono/400.css",
+    "@fontsource/jetbrains-mono/500.css",
+    fileURLToPath(new URL("./assets/css/main.css", import.meta.url)),
+  ],
   app: {
     head: {
       title: "DomBeacon (域灯)",
@@ -53,6 +59,9 @@ export default defineNuxtConfig({
     },
   },
   vite: {
+    build: {
+      modulePreload: { polyfill: false },
+    },
     plugins: [tsconfigPaths()],
   },
   postcss: {

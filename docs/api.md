@@ -4,124 +4,180 @@ All endpoints live under Nuxt Nitro at `server/api/*` and respond with the
 unified shape:
 
 ```json
-{ "code": 0, "msg": "OK", "data": ... }
+{ "code": 0, "msg": "OK", "data": {} }
 ```
 
-`code === 0` means success; any other value is a logical error (HTTP
-status is generally 200 even for logical errors so that clients can read
-the body uniformly). See `server/utils/api.ts`.
+`code === 0` means success. Non-zero codes are logical errors; HTTP status is
+generally still 200 so clients can read the body uniformly. See
+`server/utils/api.ts`.
 
 ## Base URL
 
 | Environment | URL |
 |---|---|
-| Docker (default `docker-compose.yml`) | `http://localhost:8080` |
-| Local dev (`npm run dev`) | `http://localhost:3000` |
+| Docker (`docker-compose.yml`) | `http://localhost:8080` |
+| Local dev (`pnpm dev`) | `http://localhost:3000` |
 
-## Authentication
-
-If `ADMIN_PASSWORD` is set, `/api/auth/login` issues an HttpOnly session
-cookie, and most pages + API routes require it. With no password set,
-auth is disabled.
+## Health
 
 | Method | Path | Notes |
 |---|---|---|
-| `POST` | `/api/auth/login` | Body: `{ password }` |
-| `POST` | `/api/auth/logout` | Clears session cookie |
-| `GET`  | `/api/auth/status` | `{ authRequired, authenticated }` |
+| `GET` | `/api/health` | Readiness check. Returns `{ ok, now }` only; it does not expose `DATABASE_PATH`. |
+
+## Authentication
+
+`ADMIN_PASSWORD` is required for normal deployments. `/api/auth/login` issues
+an HttpOnly session cookie. Auth is disabled only when `AUTH_DISABLED=true` is
+set explicitly.
+
+| Method | Path | Notes |
+|---|---|---|
+| `POST` | `/api/auth/login` | Body `{ password }`. |
+| `POST` | `/api/auth/logout` | Clears the session cookie. |
+| `GET` | `/api/auth/status` | Returns `{ authRequired, authenticated }`. |
+
+## Audit Logs
+
+| Method | Path | Notes |
+|---|---|---|
+| `GET` | `/api/audit-logs` | Cursor-paginated admin audit stream. Query `limit, cursor, eventType, outcome`. Returns sanitized metadata. |
 
 ## Domains
 
 | Method | Path | Notes |
 |---|---|---|
-| `GET`    | `/api/domains` | List + filter. Query: `page, limit, search, status, watchKind, priority, group, tag, tags (comma-separated), sslState (expiring/invalid/none), expiringDays`. Returns `{ items, total, page, limit }`. |
-| `POST`   | `/api/domains` | Create |
-| `GET`    | `/api/domains/:id` | Detail |
-| `PUT`    | `/api/domains/:id` | Update |
-| `DELETE` | `/api/domains/:id` | Delete |
-| `POST`   | `/api/domains/:id/refresh` | Trigger immediate RDAP+SSL scan |
-| `POST`   | `/api/domains/import` | CSV import (multipart) |
-| `GET`    | `/api/domains/export` | CSV export |
+| `GET` | `/api/domains` | List + filter. Query `page, limit, search, status, watchKind, priority, group, tag, tags, sslState, expiringDays`. Items include risk summary fields. |
+| `POST` | `/api/domains` | Create a domain and run initial security checks for owned domains. |
+| `GET` | `/api/domains/:id` | Detail with latest status, SSL status, security findings, risk summary, and first page of history. |
+| `PUT` | `/api/domains/:id` | Update domain metadata, watch kind, priority, tags, group, and active flag. |
+| `DELETE` | `/api/domains/:id` | Delete the domain and cascaded dependent rows. |
+| `POST` | `/api/domains/:id/refresh` | Trigger immediate RDAP + SSL scan and owned-domain security scan. |
+| `GET` | `/api/domains/:id/history` | Cursor-paginated RDAP history. Query `limit, cursor`; returns `{ items, nextCursor, limit }`. |
+| `POST` | `/api/domains/import` | CSV import using multipart upload. |
+| `GET` | `/api/domains/export` | CSV export. |
 
 ## Actions
 
 | Method | Path | Notes |
 |---|---|---|
-| `GET`   | `/api/actions` | Action queue with embedded domain info |
-| `POST`  | `/api/actions` | Manual action create |
-| `PATCH` | `/api/actions/:id` | Snooze / dismiss / resolve |
+| `GET` | `/api/actions` | Action queue with embedded domain info. |
+| `POST` | `/api/actions` | Manual action create. |
+| `PATCH` | `/api/actions/:id` | Update action status, including snooze, dismiss, and resolve. |
+
+## Security Findings
+
+| Method | Path | Notes |
+|---|---|---|
+| `GET` | `/api/security/summary` | Aggregated risk dashboard. Query `windowDays?, limit?`; returns owned-domain open findings, registrar-lock gaps, DNS drift, active registered Brand Watch lookalikes, trend counts, normalized `riskMetrics`, `riskMetricHistory` from task runs, top risky domains, and recent risk rows. |
+| `GET` | `/api/security/findings` | Cursor-paginated DNS/RDAP findings. Query `limit, cursor, status, severity, findingType, domainId`; `findingType` can be a comma-separated list such as `NAMESERVER_DRIFT,MX_DRIFT`. |
+| `PATCH` | `/api/security/findings/:id` | Body `{ status, snoozedUntil? }`. Status is `OPEN`, `SNOOZED`, `DISMISSED`, or `RESOLVED`; `SNOOZED` requires `snoozedUntil`. |
+| `PATCH` | `/api/security/findings/bulk` | Body `{ ids, status, snoozedUntil? }`. Updates up to 200 findings with the same lifecycle rules as the single-finding endpoint and writes one audit event. |
+
+## Brand Watch
+
+| Method | Path | Notes |
+|---|---|---|
+| `GET` | `/api/brand-watch/terms` | List configured brand/product/company terms. Query `enabled=true|false`. |
+| `POST` | `/api/brand-watch/terms` | Create a term. Body `{ term, termType?, matchStrategy?, tlds?, severity?, enabled?, scanFrequencyHours? }`. |
+| `PATCH` | `/api/brand-watch/terms/:id` | Update a term using the same fields as create. |
+| `DELETE` | `/api/brand-watch/terms/:id` | Delete a term and cascaded candidates. |
+| `POST` | `/api/brand-watch/candidates` | Generate local exact, typo, prefix/suffix, and homoglyph candidates from `{ term, ... }` or `{ termId }`; no public zone-file or paid NRD feed is required. |
+| `POST` | `/api/brand-watch/terms/:id/scan` | Generate candidates for one enabled term, RDAP-check them, optionally discover CT-observed domains, and persist results. Body `{ limit?, includeCt?, ctLimit? }`; `includeCt` defaults to true. Returns scan counts plus `notificationsSent` for newly registered candidates. |
+| `GET` | `/api/brand-watch/risks` | Cursor-paginated persisted candidate results. Query `limit, cursor, termId, status, severity, reviewStatus, source, mutationType, firstSeenFrom, firstSeenTo, lastSeenFrom, lastSeenTo`. Items include `term`, `source`, parsed `evidence`, and review fields. |
+| `PATCH` | `/api/brand-watch/risks/:id` | Update manual triage state. Body `{ reviewStatus, reviewNote? }`, where `reviewStatus` is `OPEN`, `WATCHING`, `DISMISSED`, or `RESOLVED`; writes an audit event. |
+| `GET` | `/api/brand-watch/summary` | Aggregate term and candidate counts for the Brand Watch UI, including registered, available, unknown, error, severity counts, and review-state counts. |
 
 ## Notifications
+
+Risk events are emitted through the same email, webhook, ServerChan, and Web
+Push channels as domain events. `SECURITY_FINDING_HIGH` is sent for newly
+created high-severity owned-domain findings. `BRAND_WATCH_REGISTERED` is sent
+when a Brand Watch candidate is first observed as registered or transitions from
+non-registered to registered. Both use metadata `dedupeKey` values so repeated
+scans do not fan out the same finding/candidate within the dedupe window.
+Risk event presets can disable `email`, `webhook`, `serverchan`, or `push`
+before channel-specific filters run. `riskDeliverySummary` includes per-event
+channel diagnostics with `presetEnabled`, `configured`, `destinationCount`,
+`severity`, and `message`, so operators can see when a preset is enabled but no
+matching destination is configured.
 
 ### Rules (SMTP / email)
 
 | Method | Path | Notes |
 |---|---|---|
-| `GET`  | `/api/notifications/config` | Read SMTP + targetEmail + toggles |
-| `POST` | `/api/notifications/config` | Upsert config |
+| `GET` | `/api/notifications/config` | Read SMTP, target email, notification toggles, `eventChannelPresets`, and `riskDeliverySummary` with per-channel delivery counts and diagnostics. Secrets are masked. |
+| `POST` | `/api/notifications/config` | Upsert SMTP and notification settings. Optional `eventChannelPresets` stores per-channel risk event presets in `app_settings`; writes an audit event. |
 
-### History (v1.2)
+### History
 
 | Method | Path | Notes |
 |---|---|---|
-| `GET`  | `/api/notifications` | Paginated event log. Query: `page, limit, channel, status, eventType, domainId, from, to`. Returns `{ items, total, page, limit }` joined to domain name. |
-| `GET`  | `/api/notifications/:id` | Single event detail |
-| `POST` | `/api/notifications/:id/retry` | Re-send a `FAILED` event via the same channel; writes a new row with `retryOf` set to the original id |
+| `GET` | `/api/notifications` | Paginated event log. Query `page, limit, channel, status, eventType, domainId, from, to`. |
+| `GET` | `/api/notifications/:id` | Single event detail. |
+| `POST` | `/api/notifications/:id/retry` | Re-send a failed event through the same channel; writes a new row with `retryOf`. |
 
 ## Webhooks
 
-| Method | Path |
-|---|---|
-| `GET`    | `/api/webhooks` |
-| `POST`   | `/api/webhooks` |
-| `DELETE` | `/api/webhooks/:id` |
-| `POST`   | `/api/webhooks/:id/test` |
+| Method | Path | Notes |
+|---|---|---|
+| `GET` | `/api/webhooks` | List webhook configs with sensitive headers masked. |
+| `POST` | `/api/webhooks` | Create a webhook config. Body `eventTypes` is normalized to canonical uppercase event names; an empty list means all events. |
+| `DELETE` | `/api/webhooks/:id` | Delete a webhook config. |
+| `POST` | `/api/webhooks/:id/test` | Send a test webhook. |
 
-## Server酱
-
-| Method | Path |
-|---|---|
-| `GET`    | `/api/serverchan` |
-| `POST`   | `/api/serverchan` |
-| `DELETE` | `/api/serverchan/:id` |
-| `POST`   | `/api/serverchan/:id/test` |
-
-## Web Push (v1.2)
+## ServerChan
 
 | Method | Path | Notes |
 |---|---|---|
-| `GET`    | `/api/push/vapid-public` | Returns `{ publicKey, configured }` for the client to subscribe |
-| `POST`   | `/api/push/subscribe` | Body `{ endpoint, keys: { p256dh, auth }, userAgent? }`. Idempotent: refreshes keys + re-enables on existing endpoints. |
-| `DELETE` | `/api/push/subscribe` | Body `{ endpoint }`. Removes the subscription. |
+| `GET` | `/api/serverchan` | List ServerChan configs with SendKey masked. |
+| `POST` | `/api/serverchan` | Create a ServerChan config. Body `eventTypes` is normalized to canonical uppercase event names; an empty list means all events. |
+| `DELETE` | `/api/serverchan/:id` | Delete a ServerChan config. |
+| `POST` | `/api/serverchan/:id/test` | Send a test ServerChan message. |
 
-## Saved Filters (v1.2)
+## Web Push
 
 | Method | Path | Notes |
 |---|---|---|
-| `GET`    | `/api/filters` | List, default first |
-| `POST`   | `/api/filters` | Body `{ name, criteria, isDefault? }`. Setting `isDefault=true` demotes others. |
-| `PATCH`  | `/api/filters/:id` | Update name / criteria / isDefault |
-| `DELETE` | `/api/filters/:id` | Delete |
+| `GET` | `/api/push/vapid-public` | Returns `{ publicKey, configured }` for client subscription. |
+| `POST` | `/api/push/subscribe` | Body `{ endpoint, keys: { p256dh, auth }, userAgent? }`. Idempotent: refreshes keys and re-enables existing endpoints. |
+| `DELETE` | `/api/push/subscribe` | Body `{ endpoint }`. Removes the subscription and writes an audit event. |
+
+## Saved Filters
+
+| Method | Path | Notes |
+|---|---|---|
+| `GET` | `/api/filters` | List saved filter presets, default first. Optional query `scope`; missing legacy scope is treated as `domains`. Current scopes include `domains`, `brand-watch-risks`, and `security-findings`. |
+| `POST` | `/api/filters` | Body `{ name, criteria, scope?, isDefault? }`; `scope` is stored in `criteria_json._scope`; `isDefault=true` demotes other defaults in the same scope. |
+| `PATCH` | `/api/filters/:id` | Update name, criteria, scope, or default flag. Default demotion is scoped. |
+| `DELETE` | `/api/filters/:id` | Delete a saved filter. |
 
 ## SSL
 
 | Method | Path | Notes |
 |---|---|---|
-| `GET`  | `/api/ssl` | Latest snapshot list |
-| `POST` | `/api/ssl/:id/check` | Force-rescan a single domain |
+| `GET` | `/api/ssl` | Latest SSL snapshot list. |
+| `POST` | `/api/ssl/:id/check` | Force-rescan a single domain by id. |
+| `POST` | `/api/ssl/check-all` | Scan SSL for all active domains in batches of three; returns `{ checked, failed, errors }` and writes an audit event. |
 
 ## Costs
 
 | Method | Path | Notes |
 |---|---|---|
-| `GET`    | `/api/costs` | List all cost rows |
-| `POST`   | `/api/costs` | Add cost (registration / renewal / transfer / privacy / other) |
-| `DELETE` | `/api/costs/:id` | Remove |
-| `GET`    | `/api/costs/summary` | Aggregations (totals, byType, byDomain, byMonth) |
+| `GET` | `/api/costs` | List cost rows. |
+| `POST` | `/api/costs` | Add a cost row for registration, renewal, transfer, privacy, or other. |
+| `DELETE` | `/api/costs/:id` | Remove a cost row. |
+| `GET` | `/api/costs/summary` | Aggregations by total, type, domain, and month, using the configured display currency. |
+
+## Settings
+
+| Method | Path | Notes |
+|---|---|---|
+| `GET` | `/api/settings/preferences` | Returns `{ costCurrency, supportedCostCurrencies }`. |
+| `POST` | `/api/settings/preferences` | Body `{ costCurrency }`; validates supported currencies, persists to `app_settings`, and writes an audit event. |
 
 ## Tasks
 
 | Method | Path | Notes |
 |---|---|---|
-| `GET`  | `/api/tasks/runs` | Recent `taskRuns` rows |
-| `POST` | `/api/tasks/trigger` | Body `{ task: 'hourly-scan' \| 'daily-summary' }` |
+| `GET` | `/api/tasks/runs` | Recent `task_runs` rows plus currently held task locks. Query `limit, cursor`. |
+| `POST` | `/api/tasks/trigger` | Body `{ task: 'hourly-scan' | 'daily-summary' | 'brand-watch' }`; queues the task in the background and writes an audit event. |

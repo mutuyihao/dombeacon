@@ -1,125 +1,121 @@
 <template>
-  <div class="space-y-6">
-    <div class="flex flex-col md:flex-row justify-between md:items-end gap-3">
-        <div>
-          <h2 class="text-xl font-semibold">{{ $t('task.title') }}</h2>
-          <p class="text-sm text-text-secondary mt-1">{{ $t('task.description') }}</p>
-        </div>
-        <div class="flex gap-2">
-            <button
-              @click="trigger('hourly-scan')"
-              :disabled="isTriggerDisabled('hourly-scan')"
-              class="px-4 py-2 bg-background border border-card-border rounded-lg text-sm font-medium hover:bg-card-border/30 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-                <span v-if="triggeringTask === 'hourly-scan'" class="inline-flex items-center gap-2">
-                  <LoadingSpinner size="sm" color="gray" />
-                  {{ $t('task.queued') }}
-                </span>
-                <span v-else>{{ $t('task.triggerScan') }}</span>
-            </button>
-            <button
-              @click="trigger('daily-summary')"
-              :disabled="isTriggerDisabled('daily-summary')"
-              class="px-4 py-2 bg-background border border-card-border rounded-lg text-sm font-medium hover:bg-card-border/30 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-                <span v-if="triggeringTask === 'daily-summary'" class="inline-flex items-center gap-2">
-                  <LoadingSpinner size="sm" color="gray" />
-                  {{ $t('task.queued') }}
-                </span>
-                <span v-else>{{ $t('task.triggerSummary') }}</span>
-            </button>
-        </div>
-    </div>
+  <div class="flex min-h-full flex-col gap-6 md:h-full md:min-h-0 md:overflow-hidden">
 
+    <!-- ─── PAGE HEADER ─────────────────────────────────────────────── -->
+    <header class="shrink-0">
+      <p class="eyebrow mb-2">System cadence</p>
+      <div class="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 class="headline-display text-3xl md:text-4xl">{{ $t('task.title') }}</h1>
+          <p class="mt-2 max-w-2xl text-sm text-text-secondary">{{ $t('task.description') }}</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button
+            @click="trigger('hourly-scan')"
+            :disabled="isTriggerDisabled('hourly-scan')"
+            class="btn-ghost disabled:opacity-50"
+          >
+            <LoadingSpinner v-if="triggeringTask === 'hourly-scan'" size="sm" color="gray" />
+            <span v-if="triggeringTask === 'hourly-scan'">{{ $t('task.queued') }}</span>
+            <span v-else>{{ $t('task.triggerScan') }}</span>
+          </button>
+          <button
+            @click="trigger('daily-summary')"
+            :disabled="isTriggerDisabled('daily-summary')"
+            class="btn-ghost disabled:opacity-50"
+          >
+            <LoadingSpinner v-if="triggeringTask === 'daily-summary'" size="sm" color="gray" />
+            <span v-if="triggeringTask === 'daily-summary'">{{ $t('task.queued') }}</span>
+            <span v-else>{{ $t('task.triggerSummary') }}</span>
+          </button>
+          <button
+            @click="trigger('brand-watch')"
+            :disabled="isTriggerDisabled('brand-watch')"
+            class="btn-ghost disabled:opacity-50"
+          >
+            <LoadingSpinner v-if="triggeringTask === 'brand-watch'" size="sm" color="gray" />
+            <span v-if="triggeringTask === 'brand-watch'">{{ $t('task.queued') }}</span>
+            <span v-else>Trigger Brand Watch</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- ─── RUNNING BANNER ──────────────────────────────────────────── -->
     <div
       v-if="runningTasks.length || lastTrigger"
-      class="rounded-2xl border border-accent/20 bg-accent/5 p-4 text-sm"
+      class="surface-flat flex shrink-0 flex-col gap-3 p-5 md:flex-row md:items-center md:justify-between"
     >
-      <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-        <div>
-          <p class="font-medium text-text-main">
-            {{ runningTasks.length ? $t('task.runningNow') : $t('task.triggerAccepted') }}
-          </p>
-          <p class="mt-1 text-xs text-text-secondary">
-            {{ $t('task.refreshHint') }}
-          </p>
+      <div>
+        <p class="text-sm font-medium text-text-main">
+          {{ runningTasks.length ? $t('task.runningNow') : $t('task.triggerAccepted') }}
+        </p>
+        <p class="mt-1 text-xs text-text-secondary">{{ $t('task.refreshHint') }}</p>
+      </div>
+      <div class="flex flex-wrap gap-2">
+        <span
+          v-for="item in runningTasks"
+          :key="item.taskName"
+          class="rounded-full bg-card px-3 py-1 text-xs font-mono text-text-main shadow-soft"
+        >
+          {{ item.taskName }} · {{ $t('task.lockedUntil') }} {{ formatDate(item.lockedUntil) }}
+        </span>
+        <span
+          v-if="!runningTasks.length && lastTrigger"
+          class="rounded-full bg-card px-3 py-1 text-xs font-mono text-text-main shadow-soft"
+        >
+          {{ lastTrigger.taskName }} · {{ lastTrigger.status }}
+        </span>
+      </div>
+    </div>
+
+    <!-- ─── RUNS TABLE ──────────────────────────────────────────────── -->
+    <div @scroll="onRunsScroll" class="relative min-h-[26rem] flex-1 overflow-y-auto rounded-[18px] border border-hairline bg-card/45 p-3 md:min-h-0 md:p-4">
+      <div class="surface overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-hairline-strong text-left">
+                <th class="px-6 py-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">{{ $t('task.taskName') }}</th>
+                <th class="px-6 py-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">{{ $t('task.started') }}</th>
+                <th class="px-6 py-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">{{ $t('task.duration') }}</th>
+                <th class="px-6 py-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">{{ $t('task.result') }}</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-hairline">
+              <tr v-for="run in runsItems" :key="run.id" class="transition-colors hover:bg-surface-sunken">
+                <td class="px-6 py-4 font-mono text-text-main">{{ run.taskName }}</td>
+                <td class="px-6 py-4 font-mono text-text-secondary">{{ formatDate(run.startedAt) }}</td>
+                <td class="px-6 py-4 font-mono text-text-secondary">
+                  {{ run.finishedAt ? (new Date(run.finishedAt) - new Date(run.startedAt)) + 'ms' : $t('task.running') }}
+                </td>
+                <td class="px-6 py-4 text-text-secondary">
+                  <div class="flex items-center justify-between gap-3">
+                    <div class="max-w-88 truncate text-xs" :title="summarizeResult(run.result)">
+                      {{ summarizeResult(run.result) }}
+                    </div>
+                    <button type="button" class="btn-text shrink-0 text-xs" @click="openDetail(run)">
+                      {{ $t('common.view') }}
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              <tr v-if="!runsItems.length">
+                <td colspan="4" class="px-6 py-12 text-center text-sm text-text-secondary">{{ $t('task.noHistory') }}</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
-        <div class="flex flex-wrap gap-2">
-          <span
-            v-for="item in runningTasks"
-            :key="item.taskName"
-            class="rounded-full bg-background px-3 py-1 text-xs font-medium text-text-main border border-card-border"
-          >
-            {{ item.taskName }} · {{ $t('task.lockedUntil') }} {{ formatDate(item.lockedUntil) }}
-          </span>
-          <span
-            v-if="!runningTasks.length && lastTrigger"
-            class="rounded-full bg-background px-3 py-1 text-xs font-medium text-text-main border border-card-border"
-          >
-            {{ lastTrigger.taskName }} · {{ lastTrigger.status }}
-          </span>
+
+        <div v-if="runsNextCursor" class="border-t border-hairline p-4 text-center">
+          <button type="button" class="btn-text" :disabled="runsLoadingMore" @click="loadMoreRuns">
+            {{ runsLoadingMore ? $t('common.loading') : $t('common.loadMore') }}
+          </button>
         </div>
       </div>
     </div>
 
-    <!-- Runs List -->
-    <div class="bg-card border border-card-border rounded-2xl overflow-hidden shadow-sm">
-        <div class="overflow-x-auto">
-            <table class="w-full text-sm text-left">
-                <thead class="bg-background text-text-secondary">
-                    <tr>
-                        <th class="px-6 py-3 font-medium">{{ $t('task.taskName') }}</th>
-                        <th class="px-6 py-3 font-medium">{{ $t('task.started') }}</th>
-                        <th class="px-6 py-3 font-medium">{{ $t('task.duration') }}</th>
-                        <th class="px-6 py-3 font-medium">{{ $t('task.result') }}</th>
-                    </tr>
-                 </thead>
-                 <tbody class="divide-y divide-card-border">
-                     <tr v-for="run in runsItems" :key="run.id" class="hover:bg-background/50">
-                         <td class="px-6 py-3 font-medium text-text-main">{{ run.taskName }}</td>
-                         <td class="px-6 py-3 text-text-secondary">{{ formatDate(run.startedAt) }}</td>
-                         <td class="px-6 py-3 text-text-secondary">
-                              {{ run.finishedAt ? (new Date(run.finishedAt) - new Date(run.startedAt)) + 'ms' : $t('task.running') }}
-                         </td>
-                         <td class="px-6 py-3 text-text-secondary">
-                              <div class="flex items-center justify-between gap-3">
-                                <div class="text-xs text-text-secondary truncate max-w-[22rem]" :title="summarizeResult(run.result)">
-                                  {{ summarizeResult(run.result) }}
-                                </div>
-                                <button
-                                  type="button"
-                                  class="text-xs text-accent hover:underline flex-shrink-0"
-                                  @click="openDetail(run)"
-                                >
-                                  {{ $t('common.view') }}
-                                </button>
-                              </div>
-                         </td>
-                     </tr>
-                     <tr v-if="!runsItems.length">
-                         <td colspan="4" class="px-6 py-8 text-center text-text-secondary">{{ $t('task.noHistory') }}</td>
-                     </tr>
-                 </tbody>
-             </table>
-        </div>
-
-        <div v-if="runsNextCursor" class="border-t border-card-border p-4 text-center">
-          <button
-            type="button"
-            class="text-sm text-accent hover:underline disabled:opacity-50"
-            :disabled="runsLoadingMore"
-            @click="loadMoreRuns"
-          >
-            {{ runsLoadingMore ? $t('common.loading') : $t('common.loadMore') }}
-          </button>
-        </div>
-    </div>
-
-    <TaskRunDetailModal
-      :is-open="detailOpen"
-      :run="selectedRun"
-      @close="detailOpen = false"
-    />
+    <TaskRunDetailModal :is-open="detailOpen" :run="selectedRun" @close="detailOpen = false" />
   </div>
 </template>
 
@@ -171,36 +167,35 @@ const loadMoreRuns = async () => {
   }
 };
 
-const onWindowScroll = () => {
+const onRunsScroll = (event: Event) => {
   if (runsLoadingMore.value || !runsNextCursor.value) return;
-  const el = document.documentElement;
-  const remaining = el.scrollHeight - window.scrollY - window.innerHeight;
+  const el = event.target as HTMLElement;
+  const remaining = el.scrollHeight - el.scrollTop - el.clientHeight;
   if (remaining < 240) {
     loadMoreRuns();
   }
 };
 
-onMounted(() => {
-  if (typeof window === 'undefined') return;
-  window.addEventListener('scroll', onWindowScroll, { passive: true });
-});
-
-onUnmounted(() => {
-  if (typeof window === 'undefined') return;
-  window.removeEventListener('scroll', onWindowScroll);
-});
-
-const formatDate = (d: any) => d ? format(new Date(d), 'MM-dd HH:mm:ss') : '--';
+const formatDate = (d: any) => {
+  if (!d) return '-';
+  const date = new Date(d);
+  if (Number.isNaN(date.getTime())) return '-';
+  return format(date, 'MM-dd HH:mm:ss');
+};
 
 const summarizeResult = (r: any) => {
-  if (!r) return '--';
+  if (!r) return '-';
   if (typeof r !== 'object') return String(r);
   if (r.success === true && Object.keys(r).length === 1) return 'OK';
-  if (
-    typeof r.checked === 'number' ||
-    typeof r.fail === 'number' ||
-    typeof r.success === 'number'
-  ) {
+  if (typeof r.candidatesChecked === 'number' || typeof r.termsChecked === 'number') {
+    const terms = typeof r.termsChecked === 'number' ? r.termsChecked : 0;
+    const candidates = typeof r.candidatesChecked === 'number' ? r.candidatesChecked : 0;
+    const registered = typeof r.registered === 'number' ? r.registered : 0;
+    const ct = typeof r.ctDiscovered === 'number' ? r.ctDiscovered : 0;
+    const error = typeof r.error === 'number' ? r.error : 0;
+    return `${terms} terms / ${candidates} candidates / ${registered} registered / ${ct} CT / ${error} errors`;
+  }
+  if (typeof r.checked === 'number' || typeof r.fail === 'number' || typeof r.success === 'number') {
     const checked = typeof r.checked === 'number' ? r.checked : '?';
     const ok = typeof r.success === 'number' ? r.success : 0;
     const fail = typeof r.fail === 'number' ? r.fail : 0;
@@ -228,23 +223,23 @@ const isTriggerDisabled = (task: string) => {
 };
 
 const trigger = async (task: string) => {
-    if (isTriggerDisabled(task)) return;
-    triggeringTask.value = task;
-    try {
-        const resp: any = await $fetch('/api/tasks/trigger', { method: 'POST', body: { task } });
-        if (resp?.code !== 0) {
-          toast.error(resp?.msg || t('task.triggerFailed'));
-          return;
-        }
-        lastTrigger.value = resp.data;
-        toast.success(t('task.triggered', { task }));
-        await refresh();
-        setTimeout(refresh, 1500);
-        setTimeout(refresh, 5000);
-    } catch(e) {
-        toast.error(t('task.triggerFailed'));
-    } finally {
-        triggeringTask.value = '';
+  if (isTriggerDisabled(task)) return;
+  triggeringTask.value = task;
+  try {
+    const resp: any = await $fetch('/api/tasks/trigger', { method: 'POST', body: { task } });
+    if (resp?.code !== 0) {
+      toast.error(resp?.msg || t('task.triggerFailed'));
+      return;
     }
+    lastTrigger.value = resp.data;
+    toast.success(t('task.triggered', { task }));
+    await refresh();
+    setTimeout(refresh, 1500);
+    setTimeout(refresh, 5000);
+  } catch (e) {
+    toast.error(t('task.triggerFailed'));
+  } finally {
+    triggeringTask.value = '';
+  }
 };
 </script>

@@ -1,4 +1,5 @@
 import { serverchanConfigs } from "~/server/db/schema";
+import { maskSecretText } from "~/server/utils/secrets";
 
 const parseEventTypes = (value: string | null | undefined) => {
   try {
@@ -6,11 +7,6 @@ const parseEventTypes = (value: string | null | undefined) => {
   } catch {
     return [];
   }
-};
-
-const maskSendKey = (sendKey: string | null | undefined) => {
-  if (!sendKey || sendKey.length < 8) return "****";
-  return `${sendKey.slice(0, 4)}****${sendKey.slice(-4)}`;
 };
 
 export default defineEventHandler(async (event) => {
@@ -22,7 +18,7 @@ export default defineEventHandler(async (event) => {
     configs.map((config) => ({
       id: config.id,
       name: config.name,
-      sendKeyMasked: maskSendKey(config.sendKey),
+      sendKeyMasked: maskSecretText(config.sendKey),
       eventTypes: parseEventTypes(config.eventTypes),
       enabled: Boolean(config.enabled),
       createdAt: config.createdAt,

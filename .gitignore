@@ -25,7 +25,7 @@ logs
 !.env.example
 
 # Database
-data/
+/data/
 *.db
 *.db-shm
 *.db-wal

@@ -1,5 +1,10 @@
-import { eq } from "drizzle-orm";
 import { savedFilters } from "../../db/schema";
+import {
+  demoteDefaultSavedFilters,
+  normalizeSavedFilterScope,
+  serializeSavedFilter,
+  withSavedFilterScope,
+} from "../../utils/saved-filters";
 
 /**
  * Save a new filter preset.
@@ -19,31 +24,27 @@ export default defineEventHandler(async (event) => {
 
     const db = useDb();
     const trimmedName = body.name.trim().slice(0, 80);
+    if (!trimmedName) return fail("Name required", 40000);
     const isDefault = !!body.isDefault;
+    const scope = normalizeSavedFilterScope(
+      body.scope || body.criteria?._scope || body.criteria?.scope,
+    );
+    const criteria = withSavedFilterScope(body.criteria, scope);
 
     if (isDefault) {
-      await db
-        .update(savedFilters)
-        .set({ isDefault: false })
-        .where(eq(savedFilters.isDefault, true));
+      await demoteDefaultSavedFilters(db, scope);
     }
 
     const [row] = await db
       .insert(savedFilters)
       .values({
         name: trimmedName,
-        criteriaJson: JSON.stringify(body.criteria),
+        criteriaJson: JSON.stringify(criteria),
         isDefault,
       })
       .returning();
 
-    return success({
-      id: row.id,
-      name: row.name,
-      isDefault: !!row.isDefault,
-      criteria: body.criteria,
-      createdAt: row.createdAt,
-    });
+    return success(serializeSavedFilter(row));
   } catch (e: any) {
     console.error("Save filter failed:", e);
     return fail(e.message || "Failed to save filter", 50000);

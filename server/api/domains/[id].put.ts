@@ -1,4 +1,5 @@
 import { domains } from "../../db/schema";
+import { recordAuditEvent } from "../../utils/audit";
 import { eq } from "drizzle-orm";
 
 export default defineEventHandler(async (event) => {
@@ -52,8 +53,46 @@ export default defineEventHandler(async (event) => {
       return fail("Domain not found", 40004);
     }
 
+    const changedFields = Object.keys(updateData).filter(
+      (key) => key !== "updatedAt",
+    );
+    await recordAuditEvent({
+      event,
+      eventType: "domains.update",
+      outcome: "success",
+      actorType: "admin",
+      metadata: {
+        domainId: result.id,
+        domain: result.domain,
+        changedFields,
+        watchKind: result.watchKind,
+        priority: result.priority,
+        isActive: Boolean(result.isActive),
+        tagsCount:
+          body.tags === undefined
+            ? undefined
+            : Array.isArray(body.tags)
+              ? body.tags.length
+              : 0,
+        groupConfigured:
+          body.group === undefined ? undefined : Boolean(body.group),
+        noteConfigured:
+          body.note === undefined ? undefined : Boolean(body.note),
+      },
+    });
+
     return success(result);
   } catch (e: any) {
+    await recordAuditEvent({
+      event,
+      eventType: "domains.update",
+      outcome: "failure",
+      actorType: "admin",
+      metadata: {
+        domainId: id,
+        reason: e?.message || String(e),
+      },
+    });
     return fail(e.message || "System Error", 50000);
   }
 });

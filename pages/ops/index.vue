@@ -1,5 +1,5 @@
 <script setup lang="ts">
 definePageMeta({
-  redirect: "/actions",
+  redirect: "/ops/security",
 });
 </script>

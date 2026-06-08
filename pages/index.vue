@@ -1,239 +1,241 @@
 <template>
-  <div class="space-y-8 md:space-y-10">
-    <section class="editorial-panel relative overflow-hidden rounded-[2rem] px-6 py-8 md:px-10 md:py-12">
-      <div class="absolute inset-0 bg-app-grid opacity-25" />
-      <div class="absolute right-8 top-8 h-px w-36 bg-accent/30" />
+  <div class="space-y-14 pb-2 md:space-y-16">
 
-      <div class="relative grid gap-10 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-end">
-        <div>
-          <p class="eyebrow mb-5 text-accent">{{ $t('dashboard.kicker') }}</p>
-          <h1 class="max-w-3xl font-display text-[3.25rem] font-semibold leading-[0.98] tracking-[-0.055em] text-text-main md:text-[4.9rem]">
-            {{ $t('dashboard.title') }}
-          </h1>
-          <p class="mt-5 max-w-2xl text-base leading-8 text-text-secondary md:text-lg">
-            {{ $t('dashboard.description') }}
-          </p>
+    <!-- ─── HERO ────────────────────────────────────────────────────────── -->
+    <section class="relative">
+      <p class="eyebrow mb-4">{{ $t('dashboard.kicker') }}</p>
 
-          <div class="mt-8 flex flex-wrap gap-x-5 gap-y-2">
-            <NuxtLink
-              v-for="item in quickLinks"
-              :key="item.to"
-              :to="item.to"
-              class="text-link"
-            >
-              <span>{{ item.label }}</span>
-              <ArrowRightIcon class="h-3.5 w-3.5" />
-            </NuxtLink>
-          </div>
-        </div>
+      <h1 class="headline-display max-w-4xl text-[2.35rem] leading-[1.05] sm:text-[3rem] md:text-[3.75rem] lg:text-[4.25rem]">
+        {{ $t('dashboard.title') }}
+      </h1>
 
-        <aside class="rounded-[1.45rem] bg-background/58 p-5 shadow-[inset_0_0_0_1px_rgba(18,32,31,0.045)] backdrop-blur">
-          <div class="mb-5 flex items-center justify-between">
-            <p class="eyebrow">Signal brief</p>
-            <RadarIcon class="h-4 w-4 text-accent/70" />
-          </div>
+      <p class="mt-5 max-w-2xl text-base leading-[1.7] text-text-secondary">
+        {{ $t('dashboard.description') }}
+      </p>
 
-          <div class="space-y-1">
-            <NuxtLink
-              v-for="row in summaryRows"
-              :key="row.key"
-              :to="row.to"
-              class="grid grid-cols-[minmax(0,1fr)_auto] gap-4 rounded-2xl px-3 py-3 hover:bg-card/70"
-            >
-              <div class="min-w-0">
-                <p class="truncate text-sm font-semibold text-text-main">{{ row.label }}</p>
-                <p class="mt-1 truncate text-xs text-text-secondary">{{ row.hint }}</p>
-              </div>
-              <span :class="['font-display text-3xl font-semibold leading-none tracking-[-0.04em]', row.tone]">
-                {{ row.value }}
-              </span>
-            </NuxtLink>
-          </div>
-        </aside>
+      <div class="hairline mt-7 max-w-28 bg-accent!" />
+
+      <div class="mt-7 flex flex-wrap gap-x-10 gap-y-3">
+        <NuxtLink
+          v-for="item in quickLinks"
+          :key="item.to"
+          :to="item.to"
+          class="btn-text"
+        >
+          <span>{{ item.label }}</span>
+          <ArrowRightIcon class="h-3.5 w-3.5" />
+        </NuxtLink>
       </div>
     </section>
 
-    <section class="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-      <NuxtLink
-        v-for="metric in metrics"
-        :key="metric.key"
-        :to="metric.to"
-        class="glass-panel glass-panel-hover group relative min-h-[9.25rem] overflow-hidden rounded-[1.35rem] p-5"
-      >
-        <div class="mb-5 flex items-start justify-between gap-4">
-          <p class="eyebrow">{{ metric.label }}</p>
-          <component :is="metric.icon" :class="['h-4 w-4 opacity-50 transition-opacity group-hover:opacity-80', metric.iconClass]" />
-        </div>
-        <p class="font-display text-[2.7rem] font-semibold leading-none tracking-[-0.055em] text-text-main">{{ metric.value }}</p>
-        <p class="mt-3 text-sm leading-6 text-text-secondary">{{ metric.hint }}</p>
-      </NuxtLink>
+    <!-- ─── METRIC STRIP — 5 columns separated by hairlines, no cards ──── -->
+    <section>
+      <div class="grid grid-cols-2 divide-y divide-hairline sm:grid-cols-3 sm:divide-y-0 lg:grid-cols-5">
+        <NuxtLink
+          v-for="(metric, index) in metrics"
+          :key="metric.key"
+          :to="metric.to"
+          :class="[
+            'group relative flex flex-col px-1 py-5 transition-colors sm:px-5',
+            index !== 0 && 'sm:before:absolute sm:before:left-0 sm:before:top-4 sm:before:bottom-4 sm:before:w-px sm:before:bg-hairline',
+          ]"
+        >
+          <p class="eyebrow flex items-center justify-between">
+            <span>{{ metric.label }}</span>
+            <component :is="metric.icon" :class="['h-3.5 w-3.5 opacity-50 transition-opacity group-hover:opacity-100', metric.iconClass]" />
+          </p>
+          <p class="font-display mt-4 text-[2.4rem] font-medium leading-none tracking-[-0.045em] text-text-main transition-colors group-hover:text-accent">
+            {{ metric.value }}
+          </p>
+          <p class="mt-3 text-[13px] leading-[1.55] text-text-secondary">{{ metric.hint }}</p>
+        </NuxtLink>
+      </div>
     </section>
 
-    <section class="grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
-      <div class="glass-panel rounded-[1.5rem] p-6">
-        <div class="mb-6 flex items-start justify-between gap-4">
-          <div>
-            <p class="eyebrow mb-2">Action queue</p>
-            <h2 class="font-display text-2xl font-semibold tracking-[-0.035em] text-text-main">{{ $t('dashboard.openActions') }}</h2>
-            <p class="mt-1 text-sm leading-6 text-text-secondary">{{ $t('dashboard.openActionsHint') }}</p>
-          </div>
-          <NuxtLink to="/actions" class="text-link shrink-0">
-            {{ $t('dashboard.viewAll') }}
-            <ArrowRightIcon class="h-3.5 w-3.5" />
-          </NuxtLink>
+    <!-- ─── ACTION QUEUE + SSL RADAR ─────────────────────────────────── -->
+    <section class="grid gap-10 xl:grid-cols-2 xl:gap-12">
+
+      <div>
+        <p class="eyebrow mb-3">Action queue</p>
+        <h2 class="headline-display text-2xl">{{ $t('dashboard.openActions') }}</h2>
+        <p class="mt-2 text-sm text-text-secondary">{{ $t('dashboard.openActionsHint') }}</p>
+        <div class="hairline mt-6" />
+
+        <div v-if="actionsLoading" class="space-y-1 pt-3">
+          <div v-for="i in 4" :key="i" class="h-12 animate-pulse rounded-md bg-surface-sunken" />
         </div>
 
-        <div v-if="actionsLoading" class="space-y-3">
-          <div v-for="i in 4" :key="i" class="h-16 animate-pulse rounded-2xl bg-background/65" />
-        </div>
-        <div v-else-if="openActions.length" class="space-y-1">
+        <div v-else-if="openActions.length" class="pt-2">
           <NuxtLink
             v-for="action in openActions"
             :key="action.id"
             :to="`/domains/${action.domainId}`"
-            class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 rounded-2xl px-3 py-3.5 hover:bg-background/70"
+            class="metric-row is-link"
           >
             <div class="min-w-0">
               <div class="flex items-center gap-2">
-                <span :class="['h-2 w-2 rounded-full', priorityDot(action.priority)]" />
-                <p class="truncate font-mono text-sm font-semibold text-text-main">{{ action.domain?.domain || '-' }}</p>
+                <span :class="['h-1.5 w-1.5 rounded-full', priorityDot(action.priority)]" />
+                <p class="metric-row-label truncate font-mono text-sm font-medium text-text-main transition-colors">
+                  {{ action.domain?.domain || '—' }}
+                </p>
               </div>
-              <p class="mt-1 text-xs text-text-secondary">{{ formatActionType(action.actionType) }}</p>
+              <p class="mt-1 ml-3.5 text-xs uppercase tracking-[0.14em] text-text-tertiary">
+                {{ formatActionType(action.actionType) }}
+              </p>
             </div>
-            <ArrowRightIcon class="h-4 w-4 text-text-tertiary" />
+            <ArrowRightIcon class="h-4 w-4 text-text-tertiary transition-transform group-hover:translate-x-0.5" />
           </NuxtLink>
         </div>
-        <div v-else class="rounded-[1.25rem] bg-background/55 p-8 text-center">
-          <CheckCircleIcon class="mx-auto mb-3 h-7 w-7 text-status-available" />
-          <p class="text-sm font-medium text-text-main">{{ $t('dashboard.noOpenActions') }}</p>
-        </div>
-      </div>
 
-      <div class="glass-panel rounded-[1.5rem] p-6">
-        <div class="mb-6 flex items-start justify-between gap-4">
-          <div>
-            <p class="eyebrow mb-2">Certificate radar</p>
-            <h2 class="font-display text-2xl font-semibold tracking-[-0.035em] text-text-main">{{ $t('dashboard.sslRadar') }}</h2>
-            <p class="mt-1 text-sm leading-6 text-text-secondary">{{ $t('dashboard.sslRadarHint') }}</p>
-          </div>
-          <NuxtLink to="/ssl" class="text-link shrink-0">
+        <div v-else class="pt-8 text-center">
+          <CheckCircleIcon class="mx-auto mb-3 h-6 w-6 text-status-available" />
+          <p class="text-sm text-text-secondary">{{ $t('dashboard.noOpenActions') }}</p>
+        </div>
+
+        <div class="mt-6">
+          <NuxtLink to="/ops/actions" class="btn-text">
             {{ $t('dashboard.viewAll') }}
             <ArrowRightIcon class="h-3.5 w-3.5" />
           </NuxtLink>
         </div>
+      </div>
 
-        <div class="space-y-2">
+      <div>
+        <p class="eyebrow mb-3">Certificate radar</p>
+        <h2 class="headline-display text-2xl">{{ $t('dashboard.sslRadar') }}</h2>
+        <p class="mt-2 text-sm text-text-secondary">{{ $t('dashboard.sslRadarHint') }}</p>
+        <div class="hairline mt-6" />
+
+        <div class="pt-2">
           <NuxtLink
             v-for="risk in sslRisks"
             :key="risk.key"
             :to="risk.to"
-            class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 rounded-2xl bg-background/55 p-4 hover:bg-card/80"
+            class="metric-row is-link"
           >
             <div class="flex min-w-0 items-center gap-3">
-              <span :class="['h-2.5 w-2.5 rounded-full', risk.dot]" />
+              <span :class="['h-1.5 w-1.5 rounded-full', risk.dot]" />
               <div class="min-w-0">
-                <p class="truncate text-sm font-semibold text-text-main">{{ risk.label }}</p>
-                <p class="mt-1 truncate text-xs text-text-secondary">{{ risk.hint }}</p>
+                <p class="metric-row-label truncate text-sm font-medium text-text-main">{{ risk.label }}</p>
+                <p class="mt-1 truncate text-xs text-text-tertiary">{{ risk.hint }}</p>
               </div>
             </div>
-            <span class="font-display text-3xl font-semibold tracking-[-0.04em] text-text-main">{{ risk.value }}</span>
+            <span class="font-display text-2xl font-medium tracking-[-0.035em] text-text-main">{{ risk.value }}</span>
           </NuxtLink>
         </div>
-      </div>
-    </section>
 
-    <section class="grid gap-5 xl:grid-cols-2">
-      <div class="glass-panel rounded-[1.5rem] p-6">
-        <div class="mb-6 flex items-start justify-between gap-4">
-          <div>
-            <p class="eyebrow mb-2">Delivery health</p>
-            <h2 class="font-display text-2xl font-semibold tracking-[-0.035em] text-text-main">{{ $t('dashboard.failedNotifications') }}</h2>
-            <p class="mt-1 text-sm leading-6 text-text-secondary">{{ $t('dashboard.failedNotificationsHint') }}</p>
-          </div>
-          <NuxtLink to="/notifications" class="text-link shrink-0">
+        <div class="mt-6">
+          <NuxtLink to="/ssl" class="btn-text">
             {{ $t('dashboard.viewAll') }}
             <ArrowRightIcon class="h-3.5 w-3.5" />
           </NuxtLink>
         </div>
+      </div>
 
-        <div v-if="notificationsLoading" class="space-y-3">
-          <div v-for="i in 3" :key="i" class="h-14 animate-pulse rounded-2xl bg-background/65" />
+    </section>
+
+    <!-- ─── DELIVERY HEALTH + SYSTEM CADENCE ─────────────────────────── -->
+    <section class="grid gap-10 xl:grid-cols-2 xl:gap-12">
+
+      <div>
+        <p class="eyebrow mb-3">Delivery health</p>
+        <h2 class="headline-display text-2xl">{{ $t('dashboard.failedNotifications') }}</h2>
+        <p class="mt-2 text-sm text-text-secondary">{{ $t('dashboard.failedNotificationsHint') }}</p>
+        <div class="hairline mt-6" />
+
+        <div v-if="notificationsLoading" class="space-y-1 pt-3">
+          <div v-for="i in 3" :key="i" class="h-12 animate-pulse rounded-md bg-surface-sunken" />
         </div>
-        <div v-else-if="failedNotifications.length" class="space-y-2">
+
+        <div v-else-if="failedNotifications.length" class="pt-2">
           <div
             v-for="event in failedNotifications"
             :key="event.id"
-            class="rounded-2xl bg-status-dropping/5 p-4 shadow-[inset_0_0_0_1px_rgba(185,68,62,0.08)]"
+            class="border-b border-hairline py-4 last:border-b-0"
           >
-            <div class="flex items-center justify-between gap-3">
-              <p class="truncate text-sm font-semibold text-text-main">{{ event.domain || event.eventType }}</p>
-              <span class="rounded-full bg-status-dropping/10 px-2 py-0.5 text-xs font-medium text-status-dropping">
+            <div class="flex items-start justify-between gap-3">
+              <div class="flex min-w-0 items-center gap-3">
+                <span class="h-3 w-px bg-status-dropping" />
+                <p class="truncate text-sm font-medium text-text-main">{{ event.domain || event.eventType }}</p>
+              </div>
+              <span class="shrink-0 text-[11px] font-semibold uppercase tracking-[0.14em] text-status-dropping">
                 {{ event.channel }}
               </span>
             </div>
-            <p class="mt-1 line-clamp-2 text-xs leading-5 text-text-secondary">{{ event.errorMessage || '-' }}</p>
+            <p class="mt-1.5 ml-4 line-clamp-2 text-xs leading-5 text-text-secondary">
+              {{ event.errorMessage || '—' }}
+            </p>
           </div>
         </div>
-        <div v-else class="rounded-[1.25rem] bg-background/55 p-8 text-center">
-          <BellIcon class="mx-auto mb-3 h-7 w-7 text-status-available" />
-          <p class="text-sm font-medium text-text-main">{{ $t('dashboard.noFailedNotifications') }}</p>
-        </div>
-      </div>
 
-      <div class="glass-panel rounded-[1.5rem] p-6">
-        <div class="mb-6 flex items-start justify-between gap-4">
-          <div>
-            <p class="eyebrow mb-2">System cadence</p>
-            <h2 class="font-display text-2xl font-semibold tracking-[-0.035em] text-text-main">{{ $t('dashboard.recentTasks') }}</h2>
-            <p class="mt-1 text-sm leading-6 text-text-secondary">{{ $t('dashboard.recentTasksHint') }}</p>
-          </div>
-          <NuxtLink to="/tasks" class="text-link shrink-0">
+        <div v-else class="pt-8 text-center">
+          <BellIcon class="mx-auto mb-3 h-6 w-6 text-status-available" />
+          <p class="text-sm text-text-secondary">{{ $t('dashboard.noFailedNotifications') }}</p>
+        </div>
+
+        <div class="mt-6">
+          <NuxtLink to="/notifications" class="btn-text">
             {{ $t('dashboard.viewAll') }}
             <ArrowRightIcon class="h-3.5 w-3.5" />
           </NuxtLink>
         </div>
+      </div>
 
-        <div v-if="tasksLoading" class="space-y-3">
-          <div v-for="i in 3" :key="i" class="h-14 animate-pulse rounded-2xl bg-background/65" />
+      <div>
+        <p class="eyebrow mb-3">System cadence</p>
+        <h2 class="headline-display text-2xl">{{ $t('dashboard.recentTasks') }}</h2>
+        <p class="mt-2 text-sm text-text-secondary">{{ $t('dashboard.recentTasksHint') }}</p>
+        <div class="hairline mt-6" />
+
+        <div v-if="tasksLoading" class="space-y-1 pt-3">
+          <div v-for="i in 3" :key="i" class="h-12 animate-pulse rounded-md bg-surface-sunken" />
         </div>
-        <div v-else-if="recentTasks.length" class="space-y-2">
+
+        <div v-else-if="recentTasks.length" class="pt-2">
           <div
             v-for="run in recentTasks"
             :key="run.id"
-            class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 rounded-2xl bg-background/55 p-4"
+            class="metric-row"
           >
             <div class="min-w-0">
-              <p class="truncate text-sm font-semibold text-text-main">{{ run.taskName }}</p>
-              <p class="mt-1 text-xs text-text-secondary">{{ formatDateTime(run.finishedAt || run.startedAt) }}</p>
+              <p class="truncate text-sm font-medium text-text-main">{{ run.taskName }}</p>
+              <p class="mt-1 text-xs text-text-tertiary">{{ formatDateTime(run.finishedAt || run.startedAt) }}</p>
             </div>
-            <span :class="['rounded-full px-2 py-0.5 text-xs font-medium', taskClass(run)]">
+            <span :class="['text-[11px] font-semibold uppercase tracking-[0.14em]', taskClass(run)]">
               {{ taskLabel(run) }}
             </span>
           </div>
         </div>
-        <div v-else class="rounded-[1.25rem] bg-background/55 p-8 text-center">
-          <ActivityIcon class="mx-auto mb-3 h-7 w-7 text-text-tertiary" />
-          <p class="text-sm font-medium text-text-main">{{ $t('dashboard.noTaskRuns') }}</p>
+
+        <div v-else class="pt-8 text-center">
+          <ActivityIcon class="mx-auto mb-3 h-6 w-6 text-text-tertiary" />
+          <p class="text-sm text-text-secondary">{{ $t('dashboard.noTaskRuns') }}</p>
+        </div>
+
+        <div class="mt-6">
+          <NuxtLink to="/ops/tasks" class="btn-text">
+            {{ $t('dashboard.viewAll') }}
+            <ArrowRightIcon class="h-3.5 w-3.5" />
+          </NuxtLink>
         </div>
       </div>
+
     </section>
+
   </div>
 </template>
 
 <script setup>
 import {
   Activity as ActivityIcon,
-  AlertTriangle as AlertTriangleIcon,
   ArrowRight as ArrowRightIcon,
   BellRing as BellIcon,
   CheckCircle2 as CheckCircleIcon,
   DollarSign as DollarSignIcon,
   Globe2 as GlobeIcon,
   ListTodo as ListTodoIcon,
-  Radar as RadarIcon,
   ShieldAlert as ShieldAlertIcon,
   ShieldCheck as ShieldCheckIcon,
-  Sparkles as SparklesIcon,
 } from 'lucide-vue-next';
 
 const { t } = useI18n();
@@ -283,90 +285,58 @@ const ownedCount = computed(() => domainItems.value.filter((d) => d.watchKind ==
 const wantedCount = computed(() => domainItems.value.filter((d) => d.watchKind === 'WANTED').length);
 
 const quickLinks = computed(() => [
-  { to: '/domains', label: t('nav.domains'), caption: t('dashboard.quickDomains'), icon: GlobeIcon },
-  { to: '/actions', label: t('nav.actions'), caption: t('dashboard.quickActions'), icon: ListTodoIcon },
-  { to: '/ssl', label: t('nav.ssl'), caption: t('dashboard.quickSsl'), icon: ShieldCheckIcon },
-  { to: '/costs', label: t('nav.costs'), caption: t('dashboard.quickCosts'), icon: DollarSignIcon },
-  { to: '/notifications', label: t('nav.notifications'), caption: t('dashboard.quickNotifications'), icon: BellIcon },
+  { to: '/domains', label: t('nav.domains') },
+  { to: '/ops/actions', label: t('nav.actions') },
+  { to: '/ssl', label: t('nav.ssl') },
+  { to: '/data/costs', label: t('nav.costs') },
+  { to: '/notifications', label: t('nav.notifications') },
 ]);
 
 const metrics = computed(() => [
   {
     key: 'domains',
     label: t('dashboard.metrics.domains'),
-    value: domainsLoading.value ? '-' : totalDomains.value,
+    value: domainsLoading.value ? '—' : totalDomains.value,
     hint: t('dashboard.metrics.domainsHint', { owned: ownedCount.value, wanted: wantedCount.value }),
     to: '/domains',
     icon: GlobeIcon,
-    iconBg: 'bg-accent/10',
     iconClass: 'text-accent',
   },
   {
     key: 'actions',
     label: t('dashboard.metrics.actions'),
-    value: actionsLoading.value ? '-' : actionsData.value?.data?.total || 0,
+    value: actionsLoading.value ? '—' : actionsData.value?.data?.total || 0,
     hint: t('dashboard.metrics.actionsHint'),
-    to: '/actions',
+    to: '/ops/actions',
     icon: ListTodoIcon,
-    iconBg: 'bg-status-expiring/10',
     iconClass: 'text-status-expiring',
   },
   {
     key: 'costs',
     label: t('dashboard.metrics.costs'),
-    value: costsLoading.value ? '-' : formatCurrency(costSummary.value.total || 0),
+    value: costsLoading.value ? '—' : formatCurrency(costSummary.value.total || 0, costSummary.value.currency),
     hint: t('dashboard.metrics.costsHint', { year: new Date().getFullYear() }),
-    to: '/costs',
+    to: '/data/costs',
     icon: DollarSignIcon,
-    iconBg: 'bg-priority-low/10',
     iconClass: 'text-priority-low',
   },
   {
     key: 'ssl',
     label: t('dashboard.metrics.ssl'),
-    value: sslLoading.value ? '-' : sslExpiring.value + sslInvalid.value,
+    value: sslLoading.value ? '—' : sslExpiring.value + sslInvalid.value,
     hint: t('dashboard.metrics.sslHint', { unchecked: sslUnchecked.value }),
     to: '/ssl',
     icon: ShieldAlertIcon,
-    iconBg: 'bg-status-dropping/10',
     iconClass: 'text-status-dropping',
   },
   {
     key: 'notifications',
     label: t('dashboard.metrics.notifications'),
-    value: notificationsLoading.value ? '-' : notificationsData.value?.data?.total || 0,
+    value: notificationsLoading.value ? '—' : notificationsData.value?.data?.total || 0,
     hint: t('dashboard.metrics.notificationsHint'),
     to: '/notifications',
     icon: BellIcon,
-    iconBg: 'bg-status-registered/10',
     iconClass: 'text-status-registered',
-  },
-]);
-
-const summaryRows = computed(() => [
-  {
-    key: 'actions',
-    label: t('dashboard.openActions'),
-    hint: t('dashboard.metrics.actionsHint'),
-    value: actionsLoading.value ? '-' : actionsData.value?.data?.total || 0,
-    to: '/actions',
-    tone: 'text-status-expiring',
-  },
-  {
-    key: 'ssl',
-    label: t('dashboard.sslRadar'),
-    hint: t('dashboard.metrics.sslHint', { unchecked: sslUnchecked.value }),
-    value: sslLoading.value ? '-' : sslExpiring.value + sslInvalid.value,
-    to: '/ssl',
-    tone: 'text-status-dropping',
-  },
-  {
-    key: 'notifications',
-    label: t('dashboard.failedNotifications'),
-    hint: t('dashboard.metrics.notificationsHint'),
-    value: notificationsLoading.value ? '-' : notificationsData.value?.data?.total || 0,
-    to: '/notifications',
-    tone: 'text-accent',
   },
 ]);
 
@@ -377,9 +347,6 @@ const sslRisks = computed(() => [
     hint: t('dashboard.sslExpiringHint'),
     value: sslExpiring.value,
     to: '/ssl',
-    icon: AlertTriangleIcon,
-    bg: 'bg-status-expiring/10',
-    color: 'text-status-expiring',
     dot: 'bg-status-expiring',
   },
   {
@@ -388,9 +355,6 @@ const sslRisks = computed(() => [
     hint: t('dashboard.sslInvalidHint'),
     value: sslInvalid.value,
     to: '/ssl',
-    icon: ShieldAlertIcon,
-    bg: 'bg-status-dropping/10',
-    color: 'text-status-dropping',
     dot: 'bg-status-dropping',
   },
   {
@@ -399,9 +363,6 @@ const sslRisks = computed(() => [
     hint: t('dashboard.sslUncheckedHint'),
     value: sslUnchecked.value,
     to: '/ssl',
-    icon: SparklesIcon,
-    bg: 'bg-text-tertiary/10',
-    color: 'text-text-secondary',
     dot: 'bg-text-tertiary',
   },
 ]);
@@ -413,20 +374,20 @@ const priorityDot = (priority) => {
 };
 
 const formatActionType = (type) => {
-  if (!type) return '-';
+  if (!type) return '—';
   return String(type).replaceAll('_', ' ').toLowerCase();
 };
 
 const formatDateTime = (date) => {
-  if (!date) return '-';
+  if (!date) return '—';
   return new Date(date).toLocaleString();
 };
 
-const formatCurrency = (cents) => {
+const formatCurrency = (cents, currency = 'USD') => {
   const amount = Number(cents || 0) / 100;
   return new Intl.NumberFormat(undefined, {
     style: 'currency',
-    currency: 'USD',
+    currency: currency || 'USD',
     maximumFractionDigits: 0,
   }).format(amount);
 };
@@ -438,8 +399,6 @@ const taskLabel = (run) => {
 
 const taskClass = (run) => {
   const fail = Number(run.result?.fail || 0);
-  return fail > 0
-    ? 'bg-status-expiring/10 text-status-expiring'
-    : 'bg-status-available/10 text-status-available';
+  return fail > 0 ? 'text-status-expiring' : 'text-status-available';
 };
 </script>

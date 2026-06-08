@@ -1,22 +1,17 @@
 <template>
-  <div class="min-h-[60vh] flex items-center justify-center px-4">
-    <div class="max-w-md w-full bg-card border border-card-border rounded-2xl p-8 shadow-sm text-center space-y-4">
-      <div class="mx-auto w-16 h-16 rounded-full bg-card-border/40 flex items-center justify-center">
-        <WifiOffIcon class="w-8 h-8 text-text-secondary" />
+  <div class="flex min-h-[60vh] items-center justify-center px-4">
+    <div class="w-full max-w-md space-y-6 text-center">
+      <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-surface-sunken">
+        <WifiOffIcon class="h-5 w-5 text-text-secondary" />
       </div>
-      <h1 class="text-xl font-semibold text-text-main">{{ $t('offline.title') }}</h1>
-      <p class="text-sm text-text-secondary leading-relaxed">{{ $t('offline.description') }}</p>
-      <div class="flex flex-col sm:flex-row gap-2 justify-center pt-2">
-        <button
-          @click="retry"
-          class="px-4 py-2 rounded-xl bg-accent hover:bg-accent-hover text-white text-sm font-medium transition-colors"
-        >
+      <p class="eyebrow">Connection lost</p>
+      <h1 class="headline-display text-3xl">{{ $t('offline.title') }}</h1>
+      <p class="text-sm leading-relaxed text-text-secondary">{{ $t('offline.description') }}</p>
+      <div class="flex flex-col items-center justify-center gap-3 pt-4 sm:flex-row">
+        <button @click="retry" class="btn-primary">
           {{ $t('offline.retry') }}
         </button>
-        <NuxtLink
-          to="/"
-          class="px-4 py-2 rounded-xl border border-card-border text-text-main text-sm font-medium hover:bg-card-border/30 transition-colors"
-        >
+        <NuxtLink to="/" class="btn-ghost">
           {{ $t('offline.goHome') }}
         </NuxtLink>
       </div>

@@ -2,30 +2,28 @@
   <TransitionGroup
     tag="div"
     name="toast"
-    class="fixed top-4 right-4 z-[100] flex flex-col gap-2 pointer-events-none"
+    class="pointer-events-none fixed right-6 top-6 z-100 flex flex-col gap-2"
   >
     <div
       v-for="toast in toasts"
       :key="toast.id"
       :class="[
-        'pointer-events-auto min-w-[320px] max-w-md p-4 rounded-xl shadow-lg border backdrop-blur-sm',
+        'pointer-events-auto flex min-w-80 max-w-md items-start gap-3 rounded-xl bg-card p-4 shadow-elevated',
         'transform transition-all duration-300',
-        toastClass(toast.type)
       ]"
     >
-      <div class="flex items-start gap-3">
-        <component :is="toastIcon(toast.type)" :class="['w-5 h-5 flex-shrink-0 mt-0.5', toastIconClass(toast.type)]" />
-        <div class="flex-1 min-w-0">
-          <p v-if="toast.title" class="font-medium text-sm mb-1">{{ toast.title }}</p>
-          <p class="text-sm opacity-90">{{ toast.message }}</p>
-        </div>
-        <button
-          @click="removeToast(toast.id)"
-          class="flex-shrink-0 p-1 rounded-lg hover:bg-black/10 transition-colors"
-        >
-          <XIcon class="w-4 h-4" />
-        </button>
+      <span :class="['mt-0.5 h-3 w-0.5 shrink-0 rounded-full', accentClass(toast.type)]" />
+      <component :is="toastIcon(toast.type)" :class="['mt-0.5 h-4 w-4 shrink-0', toneClass(toast.type)]" />
+      <div class="min-w-0 flex-1">
+        <p v-if="toast.title" class="mb-0.5 text-sm font-medium text-text-main">{{ toast.title }}</p>
+        <p class="text-sm leading-5 text-text-secondary">{{ toast.message }}</p>
       </div>
+      <button
+        @click="removeToast(toast.id)"
+        class="shrink-0 rounded-full p-1 text-text-tertiary transition-colors hover:bg-surface-sunken hover:text-text-main"
+      >
+        <XIcon class="h-3.5 w-3.5" />
+      </button>
     </div>
   </TransitionGroup>
 </template>
@@ -35,18 +33,23 @@ import { CheckCircle2, AlertCircle, Info, AlertTriangle, X as XIcon } from 'luci
 
 const toasts = useState('toasts', () => []);
 
-const toastClass = (type) => {
+const accentClass = (type) => {
   switch (type) {
-    case 'success':
-      return 'bg-status-available/95 text-white border-status-available';
-    case 'error':
-      return 'bg-status-dropping/95 text-white border-status-dropping';
-    case 'warning':
-      return 'bg-status-expiring/95 text-white border-status-expiring';
-    case 'info':
-      return 'bg-status-registered/95 text-white border-status-registered';
-    default:
-      return 'bg-card/95 text-text-main border-card-border';
+    case 'success': return 'bg-status-available';
+    case 'error': return 'bg-status-dropping';
+    case 'warning': return 'bg-status-expiring';
+    case 'info': return 'bg-status-registered';
+    default: return 'bg-text-tertiary';
+  }
+};
+
+const toneClass = (type) => {
+  switch (type) {
+    case 'success': return 'text-status-available';
+    case 'error': return 'text-status-dropping';
+    case 'warning': return 'text-status-expiring';
+    case 'info': return 'text-status-registered';
+    default: return 'text-text-tertiary';
   }
 };
 
@@ -60,42 +63,16 @@ const toastIcon = (type) => {
   }
 };
 
-const toastIconClass = (type) => {
-  return type === 'success' || type === 'error' || type === 'warning' || type === 'info'
-    ? 'text-white'
-    : 'text-text-main';
-};
-
 const removeToast = (id) => {
-  const index = toasts.value.findIndex(t => t.id === id);
-  if (index > -1) {
-    toasts.value.splice(index, 1);
-  }
+  const index = toasts.value.findIndex((t) => t.id === id);
+  if (index > -1) toasts.value.splice(index, 1);
 };
 </script>
 
 <style scoped>
-.toast-enter-from {
-  opacity: 0;
-  transform: translateX(100%);
-}
-
-.toast-enter-to {
-  opacity: 1;
-  transform: translateX(0);
-}
-
-.toast-leave-from {
-  opacity: 1;
-  transform: translateX(0);
-}
-
-.toast-leave-to {
-  opacity: 0;
-  transform: translateX(100%);
-}
-
-.toast-move {
-  transition: transform 0.3s ease;
-}
+.toast-enter-from { opacity: 0; transform: translateY(-8px); }
+.toast-enter-to { opacity: 1; transform: translateY(0); }
+.toast-leave-from { opacity: 1; transform: translateY(0); }
+.toast-leave-to { opacity: 0; transform: translateX(20px); }
+.toast-move { transition: transform 0.3s ease; }
 </style>

@@ -1,111 +1,124 @@
 <template>
-  <header class="sticky top-0 z-50 px-4 pt-4">
-    <div class="glass-panel container mx-auto flex h-[4.25rem] max-w-[1180px] items-center justify-between rounded-[1.15rem] px-3.5 sm:px-5">
-      <NuxtLink to="/" class="group flex items-center gap-3 rounded-2xl focus:outline-none focus:ring-2 focus:ring-accent/30">
-        <div class="relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-[0.9rem] bg-accent text-white shadow-[0_18px_34px_-24px_var(--color-accent)]">
-          <div class="absolute inset-0 bg-[radial-gradient(circle_at_28%_18%,rgba(255,255,255,0.42),transparent_32%)]" />
-          <RadarIcon class="relative h-5 w-5" />
+  <header
+    :class="[
+      'sticky top-0 z-50 transition-colors duration-200',
+      scrolled ? 'bg-background/85 backdrop-blur-md' : 'bg-background',
+    ]"
+  >
+    <div class="mx-auto flex h-14 max-w-310 items-center justify-between px-6 md:px-10 lg:px-14">
+      <NuxtLink to="/" class="group flex items-center gap-3">
+        <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-accent text-white">
+          <RadarIcon class="h-4 w-4" />
         </div>
-        <div class="leading-none">
-          <p class="font-display text-[1.35rem] font-semibold tracking-[-0.035em] text-text-main">{{ $t('common.appName') }}</p>
-          <p class="mt-1 hidden text-[10px] font-bold uppercase tracking-[0.32em] text-text-secondary sm:block">Signal Watch</p>
+        <div class="flex items-baseline gap-3 leading-none">
+          <p class="font-display text-[1.125rem] font-medium tracking-[-0.025em] text-text-main">
+            {{ $t('common.appName') }}
+          </p>
+          <p v-if="locale === 'en'" class="hidden text-[10px] font-semibold uppercase tracking-[0.22em] text-text-tertiary md:block">
+            Signal Watch
+          </p>
         </div>
       </NuxtLink>
 
-      <nav class="hidden items-center gap-1 rounded-full bg-background/55 p-1 text-sm font-semibold text-text-secondary lg:flex">
+      <nav class="hidden items-center gap-8 lg:flex">
         <NuxtLink
           v-for="item in primaryNav"
           :key="item.to"
           :to="item.to"
           :class="[
-            'rounded-full px-3.5 py-1.5 whitespace-nowrap transition-all',
+            'relative py-2 text-sm font-medium transition-colors',
             isNavActive(item)
-              ? 'bg-accent/10 text-accent shadow-[inset_0_0_0_1px_rgba(14,107,111,0.12)]'
-              : 'hover:bg-card/90 hover:text-text-main',
+              ? 'text-text-main'
+              : 'text-text-secondary hover:text-text-main',
           ]"
         >
-          {{ $t(item.labelKey) }}
+          {{ getNavLabel(item) }}
+          <span
+            v-if="isNavActive(item)"
+            class="absolute -bottom-px left-0 right-0 h-0.5 bg-accent"
+          />
         </NuxtLink>
 
-        <div class="relative">
+        <div ref="moreRoot" class="relative">
           <button
             type="button"
             :class="[
-              'rounded-full px-3.5 py-1.5 whitespace-nowrap transition-all',
-              isSecondaryActive
-                ? 'bg-accent/10 text-accent shadow-[inset_0_0_0_1px_rgba(14,107,111,0.12)]'
-                : 'hover:bg-card/90 hover:text-text-main',
+              'relative py-2 text-sm font-medium transition-colors',
+              isSecondaryActive ? 'text-text-main' : 'text-text-secondary hover:text-text-main',
             ]"
             @click="moreOpen = !moreOpen"
           >
-            More
+            {{ $t('nav.more') }}
+            <span
+              v-if="isSecondaryActive"
+              class="absolute -bottom-px left-0 right-0 h-0.5 bg-accent"
+            />
           </button>
 
           <transition
             enter-active-class="transition duration-150 ease-out"
-            enter-from-class="translate-y-1 opacity-0"
+            enter-from-class="-translate-y-1 opacity-0"
             enter-to-class="translate-y-0 opacity-100"
             leave-active-class="transition duration-100 ease-in"
             leave-from-class="translate-y-0 opacity-100"
-            leave-to-class="translate-y-1 opacity-0"
+            leave-to-class="-translate-y-1 opacity-0"
           >
             <div
               v-if="moreOpen"
-              class="glass-panel absolute right-0 top-full mt-2 w-52 rounded-[1rem] p-2"
+              class="surface absolute right-0 top-full mt-3 w-56 p-2"
             >
               <NuxtLink
                 v-for="item in secondaryNav"
                 :key="item.to"
                 :to="item.to"
                 :class="[
-                  'block rounded-xl px-3 py-2 text-sm transition-colors',
+                  'block rounded-lg px-3 py-2 text-sm transition-colors',
                   isNavActive(item)
-                    ? 'bg-accent/10 text-accent'
-                    : 'text-text-secondary hover:bg-background/70 hover:text-text-main',
+                    ? 'text-accent'
+                    : 'text-text-secondary hover:bg-surface-sunken hover:text-text-main',
                 ]"
                 @click="moreOpen = false"
               >
-                {{ $t(item.labelKey) }}
+                {{ getNavLabel(item) }}
               </NuxtLink>
             </div>
           </transition>
         </div>
       </nav>
 
-      <div class="hidden items-center gap-2 lg:flex">
+      <div class="hidden items-center gap-1 lg:flex">
         <button
           type="button"
           @click="toggleTheme"
-          class="flex items-center gap-1.5 rounded-full bg-background/55 px-3 py-2 text-xs font-semibold text-text-secondary hover:bg-card hover:text-text-main"
+          class="flex h-9 w-9 items-center justify-center rounded-full text-text-secondary transition-colors hover:bg-surface-sunken hover:text-text-main"
           :title="$t('settings.themeToggle')"
         >
           <MoonIcon v-if="isDark" class="h-4 w-4" />
           <SunIcon v-else class="h-4 w-4" />
-          <span>{{ isDark ? $t('settings.dark') : $t('settings.light') }}</span>
         </button>
-
         <button
           type="button"
           @click="toggleLocale"
-          class="flex items-center gap-1.5 rounded-full bg-background/55 px-3 py-2 text-xs font-semibold text-text-secondary hover:bg-card hover:text-text-main"
+          class="flex h-9 w-9 items-center justify-center rounded-full text-[11px] font-semibold tracking-wider text-text-secondary transition-colors hover:bg-surface-sunken hover:text-text-main"
           :title="$t('common.switchLanguage')"
         >
-          <LanguagesIcon class="h-4 w-4" />
-          <span>{{ locale === 'zh' ? 'ZH' : 'EN' }}</span>
+          {{ locale === 'zh' ? 'ZH' : 'EN' }}
         </button>
       </div>
 
       <button
         type="button"
-        class="inline-flex h-10 w-10 items-center justify-center rounded-[0.9rem] bg-background/65 text-text-main transition-colors hover:bg-card lg:hidden"
+        class="inline-flex h-9 w-9 items-center justify-center rounded-full text-text-main transition-colors hover:bg-surface-sunken lg:hidden"
         :aria-label="mobileOpen ? $t('common.close') : $t('common.menu')"
         :aria-expanded="mobileOpen ? 'true' : 'false'"
         @click="mobileOpen = !mobileOpen"
       >
-        <XIcon v-if="mobileOpen" class="h-6 w-6" />
-        <MenuIcon v-else class="h-6 w-6" />
+        <XIcon v-if="mobileOpen" class="h-5 w-5" />
+        <MenuIcon v-else class="h-5 w-5" />
       </button>
     </div>
+
+    <div v-if="scrolled" class="hairline" />
   </header>
 
   <transition
@@ -116,42 +129,41 @@
     leave-from-class="opacity-100"
     leave-to-class="opacity-0"
   >
-    <div v-if="mobileOpen" class="fixed inset-0 z-[60] lg:hidden">
-      <div class="absolute inset-0 bg-background/78 backdrop-blur-md" @click="mobileOpen = false" />
+    <div v-if="mobileOpen" class="fixed inset-0 z-60 lg:hidden">
+      <div class="absolute inset-0 bg-background/85 backdrop-blur-sm" @click="mobileOpen = false" />
 
-      <div class="absolute left-0 right-0 top-20 px-4 pb-4">
-        <div class="glass-panel rounded-[1.35rem] p-4">
-          <div class="space-y-1 text-sm font-medium text-text-secondary">
+      <div class="absolute left-0 right-0 top-14 px-6">
+        <div class="surface mt-3 p-2">
+          <div class="space-y-0.5">
             <NuxtLink
               v-for="item in allNav"
               :key="item.to"
               :to="item.to"
               :class="[
-                'block rounded-xl px-3 py-2.5 hover:bg-background/70 hover:text-text-main',
-                isNavActive(item) && 'bg-accent/10 text-accent',
+                'block rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
+                isNavActive(item)
+                  ? 'text-accent'
+                  : 'text-text-secondary hover:bg-surface-sunken hover:text-text-main',
               ]"
               @click="mobileOpen = false"
             >
-              {{ $t(item.labelKey) }}
+              {{ getNavLabel(item) }}
             </NuxtLink>
           </div>
-
-          <div class="my-3 h-px bg-card-border/70" />
-
-          <div class="flex items-center justify-between gap-3">
+          <div class="hairline my-2" />
+          <div class="flex items-center gap-1 px-1">
             <button
               type="button"
-              class="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-background/55 px-3 py-2 text-text-main hover:bg-card"
+              class="flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-text-main transition-colors hover:bg-surface-sunken"
               @click="toggleTheme"
             >
               <MoonIcon v-if="isDark" class="h-4 w-4" />
               <SunIcon v-else class="h-4 w-4" />
               <span class="text-xs">{{ isDark ? $t('settings.dark') : $t('settings.light') }}</span>
             </button>
-
             <button
               type="button"
-              class="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-background/55 px-3 py-2 text-text-main hover:bg-card"
+              class="flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-text-main transition-colors hover:bg-surface-sunken"
               @click="toggleLocale"
             >
               <LanguagesIcon class="h-4 w-4" />
@@ -175,21 +187,25 @@ import {
 } from 'lucide-vue-next';
 
 const route = useRoute();
-const { locale, setLocale } = useI18n();
+const { locale, setLocale, t } = useI18n();
 const { resolved, toggle: toggleTheme } = useTheme();
 const isDark = computed(() => resolved.value === 'dark');
 
 const primaryNav = [
   { to: '/', labelKey: 'nav.dashboard' },
   { to: '/domains', labelKey: 'nav.domains' },
-  { to: '/actions', labelKey: 'nav.actions', aliases: ['/ops/actions'] },
+  { to: '/brand-watch', label: 'Brand Watch' },
+  { to: '/ops/security', label: 'Risk' },
+  { to: '/ops/actions', labelKey: 'nav.actions', aliases: ['/actions'] },
   { to: '/ssl', labelKey: 'nav.ssl' },
 ];
 
 const secondaryNav = [
-  { to: '/costs', labelKey: 'nav.costs', aliases: ['/data/costs'] },
+  { to: '/data/costs', labelKey: 'nav.costs', aliases: ['/costs'] },
   { to: '/notifications', labelKey: 'nav.notifications' },
-  { to: '/settings', labelKey: 'nav.settings', aliases: ['/data/import', '/tasks', '/ops/tasks'] },
+  { to: '/ops/tasks', labelKey: 'nav.tasks', aliases: ['/tasks'] },
+  { to: '/data/import', labelKey: 'nav.import', aliases: ['/import'] },
+  { to: '/settings', labelKey: 'nav.settings' },
 ];
 
 const allNav = computed(() => [...primaryNav, ...secondaryNav]);
@@ -206,6 +222,43 @@ const isNavActive = (item) => {
 const isSecondaryActive = computed(() => secondaryNav.some((item) => isNavActive(item)));
 const mobileOpen = ref(false);
 const moreOpen = ref(false);
+const moreRoot = ref(null);
+const scrolled = ref(false);
+let scrollTarget = null;
+
+const getNavLabel = (item) => item.label || t(item.labelKey);
+
+const handleScroll = () => {
+  scrolled.value = (scrollTarget?.scrollTop ?? window.scrollY) > 4;
+};
+
+const handleDocumentClick = (event) => {
+  if (!moreOpen.value) return;
+  if (moreRoot.value?.contains(event.target)) return;
+  moreOpen.value = false;
+};
+
+const handleKeydown = (event) => {
+  if (event.key === 'Escape') {
+    moreOpen.value = false;
+    mobileOpen.value = false;
+  }
+};
+
+onMounted(() => {
+  scrollTarget = document.querySelector('[data-app-scroll]');
+  (scrollTarget || window).addEventListener('scroll', handleScroll, { passive: true });
+  document.addEventListener('click', handleDocumentClick);
+  document.addEventListener('keydown', handleKeydown);
+  handleScroll();
+});
+
+onBeforeUnmount(() => {
+  (scrollTarget || window).removeEventListener('scroll', handleScroll);
+  document.removeEventListener('click', handleDocumentClick);
+  document.removeEventListener('keydown', handleKeydown);
+  scrollTarget = null;
+});
 
 watch(
   () => route.fullPath,

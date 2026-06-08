@@ -1,6 +1,8 @@
 import { checkDomain } from "../../../utils/scanner";
+import { scanDomainSecurity } from "../../../utils/security-scan";
 import { scanDomainSSL } from "../../../utils/ssl";
 import { domains } from "../../../db/schema";
+import { recordAuditEvent } from "../../../utils/audit";
 import { eq } from "drizzle-orm";
 
 export default defineEventHandler(async (event) => {
@@ -24,10 +26,38 @@ export default defineEventHandler(async (event) => {
       checkDomain(domain.domain, domain.id),
       scanDomainSSL(domain.id, domain.domain),
     ];
-    await Promise.allSettled(scans);
+    if (domain.watchKind === "OWNED") {
+      scans.push(scanDomainSecurity(domain.id, domain.domain, { notify: true }));
+    }
+    const results = await Promise.allSettled(scans);
+    const failed = results.filter((result) => result.status === "rejected")
+      .length;
+
+    await recordAuditEvent({
+      event,
+      eventType: "domains.refresh",
+      outcome: failed > 0 ? "partial_success" : "success",
+      actorType: "admin",
+      metadata: {
+        domainId: domain.id,
+        domain: domain.domain,
+        checkCount: scans.length,
+        failed,
+      },
+    });
 
     return success({ refreshed: true });
   } catch (e: any) {
+    await recordAuditEvent({
+      event,
+      eventType: "domains.refresh",
+      outcome: "failure",
+      actorType: "admin",
+      metadata: {
+        domainId: Number(getRouterParam(event, "id") || 0) || null,
+        reason: e?.message || String(e),
+      },
+    });
     return fail(e.message || "System Error", 50000);
   }
 });

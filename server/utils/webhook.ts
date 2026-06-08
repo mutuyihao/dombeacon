@@ -1,6 +1,7 @@
 import { webhookConfigs, notificationEvents } from "../db/schema";
 import { eq } from "drizzle-orm";
 import { useDb } from "./db";
+import { parseProtectedJson } from "./secrets";
 
 export interface WebhookPayload {
   event: string;
@@ -118,7 +119,10 @@ export const getActiveWebhooks = async (
 
     try {
       const types = JSON.parse(config.eventTypes);
-      return types.includes(eventType) || types.includes("*");
+      const normalizedTypes = Array.isArray(types)
+        ? types.map((type) => String(type || "").toUpperCase())
+        : [];
+      return normalizedTypes.includes(eventType) || normalizedTypes.includes("*");
     } catch {
       return true;
     }
@@ -150,9 +154,10 @@ export const notifyWebhooks = async (params: {
   let successCount = 0;
 
   for (const webhook of webhooks) {
-    const headers = webhook.headersJson
-      ? JSON.parse(webhook.headersJson)
-      : {};
+    const headers = parseProtectedJson<Record<string, string>>(
+      webhook.headersJson,
+      {},
+    );
 
     const result = await sendWebhook(webhook.url, payload, {
       method: webhook.method,
@@ -178,6 +183,7 @@ export const notifyWebhooks = async (params: {
         url: result.requestUrl || webhook.url,
         truncated: result.truncated === true,
         httpStatus: result.httpStatus || null,
+        dedupeKey: eventData?.dedupeKey || null,
       }),
       createdAt: new Date(),
     });
@@ -213,9 +219,10 @@ export const testWebhook = async (webhookId: number): Promise<boolean> => {
     },
   };
 
-  const headers = webhook.headersJson
-    ? JSON.parse(webhook.headersJson)
-    : {};
+  const headers = parseProtectedJson<Record<string, string>>(
+    webhook.headersJson,
+    {},
+  );
 
   const result = await sendWebhook(webhook.url, testPayload, {
     method: webhook.method,

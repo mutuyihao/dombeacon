@@ -1,6 +1,7 @@
 import nodemailer from "nodemailer";
 import { notificationRules, notificationEvents } from "../db/schema";
 import { eq, and, gte } from "drizzle-orm";
+import { revealSecretText } from "./secrets";
 
 export interface MailTemplate {
   subject: string;
@@ -8,13 +9,22 @@ export interface MailTemplate {
   text?: string;
 }
 
+type MailTemplateType =
+  | "instant"
+  | "daily"
+  | "dropping_alert"
+  | "action_created"
+  | "risk_alert";
+
 export const getSmtpConfig = async () => {
   const db = useDb();
   const rule = await db.select().from(notificationRules).limit(1).get();
   if (!rule || !rule.smtpConfigJson) return null;
   try {
+    const smtpConfig = JSON.parse(rule.smtpConfigJson);
     return {
-      ...JSON.parse(rule.smtpConfigJson),
+      ...smtpConfig,
+      pass: revealSecretText(smtpConfig.pass),
       targetEmail: rule.targetEmail,
       instant: rule.instantEnabled,
       daily: rule.dailyEnabled,
@@ -127,7 +137,7 @@ export const sendNotification = async (params: {
   domainId?: number;
   actionId?: number;
   eventType: string;
-  templateType: "instant" | "daily" | "dropping_alert" | "action_created";
+  templateType: MailTemplateType;
   templateData: any;
   deduplicateHours?: number;
 }) => {
@@ -187,7 +197,7 @@ export const getStatusColor = (status: string) => {
 };
 
 export const getTemplate = (
-  type: "instant" | "daily" | "dropping_alert" | "action_created",
+  type: MailTemplateType,
   data: any,
 ): MailTemplate => {
   const baseUrl = process.env.BASE_URL || "http://localhost:3000";
@@ -295,6 +305,69 @@ export const getTemplate = (
 </html>
             `,
       text: `${appName} - Action Required\n\nDomain: ${domain}\nType: ${actionTypeLabels[actionType]}\nPriority: ${priority}\n\nView actions: ${baseUrl}/actions`,
+    };
+  } else if (type === "risk_alert") {
+    const {
+      title = "Risk Alert",
+      targetName = "Unknown target",
+      severity = "MEDIUM",
+      description = "A new risk requires review.",
+      url = "/",
+      details = {},
+    } = data;
+    const priorityColors: Record<string, string> = {
+      HIGH: "#8C6F6F",
+      MEDIUM: "#A08C7C",
+      LOW: "#8A8780",
+    };
+    const detailRows = Object.entries(details)
+      .slice(0, 12)
+      .map(
+        ([key, value]) => `
+        <tr>
+          <td style="padding: 8px 12px; border-bottom: 1px solid #E7E2DA; color: #6B6B6B; font-size: 12px;">${key}</td>
+          <td style="padding: 8px 12px; border-bottom: 1px solid #E7E2DA; color: #2B2B2B; font-size: 12px; word-break: break-all;">${typeof value === "string" ? value : JSON.stringify(value)}</td>
+        </tr>`,
+      )
+      .join("");
+
+    return {
+      subject: `[${appName}] ${title}: ${targetName}`,
+      html: `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #F4F2EE;">
+    <div style="max-width: 600px; margin: 40px auto; padding: 0 20px;">
+        <div style="background: #FAF8F4; border: 1px solid #E7E2DA; border-left: 4px solid ${priorityColors[severity] || "#8A8780"}; border-radius: 16px; padding: 32px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+            <h2 style="margin: 0 0 24px 0; color: #4B5B6B; font-size: 20px; font-weight: 600;">${title}</h2>
+
+            <div style="background: white; border: 1px solid #E7E2DA; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
+                <h3 style="margin: 0 0 16px 0; font-size: 18px; color: #2B2B2B; word-break: break-all;">${targetName}</h3>
+                <span style="display: inline-block; margin-bottom: 16px; padding: 4px 12px; background: ${priorityColors[severity] || "#8A8780"}20; color: ${priorityColors[severity] || "#8A8780"}; border-radius: 6px; font-size: 12px; font-weight: 600;">
+                    ${severity} SEVERITY
+                </span>
+                <p style="margin: 0 0 16px 0; color: #6B6B6B; font-size: 14px; line-height: 1.6;">
+                    ${description}
+                </p>
+                ${detailRows ? `<table style="width: 100%; border-collapse: collapse;">${detailRows}</table>` : ""}
+            </div>
+
+            <a href="${baseUrl}${url}" style="display: inline-block; padding: 12px 24px; background: #4B5B6B; color: white; text-decoration: none; border-radius: 8px; font-size: 14px; font-weight: 500;">Review Risk</a>
+
+            <p style="margin: 24px 0 0 0; color: #9A9A9A; font-size: 12px; line-height: 1.5;">
+                This is an automated notification from ${appName}.<br>
+                Time: ${new Date().toLocaleString()}
+            </p>
+        </div>
+    </div>
+</body>
+</html>
+      `,
+      text: `${appName} - ${title}\n\nTarget: ${targetName}\nSeverity: ${severity}\n${description}\n\nReview: ${baseUrl}${url}`,
     };
   } else if (type === "daily") {
     const { domains, stats } = data;

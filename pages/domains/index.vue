@@ -1,200 +1,193 @@
 <template>
-  <div class="space-y-5">
-    <!-- Toolbar -->
-    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-      <!-- Quick Status Tabs (shortcuts; live-synced with FilterPanel.status) -->
-      <div class="flex p-1 bg-card border border-card-border rounded-xl overflow-x-auto max-w-full no-scrollbar">
+  <div class="flex min-h-full flex-col gap-6 md:h-full md:min-h-0 md:overflow-hidden">
+
+    <!-- ─── PAGE HEADER ─────────────────────────────────────────────── -->
+    <header class="shrink-0">
+      <p class="eyebrow mb-2">{{ $t('domain.portfolio') }}</p>
+      <div class="flex flex-wrap items-end justify-between gap-4">
+        <div class="min-w-0">
+          <h1 class="headline-display text-3xl md:text-4xl">{{ $t('nav.domains') }}</h1>
+          <p class="mt-2 min-h-5 text-sm text-text-secondary">
+            <span class="font-medium text-text-main" data-numeric>{{ total }}</span>
+            {{ $t('domain.totalSuffix') }}
+          </p>
+        </div>
+        <div class="flex items-center gap-2">
+          <NuxtLink to="/data/import" class="btn-ghost">
+            <UploadCloudIcon class="h-4 w-4" />
+            <span class="hidden sm:inline">{{ $t('nav.import') }}</span>
+          </NuxtLink>
+          <button @click="isAddModalOpen = true" class="btn-primary">
+            <PlusIcon class="h-4 w-4" />
+            <span class="hidden sm:inline">{{ $t('domain.addDomain') }}</span>
+            <span class="sm:hidden">{{ $t('common.add') }}</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- ─── TOOLBAR — quick status tabs + search + saved filters ────── -->
+    <div class="flex shrink-0 flex-col gap-5">
+      <nav class="tab-bar overflow-x-auto no-scrollbar">
         <button
           v-for="tab in tabs"
           :key="tab.value"
+          type="button"
           @click="setQuickStatus(tab.value)"
-          :class="[
-            'px-4 py-1.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap',
-            (criteria.status || 'ALL') === tab.value
-              ? 'bg-background text-text-main shadow-sm'
-              : 'text-text-secondary hover:text-text-main'
-          ]"
+          :class="['tab-item', (criteria.status || 'ALL') === tab.value && 'is-active']"
         >
           {{ tab.label }}
         </button>
-      </div>
+      </nav>
 
-      <!-- Right side: search, saved filters, add -->
-      <div class="flex w-full md:w-auto gap-2 flex-wrap md:flex-nowrap">
-        <div class="relative flex-1 md:w-64">
-          <SearchIcon class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-weak" />
+      <div class="flex flex-wrap items-center gap-x-6 gap-y-3">
+        <div class="relative flex min-w-0 flex-1 items-center sm:max-w-sm">
+          <SearchIcon class="pointer-events-none absolute left-0 h-4 w-4 text-text-tertiary" />
           <input
             v-model="criteria.search"
             type="text"
             :placeholder="$t('common.search')"
-            class="w-full pl-9 pr-4 py-2 bg-card border border-card-border rounded-xl focus:outline-none focus:border-accent transition-colors text-sm"
-          >
+            class="input-bare pl-6"
+          />
         </div>
 
-        <!-- Saved Filters Dropdown -->
         <div class="relative">
           <button
             @click="savedOpen = !savedOpen"
-            class="flex items-center gap-2 px-3 py-2 bg-card border border-card-border hover:border-accent rounded-xl text-sm font-medium transition-colors whitespace-nowrap"
+            class="btn-ghost"
           >
-            <BookmarkIcon class="w-4 h-4 text-text-secondary" />
+            <BookmarkIcon class="h-4 w-4" />
             <span>{{ $t('filter.savedFilters') }}</span>
-            <ChevronDownIcon class="w-3 h-3 text-text-secondary" />
+            <ChevronDownIcon class="h-3 w-3" />
           </button>
           <div
             v-if="savedOpen"
             v-on-click-outside="() => savedOpen = false"
-            class="absolute right-0 top-full mt-1 w-72 bg-card border border-card-border rounded-xl shadow-lg z-30 overflow-hidden"
+            class="surface absolute right-0 top-full z-30 mt-2 w-72 overflow-hidden p-2"
           >
-            <div class="p-2 border-b border-card-border">
+            <div class="px-1 pb-2">
               <button
                 v-if="isAnyActive"
                 @click="openSaveDialog"
-                class="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg text-accent hover:bg-card-border/30 transition-colors"
+                class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-accent transition-colors hover:bg-surface-sunken"
               >
-                <SaveIcon class="w-4 h-4" />
+                <SaveIcon class="h-4 w-4" />
                 {{ $t('filter.saveCurrent') }}
               </button>
-              <p v-else class="px-3 py-2 text-xs text-text-secondary">
+              <p v-else class="px-3 py-2 text-xs text-text-tertiary">
                 {{ $t('filter.saveCurrentHint') }}
               </p>
             </div>
-            <div class="max-h-72 overflow-y-auto">
-              <div v-if="!savedFilters.length" class="px-3 py-6 text-center text-xs text-text-secondary">
+            <div class="hairline my-1" />
+            <div class="max-h-72 overflow-y-auto pt-1">
+              <div v-if="!savedFilters.length" class="px-3 py-6 text-center text-xs text-text-tertiary">
                 {{ $t('filter.noSaved') }}
               </div>
-              <button
+              <div
                 v-for="f in savedFilters"
                 :key="f.id"
-                class="w-full flex items-center justify-between gap-2 px-3 py-2 text-sm hover:bg-card-border/30 transition-colors group"
+                class="group flex items-center justify-between gap-2 rounded-md px-3 py-2 text-sm transition-colors hover:bg-surface-sunken"
               >
-                <span class="flex items-center gap-2 flex-1 text-left" @click="loadFilter(f)">
-                  <span class="truncate">{{ f.name }}</span>
-                  <span v-if="f.isDefault" class="px-1.5 py-0.5 text-[10px] bg-accent/10 text-accent rounded">
+                <button class="flex flex-1 items-center gap-2 text-left" @click="loadFilter(f)">
+                  <span class="truncate text-text-main">{{ f.name }}</span>
+                  <span v-if="f.isDefault" class="text-[10px] font-semibold uppercase tracking-[0.14em] text-accent">
                     {{ $t('filter.default') }}
                   </span>
-                </span>
-                <span class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                </button>
+                <span class="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
                   <button
                     @click.stop="setDefault(f)"
                     :title="$t('filter.setDefault')"
-                    class="p-1 text-text-secondary hover:text-accent"
+                    class="p-1 text-text-tertiary transition-colors hover:text-accent"
                   >
-                    <StarIcon class="w-3.5 h-3.5" :class="{ 'fill-accent text-accent': f.isDefault }" />
+                    <StarIcon :class="['h-3.5 w-3.5', f.isDefault && 'fill-accent text-accent']" />
                   </button>
                   <button
                     @click.stop="deleteFilter(f)"
                     :title="$t('common.delete')"
-                    class="p-1 text-text-secondary hover:text-status-dropping"
+                    class="p-1 text-text-tertiary transition-colors hover:text-status-dropping"
                   >
-                    <Trash2Icon class="w-3.5 h-3.5" />
+                    <Trash2Icon class="h-3.5 w-3.5" />
                   </button>
                 </span>
-              </button>
+              </div>
             </div>
           </div>
         </div>
-
-        <button
-          @click="isAddModalOpen = true"
-          class="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-xl shadow-sm text-sm font-medium transition-all active:scale-95"
-        >
-          <PlusIcon class="w-4 h-4" />
-          <span class="hidden sm:inline">{{ $t('domain.addDomain') }}</span>
-          <span class="sm:hidden">{{ $t('common.add') }}</span>
-        </button>
-
-        <NuxtLink
-          to="/data/import"
-          class="flex items-center gap-2 px-4 py-2 bg-card border border-card-border hover:border-accent rounded-xl text-sm font-medium transition-colors whitespace-nowrap"
-        >
-          <UploadCloudIcon class="w-4 h-4 text-text-secondary" />
-          <span class="hidden sm:inline">{{ $t('nav.import') }}</span>
-          <span class="sm:hidden">{{ $t('common.import') }}</span>
-        </NuxtLink>
       </div>
     </div>
 
-    <!-- Advanced filter panel -->
-    <FilterPanel
-      v-model="criteria"
-      :active-chips="activeChips"
-      @reset="reset"
-    />
+    <!-- ─── ADVANCED FILTER PANEL ──────────────────────────────────── -->
+    <FilterPanel class="shrink-0" v-model="criteria" :active-chips="activeChips" @reset="reset" />
 
-    <!-- Result count -->
-    <div v-if="total > 0" class="flex flex-col gap-2 text-xs text-text-secondary sm:flex-row sm:items-center sm:justify-between">
-      <span>{{ $t('filter.totalCount', { count: total }) }}</span>
-      <span v-if="loading && domains.length">{{ $t('common.loading') }}</span>
-    </div>
-
-    <!-- Grid -->
-    <div v-if="loading && !domains.length" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-      <div v-for="i in 8" :key="i" class="h-40 bg-card/50 rounded-2xl animate-pulse" />
-    </div>
-
-    <div v-else-if="domains.length > 0" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-      <DomainCard
-        v-for="domain in domains"
-        :key="domain.id"
-        :domain="domain"
-        :refreshing="isRefreshing(domain.id)"
-        :deleting="isDeleting(domain.id)"
-        @refresh="refreshDomain"
-        @delete="deleteDomain"
-      />
-    </div>
-
-    <div v-else class="text-center py-20">
-      <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-card mb-4">
-        <InboxIcon class="w-8 h-8 text-text-weak" />
-      </div>
-      <h3 class="text-lg font-medium text-text-main">{{ $t('domain.noDomains') }}</h3>
-      <p class="text-text-secondary mt-1">{{ $t('domain.noDomainsHint') }}</p>
-    </div>
-
-    <!-- Pagination -->
-    <div
-      v-if="total > 0"
-      class="flex flex-col gap-3 rounded-2xl border border-card-border bg-card px-4 py-3 text-sm shadow-sm sm:flex-row sm:items-center sm:justify-between"
-    >
-      <div class="text-text-secondary">
-        {{ $t('filter.pageInfo', { start: pageStart, end: pageEnd, total, page, pages: totalPages }) }}
+    <!-- ─── RESULTS ────────────────────────────────────────────────── -->
+    <div class="relative min-h-[26rem] flex-1 overflow-y-auto rounded-[18px] border border-hairline bg-card/45 p-3 pr-4 md:min-h-0 md:p-4 md:pr-5">
+      <div v-if="total > 0 && loading && domains.length" class="absolute right-4 top-3 z-10 text-xs text-text-tertiary">
+        {{ $t('common.loading') }}
       </div>
 
-      <div class="flex flex-wrap items-center gap-2">
-        <label class="flex items-center gap-2 text-text-secondary">
-          <span>{{ $t('filter.pageSize') }}</span>
-          <select
-            v-model.number="limit"
-            class="rounded-lg border border-card-border bg-background px-2 py-1 text-text-main focus:outline-none focus:ring-2 focus:ring-accent/40"
-          >
-            <option v-for="size in pageSizeOptions" :key="size" :value="size">{{ size }}</option>
-          </select>
-        </label>
+      <div v-if="loading && !domains.length" class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div v-for="i in 8" :key="i" class="h-48 animate-pulse rounded-2xl bg-surface-sunken" />
+      </div>
 
-        <button
-          type="button"
-          class="inline-flex items-center gap-1 rounded-lg border border-card-border bg-background px-3 py-1.5 font-medium text-text-main transition-colors hover:border-accent/40 disabled:opacity-50 disabled:cursor-not-allowed"
-          :disabled="!canPrev"
-          @click="page--"
-        >
-          <ChevronLeftIcon class="h-4 w-4" />
-          {{ $t('common.previous') }}
-        </button>
-        <button
-          type="button"
-          class="inline-flex items-center gap-1 rounded-lg border border-card-border bg-background px-3 py-1.5 font-medium text-text-main transition-colors hover:border-accent/40 disabled:opacity-50 disabled:cursor-not-allowed"
-          :disabled="!canNext"
-          @click="page++"
-        >
-          {{ $t('common.next') }}
-          <ChevronRightIcon class="h-4 w-4" />
-        </button>
+      <div v-else-if="domains.length > 0" class="grid auto-rows-fr grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <DomainCard
+          v-for="domain in domains"
+          :key="domain.id"
+          :domain="domain"
+          :refreshing="isRefreshing(domain.id)"
+          :deleting="isDeleting(domain.id)"
+          @refresh="refreshDomain"
+          @delete="deleteDomain"
+        />
+      </div>
+
+      <div v-else class="flex min-h-[22rem] flex-col items-center justify-center text-center">
+        <InboxIcon class="mb-4 h-8 w-8 text-text-tertiary" />
+        <h3 class="headline-display text-2xl">{{ $t('domain.noDomains') }}</h3>
+        <p class="mt-2 text-sm text-text-secondary">{{ $t('domain.noDomainsHint') }}</p>
       </div>
     </div>
 
-    <!-- Modals -->
+    <!-- ─── PAGINATION ─────────────────────────────────────────────── -->
+    <div v-if="total > 0" class="shrink-0 space-y-3">
+      <div class="hairline" />
+      <div class="flex flex-col gap-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+        <p class="text-text-secondary">
+          {{ $t('filter.pageInfo', { start: pageStart, end: pageEnd, total, page, pages: totalPages }) }}
+        </p>
+        <div class="flex flex-wrap items-center gap-x-5 gap-y-2">
+          <label class="flex items-center gap-2 text-text-secondary">
+            <span class="text-xs uppercase tracking-[0.14em]">{{ $t('filter.pageSize') }}</span>
+            <select v-model.number="limit" class="input-bare w-auto py-1 pr-1 text-sm">
+              <option v-for="size in pageSizeOptions" :key="size" :value="size">{{ size }}</option>
+            </select>
+          </label>
+          <div class="flex items-center gap-1">
+            <button
+              type="button"
+              class="btn-ghost px-3 py-1.5 disabled:cursor-not-allowed disabled:opacity-40"
+              :disabled="!canPrev"
+              @click="page--"
+            >
+              <ChevronLeftIcon class="h-4 w-4" />
+              <span>{{ $t('common.previous') }}</span>
+            </button>
+            <button
+              type="button"
+              class="btn-ghost px-3 py-1.5 disabled:cursor-not-allowed disabled:opacity-40"
+              :disabled="!canNext"
+              @click="page++"
+            >
+              <span>{{ $t('common.next') }}</span>
+              <ChevronRightIcon class="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── MODALS ─────────────────────────────────────────────────── -->
     <AddDomainModal :is-open="isAddModalOpen" @close="isAddModalOpen = false" @saved="refresh" />
     <ConfirmDialog
       :is-open="confirmDialog.isOpen"
@@ -209,31 +202,30 @@
 
     <!-- Save filter dialog -->
     <Teleport to="body">
-      <div v-if="saveDialogOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" @click.self="saveDialogOpen = false">
-        <div class="bg-card border border-card-border rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
-          <h3 class="text-lg font-semibold text-text-main">{{ $t('filter.saveCurrent') }}</h3>
-          <input
-            v-model="saveDialogName"
-            type="text"
-            :placeholder="$t('filter.namePlaceholder')"
-            class="w-full px-3 py-2 border border-card-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-accent/50"
-            @keydown.enter="performSave"
-          />
-          <label class="flex items-center gap-2 text-sm">
-            <input v-model="saveDialogDefault" type="checkbox" class="w-4 h-4 text-accent" />
-            {{ $t('filter.markAsDefault') }}
-          </label>
-          <div class="flex justify-end gap-2 pt-2">
-            <button
-              @click="saveDialogOpen = false"
-              class="px-4 py-2 rounded-xl border border-card-border text-sm hover:bg-card-border/30 transition-colors"
-            >
+      <div v-if="saveDialogOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4 backdrop-blur-sm" @click.self="saveDialogOpen = false">
+        <div class="surface-elevated w-full max-w-md p-8">
+          <h3 class="headline-display text-2xl">{{ $t('filter.saveCurrent') }}</h3>
+          <div class="mt-6 space-y-5">
+            <input
+              v-model="saveDialogName"
+              type="text"
+              :placeholder="$t('filter.namePlaceholder')"
+              class="input-bare"
+              @keydown.enter="performSave"
+            />
+            <label class="flex items-center gap-2 text-sm text-text-secondary">
+              <input v-model="saveDialogDefault" type="checkbox" class="h-4 w-4 accent-accent" />
+              {{ $t('filter.markAsDefault') }}
+            </label>
+          </div>
+          <div class="mt-8 flex justify-end gap-3">
+            <button @click="saveDialogOpen = false" class="btn-ghost">
               {{ $t('common.cancel') }}
             </button>
             <button
               @click="performSave"
               :disabled="!saveDialogName.trim()"
-              class="px-4 py-2 rounded-xl bg-accent hover:bg-accent-hover text-white text-sm disabled:opacity-50"
+              class="btn-primary disabled:opacity-50"
             >
               {{ $t('common.save') }}
             </button>
@@ -283,7 +275,6 @@ const pageSizeOptions = [24, 50, 100];
 const refreshingIds = ref(new Set());
 const deletingIds = ref(new Set());
 
-// Build query reactively from criteria + page
 const apiQuery = computed(() => ({
   page: page.value,
   limit: limit.value,
@@ -303,7 +294,6 @@ const pageEnd = computed(() => Math.min(total.value, page.value * limit.value));
 const canPrev = computed(() => page.value > 1);
 const canNext = computed(() => page.value < totalPages.value);
 
-// Reset page to 1 when criteria changes
 watch(
   [() => JSON.stringify(criteria.value), limit],
   () => {
@@ -372,7 +362,9 @@ const saveDialogDefault = ref(false);
 
 const fetchSavedFilters = async () => {
   try {
-    const resp = await $fetch('/api/filters');
+    const resp = await $fetch('/api/filters', {
+      query: { scope: 'domains' },
+    });
     savedFilters.value = resp.data?.items || [];
   } catch (e) {
     console.error('Failed to load saved filters:', e);
@@ -410,6 +402,7 @@ const performSave = async () => {
       method: 'POST',
       body: {
         name,
+        scope: 'domains',
         criteria: criteria.value,
         isDefault: saveDialogDefault.value,
       },
@@ -426,7 +419,7 @@ const setDefault = async (f) => {
   try {
     await $fetch(`/api/filters/${f.id}`, {
       method: 'PATCH',
-      body: { isDefault: !f.isDefault },
+      body: { scope: 'domains', isDefault: !f.isDefault },
     });
     fetchSavedFilters();
   } catch (e) {
@@ -444,8 +437,6 @@ const deleteFilter = async (f) => {
   }
 };
 
-// Click-outside helper for the saved-filters dropdown.
-// Registered as a Vue directive.
 const vOnClickOutside = {
   mounted(el, binding) {
     el._clickOutside = (e) => {
@@ -458,7 +449,6 @@ const vOnClickOutside = {
   },
 };
 
-// Auto-apply default filter on first load if URL has no criteria
 const route = useRoute();
 onMounted(async () => {
   await fetchSavedFilters();

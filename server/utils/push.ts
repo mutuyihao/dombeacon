@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
 import { pushSubscriptions, notificationEvents } from "../db/schema";
+import { maskSecretText, revealSecretText } from "./secrets";
 
 /**
  * Web Push notification helper.
@@ -73,6 +74,16 @@ export const sendWebPush = async (
   }
 };
 
+const revealSubscription = (subscription: {
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+}) => ({
+  endpoint: revealSecretText(subscription.endpoint),
+  p256dh: revealSecretText(subscription.p256dh),
+  auth: revealSecretText(subscription.auth),
+});
+
 /**
  * Format a notification payload from event data, used by both fanout and retry.
  */
@@ -87,6 +98,8 @@ export const formatPushPayload = (
     OWNED_EXPIRING: `⏰ ${domain} expiring soon`,
     SSL_EXPIRING: `🔒 ${domain} SSL expiring`,
     SSL_INVALID: `🔒 ${domain} SSL invalid`,
+    SECURITY_FINDING_HIGH: `Security risk: ${domain}`,
+    BRAND_WATCH_REGISTERED: `Brand Watch: ${domain}`,
     SCAN_FAILED: `❌ Scan failed: ${domain}`,
     DAILY_SUMMARY: `📊 Daily Summary`,
     DROPPING_ALERT: `🚨 Domains dropping`,
@@ -132,10 +145,19 @@ export const notifyPush = async (params: {
   const now = new Date();
 
   for (const sub of subs) {
-    const result = await sendWebPush(
-      { endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth },
-      payload,
-    );
+    let result: { success: boolean; error?: string };
+    let endpointMasked = "";
+    try {
+      const subscription = revealSubscription(sub);
+      endpointMasked = maskSecretText(subscription.endpoint, 10);
+      result = await sendWebPush(subscription, payload);
+    } catch (error: any) {
+      endpointMasked = maskSecretText(sub.endpoint, 10);
+      result = {
+        success: false,
+        error: error?.message || "Push subscription secret could not be read",
+      };
+    }
 
     await db.insert(notificationEvents).values({
       domainId: domainId || null,
@@ -148,7 +170,8 @@ export const notifyPush = async (params: {
       errorMessage: result.error || null,
       metadata: JSON.stringify({
         subscriptionId: sub.id,
-        endpoint: sub.endpoint,
+        endpointMasked,
+        dedupeKey: eventData?.dedupeKey || null,
         eventData,
       }),
       createdAt: now,
@@ -197,8 +220,5 @@ export const sendWebPushById = async (
   }
 
   const payload = formatPushPayload(eventType, metadata.eventData || {});
-  return await sendWebPush(
-    { endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth },
-    payload,
-  );
+  return await sendWebPush(revealSubscription(sub), payload);
 };

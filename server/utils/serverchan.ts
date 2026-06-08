@@ -1,5 +1,6 @@
 import { serverchanConfigs, notificationEvents } from "../db/schema";
 import { eq } from "drizzle-orm";
+import { revealSecretText } from "./secrets";
 
 export interface ServerchanMessage {
   title: string;
@@ -128,11 +129,17 @@ export const getActiveServerchanConfigs = async (eventType: string) => {
     if (!config.eventTypes) return true; // No filter = all events
     try {
       const types = JSON.parse(config.eventTypes);
-      return types.includes(eventType);
+      const normalizedTypes = Array.isArray(types)
+        ? types.map((type) => String(type || "").toUpperCase())
+        : [];
+      return normalizedTypes.includes(eventType);
     } catch {
       return true;
     }
-  });
+  }).map((config) => ({
+    ...config,
+    sendKey: revealSecretText(config.sendKey),
+  }));
 };
 
 /**
@@ -312,6 +319,7 @@ export const notifyServerchan = async (params: {
         metadata: JSON.stringify({
           configId: config.id,
           configName: config.name,
+          dedupeKey: eventData?.dedupeKey || null,
           message: {
             title: message.title,
             short: message.short,
@@ -340,6 +348,7 @@ export const notifyServerchan = async (params: {
         metadata: JSON.stringify({
           configId: config.id,
           configName: config.name,
+          dedupeKey: eventData?.dedupeKey || null,
         }),
       });
     }
@@ -371,5 +380,8 @@ export const testServerchan = async (
     short: "DomBeacon（域灯）测试通知",
   };
 
-  return await sendServerchanDetailed(config.sendKey, testMessage);
+  return await sendServerchanDetailed(
+    revealSecretText(config.sendKey),
+    testMessage,
+  );
 };

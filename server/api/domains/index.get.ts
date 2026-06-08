@@ -4,6 +4,7 @@ import {
   domainStatusLatest,
   sslStatusLatest,
 } from "../../db/schema";
+import { getDomainRiskSummaries } from "../../utils/risk-summary";
 
 export default defineEventHandler(async (event) => {
   const query = getQuery(event);
@@ -158,10 +159,23 @@ export default defineEventHandler(async (event) => {
       : await countSelect.get();
     const total = Number(totalRow?.count || 0);
 
+    const riskSummaries = await getDomainRiskSummaries(
+      items.map((item) => item.id),
+    );
+
     // Parse tagsJson into a tags array for the frontend
     const data = items.map((item) => ({
       ...item,
       tags: JSON.parse(item.tagsJson || "[]"),
+      riskSummary: riskSummaries.get(item.id),
+      riskScore: riskSummaries.get(item.id)?.riskScore || 0,
+      openFindingsCount: riskSummaries.get(item.id)?.openFindingsCount || 0,
+      lastSecurityScanAt:
+        riskSummaries.get(item.id)?.lastSecurityScanAt || null,
+      dnssecStatus: riskSummaries.get(item.id)?.dnssecStatus || "UNKNOWN",
+      dmarcPolicy: riskSummaries.get(item.id)?.dmarcPolicy || "unknown",
+      registrarLockStatus:
+        riskSummaries.get(item.id)?.registrarLockStatus || "UNKNOWN",
     }));
 
     return success({ items: data, total, page, limit });

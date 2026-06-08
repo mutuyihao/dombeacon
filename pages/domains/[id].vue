@@ -1,503 +1,412 @@
 <template>
-  <div class="max-w-4xl mx-auto space-y-6">
+  <div class="mx-auto max-w-5xl space-y-12">
+
     <!-- Breadcrumb -->
-    <div class="flex items-center gap-2 text-sm text-text-secondary mb-2">
-        <NuxtLink to="/domains" class="hover:text-accent transition-colors">{{ $t('nav.domains') }}</NuxtLink>
-        <span>/</span>
-        <span>{{ $t('domain.viewDetails') }}</span>
-    </div>
+    <nav class="flex items-center gap-2 text-xs uppercase tracking-[0.16em] text-text-tertiary">
+      <NuxtLink to="/domains" class="transition-colors hover:text-text-main">{{ $t('nav.domains') }}</NuxtLink>
+      <span>/</span>
+      <span class="text-text-secondary">{{ $t('domain.viewDetails') }}</span>
+    </nav>
 
-    <!-- Loading State -->
-    <div v-if="pending" class="py-20 text-center">
+    <!-- Loading -->
+    <div v-if="pending" class="py-24 text-center">
       <LoadingSpinner size="lg" />
-      <p class="mt-4 text-text-secondary">{{ $t('common.loading') }}</p>
+      <p class="mt-4 text-sm text-text-secondary">{{ $t('common.loading') }}</p>
     </div>
 
-    <!-- Error State -->
-    <div v-else-if="error || !data" class="py-20 text-center">
-      <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-status-dropping/10 mb-4">
-        <svg class="w-8 h-8 text-status-dropping" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-      </div>
-      <p class="text-status-dropping">{{ $t('domain.loadError') }}</p>
+    <!-- Error -->
+    <div v-else-if="error || !data" class="py-24 text-center">
+      <AlertCircleIcon class="mx-auto mb-4 h-8 w-8 text-status-dropping" />
+      <p class="text-sm text-status-dropping">{{ $t('domain.loadError') }}</p>
     </div>
 
-    <div v-else class="space-y-6">
-        <!-- Header Card -->
-        <div class="bg-card border border-card-border rounded-2xl p-6 shadow-sm">
-            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div class="flex-1">
-                    <h1 class="text-2xl font-semibold text-text-main mb-3 select-all">{{ domain.domain }}</h1>
-                    <div class="flex flex-wrap items-center gap-2">
-                        <!-- Status Badge -->
-                        <span v-if="latest?.status" :class="['px-3 py-1 rounded-full text-sm font-medium border', statusClass(latest.status)]">
-                            {{ $t(`domain.status.${latest.status.toLowerCase()}`) }}
-                        </span>
-                        <span v-else class="px-3 py-1 rounded-full text-sm font-medium border bg-status-unknown/10 text-status-unknown border-status-unknown/20">
-                            {{ $t('domain.status.unknown') }}
-                        </span>
+    <div v-else class="space-y-16">
 
-                        <!-- Watch Kind Badge -->
-                        <span :class="['px-2 py-0.5 rounded text-xs font-medium', watchKindClass]">
-                            {{ domain.watchKind === 'OWNED' ? $t('domain.owned') : $t('domain.wanted') }}
-                        </span>
-
-                        <!-- Priority Badge -->
-                        <span v-if="domain.priority" :class="['px-2 py-0.5 rounded text-xs font-medium', priorityClass]">
-                            {{ $t(`domain.${domain.priority.toLowerCase()}`) }}
-                        </span>
-
-                        <!-- Registrar -->
-                        <span v-if="latest?.registrar" class="text-sm text-text-secondary">
-                            {{ $t('domain.registrar') }}: {{ latest.registrar }}
-                        </span>
-                    </div>
-                </div>
-
-                <!-- Action Buttons -->
-                <div class="flex gap-2 w-full md:w-auto">
-                    <button
-                        @click="openEditModal"
-                        class="flex-1 md:flex-none px-4 py-2 bg-background border border-card-border rounded-lg text-sm font-medium hover:bg-card-border/30 transition-all active:scale-95"
-                    >
-                        {{ $t('common.edit') }}
-                    </button>
-                    <button
-                        @click="refreshDomain"
-                        :disabled="refreshing"
-                        class="flex-1 md:flex-none px-4 py-2 bg-background border border-card-border rounded-lg text-sm font-medium hover:bg-card-border/30 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        <span v-if="refreshing" class="flex items-center gap-2 justify-center">
-                            <LoadingSpinner size="sm" color="gray" />
-                            {{ $t('domain.checking') }}
-                        </span>
-                        <span v-else>{{ $t('domain.checkNow') }}</span>
-                    </button>
-                    <button
-                        @click="confirmDelete"
-                        class="flex-1 md:flex-none px-4 py-2 text-status-dropping bg-background border border-card-border rounded-lg text-sm font-medium hover:bg-status-dropping/10 transition-all active:scale-95"
-                    >
-                        {{ $t('common.delete') }}
-                    </button>
-                </div>
+      <!-- ─── HERO ─────────────────────────────────────────────────── -->
+      <section>
+        <p class="eyebrow mb-3">Watch entry</p>
+        <div class="flex flex-wrap items-end justify-between gap-6">
+          <div class="min-w-0 flex-1">
+            <h1 class="font-display text-4xl font-medium tracking-[-0.035em] text-text-main md:text-5xl select-all">
+              {{ domain.domain }}
+            </h1>
+            <div class="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-[11px] font-semibold uppercase tracking-[0.16em]">
+              <span :class="['flex items-center gap-1.5', latest?.status ? statusToneClass(latest.status) : 'text-status-unknown']">
+                <span :class="['h-1.5 w-1.5 rounded-full', latest?.status ? statusDotClass(latest.status) : 'bg-status-unknown']" />
+                {{ latest?.status ? $t(`domain.status.${latest.status.toLowerCase()}`) : $t('domain.status.unknown') }}
+              </span>
+              <span class="text-text-tertiary">·</span>
+              <span :class="domain.watchKind === 'OWNED' ? 'text-watch-owned' : 'text-watch-wanted'">
+                {{ domain.watchKind === 'OWNED' ? $t('domain.owned') : $t('domain.wanted') }}
+              </span>
+              <span v-if="domain.priority" class="text-text-tertiary">·</span>
+              <span v-if="domain.priority" :class="priorityToneClass">
+                {{ $t(`domain.${domain.priority.toLowerCase()}`) }}
+              </span>
+              <span v-if="latest?.registrar" class="text-text-tertiary">·</span>
+              <span v-if="latest?.registrar" class="font-mono text-text-secondary normal-case tracking-normal">
+                {{ latest.registrar }}
+              </span>
             </div>
-
-            <div
-              v-if="latest?.lastError"
-              class="mt-4 text-xs text-status-dropping bg-status-dropping/10 border border-status-dropping/20 rounded-lg p-3 flex flex-col md:flex-row md:items-start md:justify-between gap-2"
-            >
-              <div class="flex-1 min-w-0">
-                <div class="font-medium mb-1">{{ $t('domain.scanError') }}</div>
-                <div class="font-mono break-words">{{ latest.lastError }}</div>
-              </div>
-              <div class="font-mono text-status-dropping/80 whitespace-nowrap">
-                {{ formatDate(latest.lastErrorAt, true) }}
-              </div>
-            </div>
-        </div>
-
-        <!-- Info Grid -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <!-- Key Dates & Info -->
-            <div class="bg-card border border-card-border rounded-2xl p-6 shadow-sm">
-                <h3 class="font-medium text-text-main mb-4 border-b border-card-border pb-2">{{ $t('domain.information') }}</h3>
-                <dl class="space-y-3 text-sm">
-                    <div class="flex justify-between items-center py-2 border-b border-card-border/50 last:border-0">
-                        <dt class="text-text-secondary flex items-center gap-2">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                            </svg>
-                            {{ $t('domain.expiresAt') }}
-                        </dt>
-                        <dd class="font-mono text-text-main font-medium">{{ formatDate(latest?.expiresAt) }}</dd>
-                    </div>
-                    <div class="flex justify-between items-center py-2 border-b border-card-border/50 last:border-0">
-                        <dt class="text-text-secondary flex items-center gap-2">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            {{ $t('domain.lastChecked') }}
-                        </dt>
-                        <dd class="font-mono text-text-main">{{ formatDate(latest?.checkedAt, true) }}</dd>
-                    </div>
-                    <div class="flex justify-between items-center py-2 border-b border-card-border/50 last:border-0">
-                        <dt class="text-text-secondary flex items-center gap-2">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                            </svg>
-                            {{ $t('common.createdAt') }}
-                        </dt>
-                        <dd class="font-mono text-text-main">{{ formatDate(domain.createdAt) }}</dd>
-                    </div>
-                    <div class="pt-3">
-                        <dt class="text-text-secondary mb-2 flex items-center gap-2">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" />
-                            </svg>
-                            {{ $t('domain.nameservers') }}
-                        </dt>
-                        <dd class="text-text-main flex flex-wrap gap-1">
-                            <span v-if="latest?.nameservers && latest.nameservers.length > 0" v-for="ns in latest.nameservers" :key="ns" class="px-2 py-1 bg-background rounded text-xs font-mono">{{ ns }}</span>
-                            <span v-else class="text-text-weak text-xs">{{ $t('domain.noNameservers') }}</span>
-                        </dd>
-                    </div>
-                </dl>
-            </div>
-
-            <!-- Notes & Tags -->
-            <div class="bg-card border border-card-border rounded-2xl p-6 shadow-sm">
-                 <h3 class="font-medium text-text-main mb-4 border-b border-card-border pb-2">{{ $t('domain.metadata') }}</h3>
-                 <div class="mb-4">
-                     <p class="text-sm text-text-secondary mb-2 flex items-center gap-2">
-                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                         </svg>
-                         {{ $t('domain.note') }}
-                     </p>
-                     <p class="text-text-main bg-background p-3 rounded-lg text-sm min-h-[60px]">{{ domain.note || $t('domain.noNotes') }}</p>
-                 </div>
-                 <div>
-                     <p class="text-sm text-text-secondary mb-2 flex items-center gap-2">
-                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                         </svg>
-                         {{ $t('domain.tags') }}
-                     </p>
-                     <div class="flex flex-wrap gap-2">
-                         <span v-if="domain.tags && domain.tags.length > 0" v-for="tag in domain.tags" :key="tag" class="px-2 py-1 bg-background border border-card-border rounded text-xs text-text-secondary">
-                             {{ tag }}
-                         </span>
-                         <span v-else class="text-text-weak text-xs">{{ $t('domain.noTags') }}</span>
-                     </div>
-                 </div>
-            </div>
-        </div>
-
-        <!-- RDAP Summary -->
-        <div class="bg-card border border-card-border rounded-2xl p-6 shadow-sm">
-          <div class="flex items-center justify-between mb-4 border-b border-card-border pb-2">
-            <h3 class="font-medium text-text-main flex items-center gap-2">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4h16v6H4V4zm0 10h16v6H4v-6z" />
-              </svg>
-              {{ $t('domain.rdap.title') }}
-            </h3>
-            <span class="text-xs text-text-weak font-mono">
-              {{ latest?.source || '--' }}
-            </span>
           </div>
 
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-            <div class="bg-background rounded-lg p-4 space-y-2">
-              <div class="text-text-secondary text-xs">{{ $t('domain.rdap.handle') }}</div>
-              <div class="font-mono text-text-main break-all">{{ latest?.rdapSummary?.handle || '--' }}</div>
-            </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <button @click="openEditModal" class="btn-ghost">{{ $t('common.edit') }}</button>
+            <button @click="refreshDomain" :disabled="refreshing" class="btn-ghost disabled:opacity-50">
+              <LoadingSpinner v-if="refreshing" size="sm" color="gray" />
+              <span>{{ refreshing ? $t('domain.checking') : $t('domain.checkNow') }}</span>
+            </button>
+            <button @click="confirmDelete" class="btn-ghost text-status-dropping hover:text-status-dropping">
+              {{ $t('common.delete') }}
+            </button>
+          </div>
+        </div>
 
-            <div class="bg-background rounded-lg p-4 space-y-2">
-              <div class="text-text-secondary text-xs">{{ $t('domain.rdap.unicodeName') }}</div>
-              <div class="font-mono text-text-main break-all">{{ latest?.rdapSummary?.unicodeName || '--' }}</div>
-            </div>
+        <div
+          v-if="latest?.lastError"
+          class="surface-flat mt-8 flex flex-col gap-2 p-4 text-xs md:flex-row md:items-start md:justify-between"
+        >
+          <div class="min-w-0 flex-1">
+            <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-status-dropping">{{ $t('domain.scanError') }}</p>
+            <p class="mt-2 break-words font-mono text-text-main">{{ latest.lastError }}</p>
+          </div>
+          <p class="whitespace-nowrap font-mono text-text-tertiary">{{ formatDate(latest.lastErrorAt, true) }}</p>
+        </div>
+      </section>
 
-            <div class="bg-background rounded-lg p-4 space-y-2 md:col-span-2">
-              <div class="text-text-secondary text-xs">{{ $t('domain.rdap.rdapUrl') }}</div>
-              <div class="flex items-start gap-2">
-                <a
-                  v-if="latest?.rdapSummary?.rdapUrl"
-                  :href="latest.rdapSummary.rdapUrl"
-                  target="_blank"
-                  rel="noreferrer"
-                  class="flex-1 min-w-0 font-mono text-text-main underline decoration-card-border hover:decoration-text-main break-all"
-                >
-                  {{ latest.rdapSummary.rdapUrl }}
-                </a>
-                <span v-else class="flex-1 min-w-0 font-mono text-text-weak">--</span>
-                <button
-                  v-if="latest?.rdapSummary?.rdapUrl"
-                  type="button"
-                  class="shrink-0 px-2 py-1 text-xs bg-background border border-card-border rounded hover:bg-card-border/30 transition-all active:scale-95"
-                  @click="copyText(latest.rdapSummary.rdapUrl)"
-                >
-                  {{ $t('common.copy') }}
+      <!-- ─── INFO + METADATA ─────────────────────────────────────── -->
+      <section class="grid grid-cols-1 gap-16 md:grid-cols-2">
+        <div>
+          <p class="eyebrow mb-3">Information</p>
+          <h2 class="headline-display text-2xl">{{ $t('domain.information') }}</h2>
+          <div class="hairline mt-4" />
+          <dl class="mt-1 text-sm">
+            <div class="flex items-center justify-between border-b border-hairline py-3">
+              <dt class="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">{{ $t('domain.expiresAt') }}</dt>
+              <dd class="font-mono text-text-main">{{ formatDate(latest?.expiresAt) }}</dd>
+            </div>
+            <div class="flex items-center justify-between border-b border-hairline py-3">
+              <dt class="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">{{ $t('domain.lastChecked') }}</dt>
+              <dd class="font-mono text-text-main">{{ formatDate(latest?.checkedAt, true) }}</dd>
+            </div>
+            <div class="flex items-center justify-between border-b border-hairline py-3">
+              <dt class="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">{{ $t('common.createdAt') }}</dt>
+              <dd class="font-mono text-text-main">{{ formatDate(domain.createdAt) }}</dd>
+            </div>
+            <div class="py-4">
+              <dt class="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary mb-2">{{ $t('domain.nameservers') }}</dt>
+              <dd class="flex flex-wrap gap-x-3 gap-y-1 text-xs">
+                <span v-if="latest?.nameservers && latest.nameservers.length" v-for="ns in latest.nameservers" :key="ns" class="font-mono text-text-main">{{ ns }}</span>
+                <span v-else class="text-text-tertiary">{{ $t('domain.noNameservers') }}</span>
+              </dd>
+            </div>
+          </dl>
+        </div>
+
+        <div>
+          <p class="eyebrow mb-3">Metadata</p>
+          <h2 class="headline-display text-2xl">{{ $t('domain.metadata') }}</h2>
+          <div class="hairline mt-4" />
+          <div class="mt-6">
+            <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary mb-2">{{ $t('domain.note') }}</p>
+            <p class="surface-flat min-h-15 p-4 text-sm text-text-main">{{ domain.note || $t('domain.noNotes') }}</p>
+          </div>
+          <div class="mt-6">
+            <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary mb-2">{{ $t('domain.tags') }}</p>
+            <div class="flex flex-wrap gap-x-3 gap-y-1 text-xs">
+              <span v-if="domain.tags && domain.tags.length" v-for="tag in domain.tags" :key="tag" class="font-mono text-text-secondary">#{{ tag }}</span>
+              <span v-else class="text-text-tertiary">{{ $t('domain.noTags') }}</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─── RDAP SUMMARY ────────────────────────────────────────── -->
+      <section v-if="showSecuritySection">
+        <div class="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p class="eyebrow mb-3">Security</p>
+            <h2 class="headline-display text-2xl">Security posture</h2>
+          </div>
+          <p class="font-mono text-xs text-text-tertiary">
+            Last scan: {{ formatDate(riskSummary?.lastSecurityScanAt, true) }}
+          </p>
+        </div>
+        <div class="hairline mt-4" />
+
+        <div class="mt-6 grid grid-cols-1 gap-4 md:grid-cols-5">
+          <div
+            v-for="card in securityPostureCards"
+            :key="card.key"
+            class="surface-flat p-4"
+          >
+            <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">{{ card.label }}</p>
+            <p :class="['mt-2 font-display text-2xl font-medium tracking-[-0.035em]', card.tone]" data-numeric>
+              {{ card.value }}
+            </p>
+            <p v-if="card.hint" class="mt-1 text-xs text-text-tertiary">{{ card.hint }}</p>
+          </div>
+        </div>
+
+        <div class="mt-8">
+          <div class="flex items-center justify-between gap-3">
+            <p class="eyebrow">Findings</p>
+            <span class="font-mono text-xs text-text-tertiary">{{ securityFindings.length }} total</span>
+          </div>
+
+          <div v-if="securityFindings.length" class="mt-4 space-y-3">
+            <div
+              v-for="finding in securityFindings"
+              :key="finding.id"
+              class="surface-flat flex flex-col gap-3 p-4 md:flex-row md:items-start md:justify-between"
+            >
+              <div class="min-w-0 flex-1">
+                <div class="flex flex-wrap items-center gap-2">
+                  <span :class="['rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]', severityBadgeClass(finding.severity)]">
+                    {{ finding.severity }}
+                  </span>
+                  <span class="font-mono text-[11px] uppercase tracking-[0.12em] text-text-tertiary">{{ finding.status }}</span>
+                </div>
+                <h3 class="mt-3 text-sm font-semibold text-text-main">{{ findingTitle(finding.findingType) }}</h3>
+                <p class="mt-2 break-words font-mono text-xs leading-5 text-text-secondary">
+                  {{ findingEvidenceText(finding) }}
+                </p>
+                <p class="mt-2 font-mono text-[11px] text-text-tertiary">
+                  Last seen: {{ formatDate(finding.lastSeenAt, true) }}
+                </p>
+              </div>
+
+              <div v-if="finding.status === 'OPEN'" class="flex shrink-0 gap-2">
+                <button type="button" class="btn-ghost px-3 py-1.5 text-xs" @click="updateFindingStatus(finding, 'DISMISSED')">
+                  Dismiss
+                </button>
+                <button type="button" class="btn-ghost px-3 py-1.5 text-xs" @click="updateFindingStatus(finding, 'RESOLVED')">
+                  Resolve
                 </button>
               </div>
             </div>
           </div>
 
-          <div class="mt-5">
-            <div class="text-text-secondary text-xs mb-2">{{ $t('domain.rdap.dates') }}</div>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
-              <div class="bg-background rounded-lg p-4 space-y-2">
-                <div class="text-text-secondary text-xs">{{ $t('domain.rdap.registration') }}</div>
-                <div class="font-mono text-text-main">{{ formatDate(latest?.rdapSummary?.events?.registration, true) }}</div>
-              </div>
-              <div class="bg-background rounded-lg p-4 space-y-2">
-                <div class="text-text-secondary text-xs">{{ $t('domain.rdap.lastChanged') }}</div>
-                <div class="font-mono text-text-main">{{ formatDate(latest?.rdapSummary?.events?.lastChanged, true) }}</div>
-              </div>
-              <div class="bg-background rounded-lg p-4 space-y-2">
-                <div class="text-text-secondary text-xs">{{ $t('domain.rdap.transfer') }}</div>
-                <div class="font-mono text-text-main">{{ formatDate(latest?.rdapSummary?.events?.transfer, true) }}</div>
-              </div>
-              <div class="bg-background rounded-lg p-4 space-y-2">
-                <div class="text-text-secondary text-xs">{{ $t('domain.rdap.lastUpdateOfRdapDb') }}</div>
-                <div class="font-mono text-text-main">{{ formatDate(latest?.rdapSummary?.events?.lastUpdateOfRdapDb, true) }}</div>
-              </div>
-              <div class="bg-background rounded-lg p-4 space-y-2">
-                <div class="text-text-secondary text-xs">{{ $t('domain.rdap.registrarExpiration') }}</div>
-                <div class="font-mono text-text-main">{{ formatDate(latest?.rdapSummary?.events?.registrarExpiration, true) }}</div>
-              </div>
-              <div class="bg-background rounded-lg p-4 space-y-2">
-                <div class="text-text-secondary text-xs">{{ $t('domain.rdap.expiration') }}</div>
-                <div class="font-mono text-text-main">{{ formatDate(latest?.rdapSummary?.events?.expiration, true) }}</div>
-              </div>
-            </div>
+          <div v-else class="surface-flat mt-4 p-6 text-center">
+            <CheckCircleIcon class="mx-auto mb-3 h-6 w-6 text-status-available" />
+            <p class="text-sm text-text-secondary">No security findings from the latest scan.</p>
           </div>
+        </div>
+      </section>
 
-          <div class="mt-5">
-            <div class="text-text-secondary text-xs mb-2">{{ $t('domain.rdap.eppStatuses') }}</div>
-            <div class="flex flex-wrap gap-1">
-              <template v-if="latest?.rdapSummary?.statuses?.length">
-                <span
-                  v-for="s in latest.rdapSummary.statuses"
-                  :key="s"
-                  class="px-2 py-1 bg-background border border-card-border rounded text-xs font-mono text-text-secondary"
-                >
-                  {{ s }}
-                </span>
-              </template>
-              <span v-else class="text-text-weak text-xs">--</span>
-            </div>
+      <!-- RDAP summary -->
+      <section>
+        <div class="flex items-end justify-between">
+          <div>
+            <p class="eyebrow mb-3">RDAP</p>
+            <h2 class="headline-display text-2xl">{{ $t('domain.rdap.title') }}</h2>
           </div>
+          <span class="font-mono text-xs text-text-tertiary">{{ latest?.source || '—' }}</span>
+        </div>
+        <div class="hairline mt-4" />
 
-          <div class="mt-5 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-            <div class="bg-background rounded-lg p-4 space-y-3">
-              <div class="text-text-secondary text-xs">{{ $t('domain.rdap.dnssec') }}</div>
-              <div class="font-mono text-text-main">
-                <span v-if="latest?.rdapSummary?.secureDNS?.delegationSigned === true">{{ $t('domain.rdap.dnssecSigned') }}</span>
-                <span v-else-if="latest?.rdapSummary?.secureDNS?.delegationSigned === false">{{ $t('domain.rdap.dnssecUnsigned') }}</span>
-                <span v-else>--</span>
-              </div>
-
-              <div v-if="latest?.rdapSummary?.secureDNS?.dsData?.length" class="space-y-2">
-                <div
-                  v-for="(ds, idx) in latest.rdapSummary.secureDNS.dsData"
-                  :key="idx"
-                  class="text-xs font-mono text-text-secondary bg-background/60 border border-card-border rounded p-2"
-                >
-                  <div class="flex flex-wrap gap-x-3 gap-y-1">
-                    <span>keyTag={{ ds.keyTag ?? '--' }}</span>
-                    <span>alg={{ ds.algorithm ?? '--' }}</span>
-                    <span>digestType={{ ds.digestType ?? '--' }}</span>
-                  </div>
-                  <div class="mt-1 break-all" :title="ds.digest || ''">
-                    digest={{ ds.digest ? truncate(ds.digest, 28) : '--' }}
-                  </div>
-                </div>
-              </div>
-              <div v-else class="text-xs text-text-weak">--</div>
-            </div>
-
-            <div class="bg-background rounded-lg p-4 space-y-3">
-              <div class="text-text-secondary text-xs">{{ $t('domain.rdap.registrarExtra') }}</div>
-
-              <div class="flex items-center justify-between gap-2">
-                <div class="text-xs text-text-secondary">{{ $t('domain.rdap.ianaId') }}</div>
-                <div class="font-mono text-text-main break-all text-right">
-                  {{ latest?.rdapSummary?.registrar?.ianaId || '--' }}
-                </div>
-              </div>
-
-              <div class="flex items-center justify-between gap-2">
-                <div class="text-xs text-text-secondary">{{ $t('domain.rdap.abuseEmail') }}</div>
-                <div class="flex items-center gap-2 min-w-0">
-                  <div class="font-mono text-text-main break-all text-right">
-                    {{ latest?.rdapSummary?.registrar?.abuseEmail || '--' }}
-                  </div>
-                  <button
-                    v-if="latest?.rdapSummary?.registrar?.abuseEmail"
-                    type="button"
-                    class="shrink-0 px-2 py-1 text-[11px] bg-background border border-card-border rounded hover:bg-card-border/30 transition-all active:scale-95"
-                    @click="copyText(latest.rdapSummary.registrar.abuseEmail)"
-                  >
-                    {{ $t('common.copy') }}
-                  </button>
-                </div>
-              </div>
-
-              <div class="flex items-center justify-between gap-2">
-                <div class="text-xs text-text-secondary">{{ $t('domain.rdap.abusePhone') }}</div>
-                <div class="flex items-center gap-2 min-w-0">
-                  <div class="font-mono text-text-main break-all text-right">
-                    {{ latest?.rdapSummary?.registrar?.abusePhone || '--' }}
-                  </div>
-                  <button
-                    v-if="latest?.rdapSummary?.registrar?.abusePhone"
-                    type="button"
-                    class="shrink-0 px-2 py-1 text-[11px] bg-background border border-card-border rounded hover:bg-card-border/30 transition-all active:scale-95"
-                    @click="copyText(latest.rdapSummary.registrar.abusePhone)"
-                  >
-                    {{ $t('common.copy') }}
-                  </button>
-                </div>
-              </div>
-            </div>
+        <div class="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2">
+          <div class="surface-flat p-4">
+            <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">{{ $t('domain.rdap.handle') }}</p>
+            <p class="mt-2 break-all font-mono text-sm text-text-main">{{ latest?.rdapSummary?.handle || '—' }}</p>
           </div>
-
-          <div class="mt-5">
-            <div class="text-text-secondary text-xs mb-2">{{ $t('domain.rdap.nameserversDetailed') }}</div>
-            <div v-if="latest?.rdapSummary?.nameserversDetailed?.length" class="space-y-2">
-              <div
-                v-for="ns in latest.rdapSummary.nameserversDetailed"
-                :key="ns.name"
-                class="bg-background rounded-lg p-3 flex flex-col md:flex-row md:items-start md:justify-between gap-2"
-              >
-                <div class="font-mono text-text-main text-xs break-all">{{ ns.name }}</div>
-                <div class="text-xs text-text-secondary font-mono break-all text-right">
-                  <div v-if="ns.v4?.length">v4: {{ ns.v4.join(', ') }}</div>
-                  <div v-if="ns.v6?.length">v6: {{ ns.v6.join(', ') }}</div>
-                  <div v-if="!ns.v4?.length && !ns.v6?.length">--</div>
-                </div>
-              </div>
+          <div class="surface-flat p-4">
+            <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">{{ $t('domain.rdap.unicodeName') }}</p>
+            <p class="mt-2 break-all font-mono text-sm text-text-main">{{ latest?.rdapSummary?.unicodeName || '—' }}</p>
+          </div>
+          <div class="surface-flat p-4 md:col-span-2">
+            <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">{{ $t('domain.rdap.rdapUrl') }}</p>
+            <div class="mt-2 flex items-start gap-3">
+              <a v-if="latest?.rdapSummary?.rdapUrl" :href="latest.rdapSummary.rdapUrl" target="_blank" rel="noreferrer"
+                class="min-w-0 flex-1 break-all font-mono text-sm text-accent transition-colors hover:text-accent-hover">
+                {{ latest.rdapSummary.rdapUrl }}
+              </a>
+              <span v-else class="min-w-0 flex-1 font-mono text-sm text-text-tertiary">—</span>
+              <button v-if="latest?.rdapSummary?.rdapUrl" type="button" class="btn-ghost shrink-0 px-3 py-1 text-xs"
+                @click="copyText(latest.rdapSummary.rdapUrl)">
+                {{ $t('common.copy') }}
+              </button>
             </div>
-            <div v-else class="text-xs text-text-weak">--</div>
           </div>
         </div>
 
-        <!-- SSL Summary (Owned domains) -->
-        <div
-          v-if="domain.watchKind === 'OWNED' || sslLatest"
-          class="bg-card border border-card-border rounded-2xl p-6 shadow-sm"
-        >
-          <div class="flex items-center justify-between mb-4 border-b border-card-border pb-2">
-            <h3 class="font-medium text-text-main flex items-center gap-2">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3l7 4v6c0 5-3 9-7 11-4-2-7-6-7-11V7l7-4z" />
-              </svg>
-              {{ $t('nav.ssl') }}
-            </h3>
-            <button
-              type="button"
-              @click="checkSSLNow"
-              :disabled="sslChecking"
-              class="px-4 py-2 bg-background border border-card-border rounded-lg text-sm font-medium hover:bg-card-border/30 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <span v-if="sslChecking" class="flex items-center gap-2 justify-center">
-                <LoadingSpinner size="sm" color="gray" />
-                {{ $t('domain.checking') }}
-              </span>
-              <span v-else>{{ $t('ssl.checkNow') }}</span>
-            </button>
+        <p class="eyebrow mt-10 mb-4">{{ $t('domain.rdap.dates') }}</p>
+        <dl class="grid grid-cols-1 divide-y divide-hairline md:grid-cols-3 md:divide-y-0 md:[&>div:nth-child(n+1)]:border-r md:[&>div:nth-child(n+1)]:border-hairline md:[&>div:nth-child(3n)]:border-r-0 md:[&>div:nth-child(n+4)]:border-t md:[&>div:nth-child(n+4)]:border-hairline">
+          <div v-for="ev in rdapEvents" :key="ev.key" class="px-0 py-4 md:px-6">
+            <dt class="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">{{ ev.label }}</dt>
+            <dd class="mt-2 font-mono text-sm text-text-main">{{ formatDate(ev.value, true) }}</dd>
           </div>
+        </dl>
 
-          <div v-if="sslLatest" class="space-y-4">
-            <div class="flex flex-wrap items-center gap-2">
-              <span
-                :class="[
-                  'px-3 py-1 rounded-full text-sm font-medium border',
-                  sslStatusClass(sslLatest),
-                ]"
-              >
-                {{ sslStatusText(sslLatest) }}
-              </span>
-              <span v-if="sslLatest.issuer" class="text-sm text-text-secondary">
-                {{ $t('ssl.issuer') }}: {{ sslLatest.issuer }}
-              </span>
-            </div>
+        <p class="eyebrow mt-10 mb-3">{{ $t('domain.rdap.eppStatuses') }}</p>
+        <div class="flex flex-wrap gap-x-3 gap-y-1 text-xs">
+          <template v-if="latest?.rdapSummary?.statuses?.length">
+            <span v-for="s in latest.rdapSummary.statuses" :key="s" class="font-mono text-text-secondary">{{ s }}</span>
+          </template>
+          <span v-else class="text-text-tertiary">—</span>
+        </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-              <div class="bg-background rounded-lg p-4 space-y-2">
-                <div class="text-text-secondary text-xs">{{ $t('ssl.lastChecked') }}</div>
-                <div class="font-mono text-text-main">{{ formatDate(sslLatest.checkedAt, true) }}</div>
-              </div>
-
-              <div class="bg-background rounded-lg p-4 space-y-2">
-                <div class="text-text-secondary text-xs">{{ $t('ssl.daysUntilExpiryLabel') }}</div>
-                <div :class="['font-mono', sslDaysClass(sslLatest.daysUntilExpiry)]">
-                  {{ sslLatest.daysUntilExpiry ?? '--' }}
+        <div class="mt-10 grid grid-cols-1 gap-6 md:grid-cols-2">
+          <div class="surface-flat p-4">
+            <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">{{ $t('domain.rdap.dnssec') }}</p>
+            <p class="mt-2 font-mono text-sm text-text-main">
+              <span v-if="latest?.rdapSummary?.secureDNS?.delegationSigned === true">{{ $t('domain.rdap.dnssecSigned') }}</span>
+              <span v-else-if="latest?.rdapSummary?.secureDNS?.delegationSigned === false">{{ $t('domain.rdap.dnssecUnsigned') }}</span>
+              <span v-else>—</span>
+            </p>
+            <div v-if="latest?.rdapSummary?.secureDNS?.dsData?.length" class="mt-3 space-y-2">
+              <div v-for="(ds, idx) in latest.rdapSummary.secureDNS.dsData" :key="idx" class="rounded-md bg-card p-2 font-mono text-xs text-text-secondary">
+                <div class="flex flex-wrap gap-x-3 gap-y-1">
+                  <span>keyTag={{ ds.keyTag ?? '—' }}</span>
+                  <span>alg={{ ds.algorithm ?? '—' }}</span>
+                  <span>digestType={{ ds.digestType ?? '—' }}</span>
                 </div>
+                <p class="mt-1 break-all" :title="ds.digest || ''">digest={{ ds.digest ? truncate(ds.digest, 28) : '—' }}</p>
               </div>
-
-              <div class="bg-background rounded-lg p-4 space-y-2">
-                <div class="text-text-secondary text-xs">{{ $t('ssl.validFrom') }}</div>
-                <div class="font-mono text-text-main">{{ formatDate(sslLatest.validFrom) }}</div>
-              </div>
-
-              <div class="bg-background rounded-lg p-4 space-y-2">
-                <div class="text-text-secondary text-xs">{{ $t('ssl.validTo') }}</div>
-                <div class="font-mono text-text-main">{{ formatDate(sslLatest.validTo) }}</div>
-              </div>
-            </div>
-
-            <div v-if="sslLatest.lastError" class="text-xs text-status-dropping bg-status-dropping/10 border border-status-dropping/20 rounded-lg p-3">
-              {{ sslLastErrorText(sslLatest) }}
             </div>
           </div>
-          <div v-else class="text-center py-8 text-text-secondary text-sm">
-            {{ $t('ssl.noData') }}
+
+          <div class="surface-flat space-y-3 p-4">
+            <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">{{ $t('domain.rdap.registrarExtra') }}</p>
+
+            <div class="flex items-center justify-between gap-2 border-t border-hairline pt-3 text-xs">
+              <span class="text-text-tertiary">{{ $t('domain.rdap.ianaId') }}</span>
+              <span class="break-all text-right font-mono text-text-main">{{ latest?.rdapSummary?.registrar?.ianaId || '—' }}</span>
+            </div>
+            <div class="flex items-center justify-between gap-2 border-t border-hairline pt-3 text-xs">
+              <span class="text-text-tertiary">{{ $t('domain.rdap.abuseEmail') }}</span>
+              <span class="flex min-w-0 items-center gap-2">
+                <span class="break-all text-right font-mono text-text-main">{{ latest?.rdapSummary?.registrar?.abuseEmail || '—' }}</span>
+                <button v-if="latest?.rdapSummary?.registrar?.abuseEmail" type="button" class="btn-ghost shrink-0 px-2 py-0.5 text-[10px]"
+                  @click="copyText(latest.rdapSummary.registrar.abuseEmail)">{{ $t('common.copy') }}</button>
+              </span>
+            </div>
+            <div class="flex items-center justify-between gap-2 border-t border-hairline pt-3 text-xs">
+              <span class="text-text-tertiary">{{ $t('domain.rdap.abusePhone') }}</span>
+              <span class="flex min-w-0 items-center gap-2">
+                <span class="break-all text-right font-mono text-text-main">{{ latest?.rdapSummary?.registrar?.abusePhone || '—' }}</span>
+                <button v-if="latest?.rdapSummary?.registrar?.abusePhone" type="button" class="btn-ghost shrink-0 px-2 py-0.5 text-[10px]"
+                  @click="copyText(latest.rdapSummary.registrar.abusePhone)">{{ $t('common.copy') }}</button>
+              </span>
+            </div>
           </div>
         </div>
 
-          <!-- Timeline -->
-          <div class="bg-card border border-card-border rounded-2xl p-6 shadow-sm">
-              <h3 class="font-medium text-text-main mb-4 border-b border-card-border pb-2 flex items-center gap-2">
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  {{ $t('domain.timeline') }}
-              </h3>
-              <div
-                v-if="historyItems.length > 0"
-                @scroll="onHistoryScroll"
-                class="space-y-0 max-h-80 overflow-y-auto pr-2 custom-scrollbar"
-              >
-                  <div v-for="item in historyItems" :key="item.id" class="flex gap-4 py-3 border-b border-card-border/50 last:border-0 text-sm hover:bg-background/50 transition-colors rounded px-2 -mx-2">
-                      <div class="w-36 text-text-secondary font-mono text-xs flex-shrink-0">{{ formatDate(item.checkedAt, true) }}</div>
-                      <div class="font-medium flex-shrink-0" :style="{ color: getStatusColor(item.status) }">
-                          {{ $t(`domain.status.${item.status.toLowerCase()}`) }}
-                      </div>
-                      <div class="flex-1 text-right text-text-weak text-xs truncate" :title="item.parseReason">{{ item.parseReason || '--' }}</div>
-                  </div>
+        <p class="eyebrow mt-10 mb-3">{{ $t('domain.rdap.nameserversDetailed') }}</p>
+        <div v-if="latest?.rdapSummary?.nameserversDetailed?.length" class="space-y-2">
+          <div v-for="ns in latest.rdapSummary.nameserversDetailed" :key="ns.name"
+            class="surface-flat flex flex-col gap-2 p-3 md:flex-row md:items-start md:justify-between">
+            <p class="break-all font-mono text-xs text-text-main">{{ ns.name }}</p>
+            <div class="break-all text-right font-mono text-xs text-text-secondary">
+              <p v-if="ns.v4?.length">v4: {{ ns.v4.join(', ') }}</p>
+              <p v-if="ns.v6?.length">v6: {{ ns.v6.join(', ') }}</p>
+              <p v-if="!ns.v4?.length && !ns.v6?.length">—</p>
+            </div>
+          </div>
+        </div>
+        <p v-else class="text-xs text-text-tertiary">—</p>
+      </section>
 
-                  <div v-if="historyLoadingMore" class="py-3 text-center text-xs text-text-secondary">
-                    {{ $t('common.loading') }}
-                  </div>
-                  <div v-else-if="historyNextCursor" class="py-3 text-center">
-                    <button
-                      type="button"
-                      @click="loadMoreHistory"
-                      class="text-xs text-accent hover:underline"
-                    >
-                      {{ $t('common.loadMore') }}
-                    </button>
-                  </div>
-              </div>
-              <div v-else class="text-center py-8 text-text-secondary">
-                  {{ $t('domain.noHistory') }}
-              </div>
+      <!-- ─── SSL ─────────────────────────────────────────────────── -->
+      <section v-if="domain.watchKind === 'OWNED' || sslLatest">
+        <div class="flex items-end justify-between">
+          <div>
+            <p class="eyebrow mb-3">Certificate</p>
+            <h2 class="headline-display text-2xl">{{ $t('nav.ssl') }}</h2>
+          </div>
+          <button type="button" @click="checkSSLNow" :disabled="sslChecking" class="btn-ghost disabled:opacity-50">
+            <LoadingSpinner v-if="sslChecking" size="sm" color="gray" />
+            <span>{{ sslChecking ? $t('domain.checking') : $t('ssl.checkNow') }}</span>
+          </button>
+        </div>
+        <div class="hairline mt-4" />
+
+        <div v-if="sslLatest" class="mt-6 space-y-6">
+          <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-semibold uppercase tracking-[0.16em]">
+            <span :class="['flex items-center gap-1.5', sslStatusToneClass(sslLatest)]">
+              <span :class="['h-1.5 w-1.5 rounded-full', sslStatusDotClass(sslLatest)]" />
+              {{ sslStatusText(sslLatest) }}
+            </span>
+            <span v-if="sslLatest.issuer" class="text-text-tertiary">·</span>
+            <span v-if="sslLatest.issuer" class="font-mono text-text-secondary normal-case tracking-normal">{{ sslLatest.issuer }}</span>
           </div>
 
-         <!-- Raw Snapshot -->
-         <details class="group bg-card border border-card-border rounded-2xl p-6 shadow-sm">
-            <summary class="flex cursor-pointer list-none items-center justify-between gap-3 text-text-main">
-              <span class="font-medium flex items-center gap-2">
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-                  </svg>
-                  {{ $t('domain.rawSnapshot') }}
-              </span>
-              <span class="text-xs text-text-secondary transition-transform group-open:rotate-180">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                </svg>
-              </span>
-            </summary>
-            <p class="mt-2 text-xs text-text-secondary">{{ $t('domain.rawSnapshotHint') }}</p>
-            <pre class="mt-4 bg-background p-4 rounded-lg overflow-x-auto text-xs text-text-secondary font-mono max-h-96 custom-scrollbar">{{ latest?.rawSnapshot || $t('domain.noSnapshot') }}</pre>
-         </details>
+          <p v-if="sslCheckedHostDiff(sslLatest)" class="font-mono text-xs text-text-secondary">
+            {{ $t('ssl.checkedHost') }}: {{ sslLatest.checkedHost }}
+          </p>
+
+          <dl class="grid grid-cols-1 divide-y divide-hairline md:grid-cols-2 md:divide-x md:divide-y-0">
+            <div class="px-0 py-4 md:px-6 md:first:pl-0">
+              <dt class="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">{{ $t('ssl.lastChecked') }}</dt>
+              <dd class="mt-2 font-mono text-sm text-text-main">{{ formatDate(sslLatest.checkedAt, true) }}</dd>
+            </div>
+            <div class="px-0 py-4 md:px-6">
+              <dt class="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">{{ $t('ssl.daysUntilExpiryLabel') }}</dt>
+              <dd :class="['mt-2 font-display text-2xl font-medium tracking-[-0.035em]', sslDaysClass(sslLatest.daysUntilExpiry)]" data-numeric>
+                {{ sslLatest.daysUntilExpiry ?? '—' }}
+              </dd>
+            </div>
+            <div class="px-0 py-4 md:px-6 md:first:pl-0 md:border-t md:border-hairline">
+              <dt class="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">{{ $t('ssl.validFrom') }}</dt>
+              <dd class="mt-2 font-mono text-sm text-text-main">{{ formatDate(sslLatest.validFrom) }}</dd>
+            </div>
+            <div class="px-0 py-4 md:px-6 md:border-t md:border-hairline">
+              <dt class="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">{{ $t('ssl.validTo') }}</dt>
+              <dd class="mt-2 font-mono text-sm text-text-main">{{ formatDate(sslLatest.validTo) }}</dd>
+            </div>
+          </dl>
+
+          <p v-if="sslLatest.lastError" class="surface-flat p-4 text-xs text-status-dropping">{{ sslLastErrorText(sslLatest) }}</p>
+          <p v-if="sslLatest.validationError" class="surface-flat p-4 text-xs text-status-expiring">
+            {{ $t('ssl.validationError') }}: {{ sslLatest.validationError }}
+          </p>
+        </div>
+        <div v-else class="py-12 text-center">
+          <p class="text-sm text-text-secondary">{{ $t('ssl.noData') }}</p>
+        </div>
+      </section>
+
+      <!-- ─── TIMELINE ────────────────────────────────────────────── -->
+      <section>
+        <p class="eyebrow mb-3">Timeline</p>
+        <h2 class="headline-display text-2xl">{{ $t('domain.timeline') }}</h2>
+        <div class="hairline mt-4" />
+
+        <div v-if="historyItems.length > 0" @scroll="onHistoryScroll" class="max-h-96 overflow-y-auto pr-2">
+          <div v-for="item in historyItems" :key="item.id"
+            class="grid grid-cols-[10rem_minmax(0,1fr)_auto] items-center gap-4 border-b border-hairline py-3 transition-colors hover:bg-surface-sunken/50 last:border-b-0">
+            <div class="font-mono text-xs text-text-tertiary">{{ formatDate(item.checkedAt, true) }}</div>
+            <div class="text-[11px] font-semibold uppercase tracking-[0.16em]" :style="{ color: getStatusColor(item.status) }">
+              {{ $t(`domain.status.${item.status.toLowerCase()}`) }}
+            </div>
+            <div class="truncate text-right text-xs text-text-tertiary" :title="item.parseReason">{{ item.parseReason || '—' }}</div>
+          </div>
+
+          <div v-if="historyLoadingMore" class="py-3 text-center text-xs text-text-secondary">{{ $t('common.loading') }}</div>
+          <div v-else-if="historyNextCursor" class="py-3 text-center">
+            <button type="button" @click="loadMoreHistory" class="btn-text text-xs">{{ $t('common.loadMore') }}</button>
+          </div>
+        </div>
+        <div v-else class="py-12 text-center">
+          <p class="text-sm text-text-secondary">{{ $t('domain.noHistory') }}</p>
+        </div>
+      </section>
+
+      <!-- ─── RAW SNAPSHOT ────────────────────────────────────────── -->
+      <details class="group">
+        <summary class="flex cursor-pointer list-none items-center justify-between gap-3">
+          <div>
+            <p class="eyebrow mb-1">Raw data</p>
+            <h2 class="headline-display text-2xl">{{ $t('domain.rawSnapshot') }}</h2>
+          </div>
+          <ChevronDownIcon class="h-5 w-5 text-text-tertiary transition-transform group-open:rotate-180" />
+        </summary>
+        <div class="hairline mt-4" />
+        <p class="mt-4 text-xs text-text-secondary">{{ $t('domain.rawSnapshotHint') }}</p>
+        <pre class="surface-flat mt-4 max-h-96 overflow-x-auto p-4 font-mono text-xs leading-5 text-text-secondary">{{ latest?.rawSnapshot || $t('domain.noSnapshot') }}</pre>
+      </details>
     </div>
 
-    <!-- Confirm Delete Dialog -->
     <ConfirmDialog
       :is-open="deleteDialog.isOpen"
       :title="$t('domain.deleteDomain')"
@@ -520,6 +429,7 @@
 
 <script setup>
 import { format } from 'date-fns';
+import { AlertCircle as AlertCircleIcon, CheckCircle as CheckCircleIcon, ChevronDown as ChevronDownIcon } from 'lucide-vue-next';
 
 const { t } = useI18n();
 const toast = useToast();
@@ -531,12 +441,12 @@ const { data, pending, error, refresh } = await useFetch(`/api/domains/${id}`);
 const domain = computed(() => data.value?.data?.domain);
 const latest = computed(() => data.value?.data?.latest);
 const sslLatest = computed(() => data.value?.data?.sslLatest);
+const riskSummary = computed(() => data.value?.data?.riskSummary);
+const securityFindings = computed(() => data.value?.data?.securityFindings || []);
 const refreshing = ref(false);
 const sslChecking = ref(false);
 const editModalOpen = ref(false);
-const deleteDialog = ref({
-  isOpen: false
-});
+const deleteDialog = ref({ isOpen: false });
 
 const HISTORY_PAGE_SIZE = 50;
 const historyItems = ref([]);
@@ -548,26 +458,91 @@ watchEffect(() => {
   historyNextCursor.value = data.value?.data?.historyNextCursor ?? null;
 });
 
+const rdapEvents = computed(() => [
+  { key: 'registration', label: t('domain.rdap.registration'), value: latest.value?.rdapSummary?.events?.registration },
+  { key: 'lastChanged', label: t('domain.rdap.lastChanged'), value: latest.value?.rdapSummary?.events?.lastChanged },
+  { key: 'transfer', label: t('domain.rdap.transfer'), value: latest.value?.rdapSummary?.events?.transfer },
+  { key: 'lastUpdateOfRdapDb', label: t('domain.rdap.lastUpdateOfRdapDb'), value: latest.value?.rdapSummary?.events?.lastUpdateOfRdapDb },
+  { key: 'registrarExpiration', label: t('domain.rdap.registrarExpiration'), value: latest.value?.rdapSummary?.events?.registrarExpiration },
+  { key: 'expiration', label: t('domain.rdap.expiration'), value: latest.value?.rdapSummary?.events?.expiration },
+]);
+
+const showSecuritySection = computed(() =>
+  domain.value?.watchKind === 'OWNED' ||
+  Boolean(riskSummary.value?.lastSecurityScanAt) ||
+  securityFindings.value.length > 0,
+);
+
+const securityPostureCards = computed(() => {
+  const summary = riskSummary.value || {};
+  return [
+    {
+      key: 'risk',
+      label: 'Risk score',
+      value: summary.riskScore ?? 0,
+      hint: `${summary.openFindingsCount ?? 0} open findings`,
+      tone: (summary.riskScore ?? 0) >= 60
+        ? 'text-status-dropping'
+        : (summary.riskScore ?? 0) >= 20
+          ? 'text-status-expiring'
+          : 'text-status-available',
+    },
+    {
+      key: 'dnssec',
+      label: 'DNSSEC',
+      value: summary.dnssecStatus || 'UNKNOWN',
+      hint: 'DS record posture',
+      tone: summary.dnssecStatus === 'SIGNED' ? 'text-status-available' : 'text-text-main',
+    },
+    {
+      key: 'dmarc',
+      label: 'DMARC',
+      value: String(summary.dmarcPolicy || 'unknown').toUpperCase(),
+      hint: 'Mail spoofing policy',
+      tone: summary.dmarcPolicy === 'reject'
+        ? 'text-status-available'
+        : summary.dmarcPolicy === 'missing' || summary.dmarcPolicy === 'none'
+          ? 'text-status-dropping'
+          : 'text-status-expiring',
+    },
+    {
+      key: 'caa',
+      label: 'CAA',
+      value: summary.caaConfigured ? 'SET' : 'MISSING',
+      hint: 'Certificate issuer control',
+      tone: summary.caaConfigured ? 'text-status-available' : 'text-status-expiring',
+    },
+    {
+      key: 'registrar-lock',
+      label: 'Registrar lock',
+      value: summary.registrarLockStatus || 'UNKNOWN',
+      hint: 'Transfer lock',
+      tone: summary.registrarLockStatus === 'LOCKED'
+        ? 'text-status-available'
+        : summary.registrarLockStatus === 'UNLOCKED'
+          ? 'text-status-dropping'
+          : 'text-status-expiring',
+    },
+  ];
+});
+
 const loadMoreHistory = async () => {
   if (historyLoadingMore.value) return;
   if (!historyNextCursor.value) return;
-
   historyLoadingMore.value = true;
   try {
     const resp = await $fetch(`/api/domains/${id}/history`, {
       query: { cursor: historyNextCursor.value, limit: HISTORY_PAGE_SIZE },
     });
-
     if (resp?.code !== 0) {
-      toast.error(resp?.msg || t("domain.loadError"));
+      toast.error(resp?.msg || t('domain.loadError'));
       return;
     }
-
     const items = resp?.data?.items || [];
     historyItems.value = historyItems.value.concat(items);
     historyNextCursor.value = resp?.data?.nextCursor ?? null;
   } catch (e) {
-    toast.error(t("domain.loadError"));
+    toast.error(t('domain.loadError'));
   } finally {
     historyLoadingMore.value = false;
   }
@@ -577,96 +552,152 @@ const onHistoryScroll = (e) => {
   const el = e?.target;
   if (!el) return;
   if (historyLoadingMore.value || !historyNextCursor.value) return;
-
   const remaining = el.scrollHeight - el.scrollTop - el.clientHeight;
-  if (remaining < 120) {
-    loadMoreHistory();
-  }
+  if (remaining < 120) loadMoreHistory();
 };
 
 const formatDate = (d, time = false) => {
-    if(!d) return '--';
-    return format(new Date(d), time ? 'yyyy-MM-dd HH:mm' : 'yyyy-MM-dd');
+  if (!d) return '—';
+  return format(new Date(d), time ? 'yyyy-MM-dd HH:mm' : 'yyyy-MM-dd');
 };
 
 const truncate = (s, max = 28) => {
-  const str = String(s || "");
+  const str = String(s || '');
   if (str.length <= max) return str;
   if (max <= 3) return str.slice(0, max);
   return `${str.slice(0, max - 3)}...`;
 };
 
 const copyText = async (text) => {
-  const value = String(text || "").trim();
+  const value = String(text || '').trim();
   if (!value) return;
-
   try {
     await navigator.clipboard.writeText(value);
-    toast.success(t("common.copied"));
+    toast.success(t('common.copied'));
   } catch (e) {
     try {
-      const el = document.createElement("textarea");
+      const el = document.createElement('textarea');
       el.value = value;
-      el.setAttribute("readonly", "true");
-      el.style.position = "fixed";
-      el.style.left = "-9999px";
+      el.setAttribute('readonly', 'true');
+      el.style.position = 'fixed';
+      el.style.left = '-9999px';
       document.body.appendChild(el);
       el.select();
-      document.execCommand("copy");
+      document.execCommand('copy');
       document.body.removeChild(el);
-      toast.success(t("common.copied"));
+      toast.success(t('common.copied'));
     } catch {
-      toast.error(t("common.copyFailed"));
+      toast.error(t('common.copyFailed'));
     }
+  }
+};
+
+const severityBadgeClass = (severity) => {
+  switch (severity) {
+    case 'HIGH':
+      return 'bg-status-dropping/10 text-status-dropping';
+    case 'MEDIUM':
+      return 'bg-status-expiring/10 text-status-expiring';
+    default:
+      return 'bg-accent/10 text-accent';
+  }
+};
+
+const findingTitle = (type) => {
+  const titles = {
+    DMARC_MISSING: 'DMARC record is missing',
+    DMARC_WEAK_POLICY: 'DMARC policy is weak',
+    CAA_MISSING: 'CAA record is missing',
+    DNSSEC_UNSIGNED: 'DNSSEC is not signed',
+    NAMESERVER_DRIFT: 'Nameserver drift detected',
+    MX_DRIFT: 'Mail exchanger drift detected',
+    REGISTRAR_LOCK_MISSING: 'Registrar transfer lock is missing',
+  };
+  return titles[type] || type;
+};
+
+const findingEvidenceText = (finding) => {
+  const evidence = finding?.evidence || {};
+  if (finding.findingType === 'DMARC_WEAK_POLICY') {
+    return `policy=${evidence.policy || 'unknown'}, pct=${evidence.pct ?? 'unknown'}`;
+  }
+  if (finding.findingType === 'NAMESERVER_DRIFT' || finding.findingType === 'MX_DRIFT') {
+    return `previous=${JSON.stringify(evidence.previous || [])}; current=${JSON.stringify(evidence.current || [])}`;
+  }
+  if (finding.findingType === 'REGISTRAR_LOCK_MISSING') {
+    return `lockStatus=${evidence.lockStatus || 'unknown'}; statuses=${JSON.stringify(evidence.statuses || [])}`;
+  }
+  if (evidence.checkedRecord) return `checked=${evidence.checkedRecord}`;
+  return JSON.stringify(evidence);
+};
+
+const updateFindingStatus = async (finding, status) => {
+  try {
+    const resp = await $fetch(`/api/security/findings/${finding.id}`, {
+      method: 'PATCH',
+      body: { status },
+    });
+    if (resp?.code !== 0) {
+      toast.error(resp?.msg || 'Failed to update finding');
+      return;
+    }
+    toast.success(status === 'RESOLVED' ? 'Finding resolved' : 'Finding dismissed');
+    await refresh();
+  } catch (e) {
+    toast.error('Failed to update finding');
   }
 };
 
 const getStatusColor = (status) => {
-    switch (status) {
-        case 'AVAILABLE': return 'var(--color-status-available)';
-        case 'REGISTERED': return 'var(--color-status-registered)';
-        case 'EXPIRING': return 'var(--color-status-expiring)';
-        case 'PENDING_DELETE': return 'var(--color-status-dropping)';
-        default: return 'var(--color-status-unknown)';
-    }
-};
-
-const statusClass = (status) => {
   switch (status) {
-    case 'AVAILABLE': return 'bg-status-available/10 text-status-available border-status-available/20';
-    case 'REGISTERED': return 'bg-status-registered/10 text-status-registered border-status-registered/20';
-    case 'EXPIRING': return 'bg-status-expiring/10 text-status-expiring border-status-expiring/20';
-    case 'PENDING_DELETE': return 'bg-status-dropping/10 text-status-dropping border-status-dropping/20';
-    default: return 'bg-status-unknown/10 text-status-unknown border-status-unknown/20';
+    case 'AVAILABLE': return 'var(--color-status-available)';
+    case 'REGISTERED': return 'var(--color-status-registered)';
+    case 'EXPIRING': return 'var(--color-status-expiring)';
+    case 'PENDING_DELETE': return 'var(--color-status-dropping)';
+    default: return 'var(--color-status-unknown)';
   }
 };
 
-const watchKindClass = computed(() => {
-  return domain.value?.watchKind === 'OWNED'
-    ? 'bg-watch-owned/10 text-watch-owned border border-watch-owned/20'
-    : 'bg-watch-wanted/10 text-watch-wanted border border-watch-wanted/20';
-});
+const statusToneClass = (status) => {
+  switch (status) {
+    case 'AVAILABLE': return 'text-status-available';
+    case 'REGISTERED': return 'text-status-registered';
+    case 'EXPIRING': return 'text-status-expiring';
+    case 'PENDING_DELETE': return 'text-status-dropping';
+    default: return 'text-status-unknown';
+  }
+};
 
-const priorityClass = computed(() => {
+const statusDotClass = (status) => {
+  switch (status) {
+    case 'AVAILABLE': return 'bg-status-available';
+    case 'REGISTERED': return 'bg-status-registered';
+    case 'EXPIRING': return 'bg-status-expiring';
+    case 'PENDING_DELETE': return 'bg-status-dropping';
+    default: return 'bg-status-unknown';
+  }
+};
+
+const priorityToneClass = computed(() => {
   switch (domain.value?.priority) {
-    case 'HIGH': return 'bg-priority-high/10 text-priority-high border border-priority-high/20';
-    case 'MEDIUM': return 'bg-priority-medium/10 text-priority-medium border border-priority-medium/20';
-    case 'LOW': return 'bg-priority-low/10 text-priority-low border border-priority-low/20';
-    default: return 'bg-priority-low/10 text-priority-low border border-priority-low/20';
+    case 'HIGH': return 'text-priority-high';
+    case 'MEDIUM': return 'text-priority-medium';
+    case 'LOW': return 'text-priority-low';
+    default: return 'text-priority-low';
   }
 });
 
 const refreshDomain = async () => {
-    refreshing.value = true;
-    try {
-        await $fetch(`/api/domains/${id}/refresh`, { method: 'POST' });
-        toast.success(t('domain.scanSuccess'));
-        refresh();
-    } catch(e) {
-        toast.error(t('domain.scanError'));
-    } finally {
-        refreshing.value = false;
-    }
+  refreshing.value = true;
+  try {
+    await $fetch(`/api/domains/${id}/refresh`, { method: 'POST' });
+    toast.success(t('domain.scanSuccess'));
+    refresh();
+  } catch (e) {
+    toast.error(t('domain.scanError'));
+  } finally {
+    refreshing.value = false;
+  }
 };
 
 const checkSSLNow = async () => {
@@ -682,13 +713,18 @@ const checkSSLNow = async () => {
   }
 };
 
-const sslStatusClass = (s) => {
-  if (!s?.hasSSL) return 'bg-status-unknown/10 text-status-unknown border-status-unknown/20';
-  if (!s?.isValid) return 'bg-status-dropping/10 text-status-dropping border-status-dropping/20';
-  if (s?.daysUntilExpiry != null && s.daysUntilExpiry < 30) {
-    return 'bg-status-expiring/10 text-status-expiring border-status-expiring/20';
-  }
-  return 'bg-status-available/10 text-status-available border-status-available/20';
+const sslStatusToneClass = (s) => {
+  if (!s?.hasSSL) return 'text-status-unknown';
+  if (!s?.isValid) return 'text-status-dropping';
+  if (s?.daysUntilExpiry != null && s.daysUntilExpiry < 30) return 'text-status-expiring';
+  return 'text-status-available';
+};
+
+const sslStatusDotClass = (s) => {
+  if (!s?.hasSSL) return 'bg-status-unknown';
+  if (!s?.isValid) return 'bg-status-dropping';
+  if (s?.daysUntilExpiry != null && s.daysUntilExpiry < 30) return 'bg-status-expiring';
+  return 'bg-status-available';
 };
 
 const sslStatusText = (s) => {
@@ -699,11 +735,12 @@ const sslStatusText = (s) => {
 };
 
 const sslLastErrorText = (s) => {
-  if (s?.hasSSL && s?.lastError) {
-    return t('ssl.retainedAfterError', { error: s.lastError });
-  }
+  if (s?.hasSSL && s?.lastError) return t('ssl.retainedAfterError', { error: s.lastError });
   return s?.lastError || '';
 };
+
+const sslCheckedHostDiff = (s) =>
+  s?.checkedHost && domain.value?.domain && s.checkedHost !== domain.value.domain;
 
 const sslDaysClass = (days) => {
   if (days == null) return 'text-text-main';
@@ -713,47 +750,26 @@ const sslDaysClass = (days) => {
 };
 
 const confirmDelete = () => {
-    deleteDialog.value.isOpen = true;
+  deleteDialog.value.isOpen = true;
 };
 
 const handleDelete = async () => {
-    deleteDialog.value.isOpen = false;
-    try {
-        await $fetch(`/api/domains/${id}`, { method: 'DELETE' });
-        toast.success(t('domain.deleteSuccess'));
-        navigateTo('/domains');
-    } catch(e) {
-        toast.error(t('domain.deleteError'));
-    }
+  deleteDialog.value.isOpen = false;
+  try {
+    await $fetch(`/api/domains/${id}`, { method: 'DELETE' });
+    toast.success(t('domain.deleteSuccess'));
+    navigateTo('/domains');
+  } catch (e) {
+    toast.error(t('domain.deleteError'));
+  }
 };
 
 const openEditModal = () => {
-    editModalOpen.value = true;
+  editModalOpen.value = true;
 };
 
 const handleEditSaved = async () => {
-    editModalOpen.value = false;
-    await refresh();
+  editModalOpen.value = false;
+  await refresh();
 };
 </script>
-
-<style scoped>
-.custom-scrollbar::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: var(--color-background);
-  border-radius: 4px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: var(--color-card-border);
-  border-radius: 4px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: var(--color-text-weak);
-}
-</style>

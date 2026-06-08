@@ -1,4 +1,5 @@
 import { webhookConfigs } from "~/server/db/schema";
+import { recordAuditEvent } from "~/server/utils/audit";
 import { eq } from "drizzle-orm";
 
 export default defineEventHandler(async (event) => {
@@ -7,6 +8,13 @@ export default defineEventHandler(async (event) => {
   const db = useDb();
 
   await db.delete(webhookConfigs).where(eq(webhookConfigs.id, id));
+  await recordAuditEvent({
+    event,
+    eventType: "notifications.webhook_delete",
+    outcome: "success",
+    actorType: "admin",
+    metadata: { id },
+  });
 
   return success({ deleted: true });
 });

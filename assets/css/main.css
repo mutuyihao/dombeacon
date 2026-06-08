@@ -1,49 +1,66 @@
 @import "tailwindcss";
 
-/* Custom theme - Tailwind CSS v4 uses CSS variables */
-/* 自定义主题 - Tailwind CSS v4 使用 CSS 变量 */
+/* ─────────────────────────────────────────────────────────────────────────────
+   Self-hosted variable fonts (cross-platform consistency).
+   Inter for body sans (Vercel / Linear / GitHub standard).
+   Fraunces for editorial display (variable opsz / SOFT / WONK axes).
+   JetBrains Mono only at 400/500 weight for monospace numerics.
+   ───────────────────────────────────────────────────────────────────────── */
+/* ─────────────────────────────────────────────────────────────────────────────
+   Theme tokens — Tailwind v4 reads these as utility-class generators.
+   Limit, controlled palette. One signature accent. Oxide status colors.
+   ───────────────────────────────────────────────────────────────────────── */
 @theme {
-  --font-sans: "Aptos", "IBM Plex Sans", "Segoe UI Variable", sans-serif;
-  --font-display: "Fraunces", "Cormorant Garamond", "Georgia", serif;
-  --font-mono: "JetBrains Mono", "SFMono-Regular", "Cascadia Code", monospace;
+  --font-sans: "Inter Variable", "Inter", -apple-system, "Segoe UI", system-ui, sans-serif;
+  --font-display: "Fraunces Variable", "Fraunces", "Times New Roman", Georgia, serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", "Cascadia Code", monospace;
 
+  /* Surface palette — warm cream, single accent */
   --color-background: #F5F3EE;
   --color-card: #FFFEFA;
+  --color-surface-sunken: #EFECE5;
   --color-card-border: #DED9CC;
+
   --color-text-main: #12201F;
   --color-text-secondary: #65736F;
   --color-text-weak: #8A948F;
   --color-text-tertiary: #A8AEA7;
+
   --color-accent: #0E6B6F;
   --color-accent-hover: #094F53;
-  --color-status-available: #0F8A5F;
-  --color-status-registered: #54718F;
-  --color-status-expiring: #B76818;
-  --color-status-dropping: #B9443E;
-  --color-status-unknown: #6E7B80;
 
-  /* New colors for v1 features */
-  /* v1 功能新增颜色 */
-  --color-watch-owned: #3F6F95;
-  --color-watch-wanted: #0F8A5F;
-  --color-priority-high: #B9443E;
-  --color-priority-medium: #B76818;
-  --color-priority-low: #697C83;
-  --color-action-open: #B76818;
+  /* Oxide status palette — desaturated so accent stays the only loud voice */
+  --color-status-available: #4A7A5C;
+  --color-status-registered: #506E85;
+  --color-status-expiring:  #A36A2E;
+  --color-status-dropping:  #9B4A45;
+  --color-status-unknown:   #6E7B80;
+
+  --color-watch-owned:  #506E85;
+  --color-watch-wanted: #4A7A5C;
+  --color-priority-high:   #9B4A45;
+  --color-priority-medium: #A36A2E;
+  --color-priority-low:    #697C83;
+  --color-action-open:    #A36A2E;
   --color-action-snoozed: #6E7B80;
+
+  /* Hairline tokens — exposed as Tailwind utilities (border-hairline / bg-hairline) */
+  --color-hairline: rgba(18, 32, 31, 0.08);
+  --color-hairline-strong: rgba(18, 32, 31, 0.14);
 }
 
+/* ─────────────────────────────────────────────────────────────────────────────
+   Runtime CSS variables (light + dark) — surfaces, hairlines, shadows, motion.
+   ───────────────────────────────────────────────────────────────────────── */
 @layer theme {
   :root {
     color-scheme: light;
-    --app-aura-primary: rgba(14, 107, 111, 0.1);
-    --app-aura-secondary: rgba(183, 104, 24, 0.08);
-    --app-grid-line: rgba(18, 32, 31, 0.045);
-    --app-grid-dot: rgba(18, 32, 31, 0.06);
-    --shadow-card: 0 20px 60px -42px rgba(18, 32, 31, 0.44), 0 4px 18px -15px rgba(18, 32, 31, 0.28);
-    --shadow-lifted: 0 30px 80px -46px rgba(18, 32, 31, 0.54), 0 12px 32px -26px rgba(18, 32, 31, 0.36);
-    --surface-frost: rgba(255, 254, 250, 0.86);
-    --surface-soft: rgba(255, 254, 250, 0.64);
+
+    --hairline: rgba(18, 32, 31, 0.08);
+    --hairline-strong: rgba(18, 32, 31, 0.14);
+
+    --shadow-soft:     0 1px 2px rgba(18, 32, 31, 0.04), 0 8px 24px -16px rgba(18, 32, 31, 0.10);
+    --shadow-elevated: 0 2px 6px rgba(18, 32, 31, 0.06), 0 24px 60px -32px rgba(18, 32, 31, 0.18);
   }
 
   :root[data-theme="dark"] {
@@ -51,59 +68,77 @@
 
     --color-background: #071211;
     --color-card: #101B1A;
+    --color-surface-sunken: #0C1716;
     --color-card-border: #273532;
+
     --color-text-main: #EFF7F2;
     --color-text-secondary: #AEBDB6;
     --color-text-weak: #7F908B;
     --color-text-tertiary: #65756F;
+
     --color-accent: #53C7BC;
     --color-accent-hover: #7ADFD5;
-    --color-status-available: #59D28F;
-    --color-status-registered: #7AA9D8;
-    --color-status-expiring: #F2A84B;
-    --color-status-dropping: #F07067;
-    --color-status-unknown: #8EA1A5;
-    --color-watch-owned: #7AA9D8;
-    --color-watch-wanted: #59D28F;
-    --color-priority-high: #F07067;
-    --color-priority-medium: #F2A84B;
-    --color-priority-low: #9CB4B7;
-    --color-action-open: #F2A84B;
+
+    --color-status-available: #6EBE89;
+    --color-status-registered: #8FB3CC;
+    --color-status-expiring:  #D5994E;
+    --color-status-dropping:  #C8746C;
+    --color-status-unknown:   #8EA1A5;
+
+    --color-watch-owned:  #8FB3CC;
+    --color-watch-wanted: #6EBE89;
+    --color-priority-high:   #C8746C;
+    --color-priority-medium: #D5994E;
+    --color-priority-low:    #9CB4B7;
+    --color-action-open:    #D5994E;
     --color-action-snoozed: #8EA1A5;
-    --app-aura-primary: rgba(83, 199, 188, 0.16);
-    --app-aura-secondary: rgba(242, 168, 75, 0.1);
-    --app-grid-line: rgba(239, 247, 242, 0.055);
-    --app-grid-dot: rgba(239, 247, 242, 0.065);
-    --shadow-card: 0 24px 80px -54px rgba(83, 199, 188, 0.28), 0 14px 38px -28px rgba(0, 0, 0, 0.82);
-    --shadow-lifted: 0 34px 110px -56px rgba(83, 199, 188, 0.38), 0 22px 56px -34px rgba(0, 0, 0, 0.9);
-    --surface-frost: rgba(16, 27, 26, 0.86);
-    --surface-soft: rgba(16, 27, 26, 0.62);
+
+    --hairline: rgba(239, 247, 242, 0.08);
+    --hairline-strong: rgba(239, 247, 242, 0.16);
+
+    --shadow-soft:     0 1px 2px rgba(0, 0, 0, 0.6), 0 12px 28px -18px rgba(0, 0, 0, 0.7);
+    --shadow-elevated: 0 2px 6px rgba(0, 0, 0, 0.7), 0 28px 70px -34px rgba(0, 0, 0, 0.85);
   }
 }
 
+/* ─────────────────────────────────────────────────────────────────────────────
+   Base — body typography defaults, scrollbar polish, reset interactions.
+   ───────────────────────────────────────────────────────────────────────── */
 @layer base {
-  /* Prevent layout shift when scrollbar appears/disappears */
-  /* 防止滚动条出现/消失时的布局抖动 */
   html {
-    overflow-y: scroll; /* Always show scrollbar space / 始终显示滚动条空间 */
-    scrollbar-gutter: stable; /* Reserve space for scrollbar / 为滚动条预留空间 */
+    overflow-y: scroll;
+    scrollbar-gutter: stable;
   }
 
   body {
     @apply bg-background text-text-main font-sans antialiased;
     min-height: 100vh;
-    font-feature-settings: "cv02", "cv03", "cv04", "ss01";
     text-rendering: optimizeLegibility;
+    font-feature-settings: "ss01", "cv11";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
-  h1, h2, h3, p {
+  h1, h2, h3, h4, p {
     text-wrap: pretty;
   }
 
-  /* Custom scrollbar styling (optional, for better aesthetics) */
-  /* 自定义滚动条样式（可选，提升美观度） */
+  /* Tabular numerics across the entire app — metrics, dates, counters */
+  .font-display, .font-mono, [data-numeric] {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum", "ss01";
+  }
+
+  /* Fraunces personality dial — refined opsz, neutral SOFT/WONK */
+  .font-display {
+    font-variation-settings: "opsz" 144, "SOFT" 0, "WONK" 0;
+    font-feature-settings: "ss01", "ss02", "tnum";
+  }
+
+  /* Scrollbar — minimal, hairline-driven */
   ::-webkit-scrollbar {
-    width: 12px;
+    width: 10px;
+    height: 10px;
   }
 
   ::-webkit-scrollbar-track {
@@ -111,87 +146,230 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    background: var(--color-card-border);
-    border-radius: 6px;
+    background: var(--hairline-strong);
+    border-radius: 999px;
     border: 3px solid var(--color-background);
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: var(--color-text-weak);
+    background: var(--color-text-tertiary);
   }
 
-  /* Firefox scrollbar / Firefox 滚动条 */
   * {
     scrollbar-width: thin;
-    scrollbar-color: var(--color-card-border) var(--color-background);
+    scrollbar-color: var(--hairline-strong) var(--color-background);
   }
 
-  /* Button animations and interactions */
+  /* Universal interaction transitions — opacity + color only, no scale gumminess */
   button, a {
-    @apply transition-all duration-200 ease-out;
-  }
-
-  button:active:not(:disabled), a:active {
-    @apply scale-[0.985];
+    @apply transition-colors duration-200 ease-out;
   }
 
   button:disabled {
-    @apply opacity-50 cursor-not-allowed;
+    @apply opacity-40 cursor-not-allowed;
   }
 
-  /* Focus visible for accessibility */
+  /* Focus ring — subtle accent, no offset noise */
   *:focus-visible {
-    @apply outline-none ring-2 ring-accent/30 ring-offset-2 ring-offset-background;
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+    border-radius: 2px;
   }
 
-  /* Smooth transitions for interactive elements */
+  /* Form elements — neutralize browser defaults so .input-bare can take over */
   input, select, textarea {
-    @apply transition-all duration-200;
-  }
-
-  input:focus, select:focus, textarea:focus {
-    @apply outline-none border-accent ring-2 ring-accent/20;
+    @apply transition-colors duration-200;
+    background: transparent;
   }
 }
 
+/* ─────────────────────────────────────────────────────────────────────────────
+   Component primitives — composable surfaces, dividers, typography, controls.
+   These replace the old glass-panel / editorial-panel / bg-app-grid system.
+   ───────────────────────────────────────────────────────────────────────── */
 @layer components {
-  .glass-panel {
-    @apply border border-card-border/60 bg-card/90 backdrop-blur-xl shadow-[var(--shadow-card)];
+  /* Surface — primary raised container. No border. Soft shadow. */
+  .surface {
+    background: var(--color-card);
+    box-shadow: var(--shadow-soft);
+    border-radius: 14px;
   }
 
-  .glass-panel-hover {
-    @apply transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-accent/25 hover:shadow-[var(--shadow-lifted)];
+  .surface-elevated {
+    background: var(--color-card);
+    box-shadow: var(--shadow-elevated);
+    border-radius: 16px;
   }
 
-  .editorial-panel {
-    @apply bg-card/95 shadow-[var(--shadow-card)];
+  /* Surface-flat — recessed area, no shadow. Used for sub-sections inside surfaces. */
+  .surface-flat {
+    background: var(--color-surface-sunken);
+    border-radius: 14px;
   }
 
+  /* Hairline divider — the only acceptable line for separation */
+  .hairline {
+    background: var(--hairline);
+    height: 1px;
+    width: 100%;
+    border: 0;
+  }
+
+  .hairline-strong {
+    background: var(--hairline-strong);
+    height: 1px;
+    width: 100%;
+    border: 0;
+  }
+
+  /* Eyebrow — small uppercase label, used above display headlines */
   .eyebrow {
-    @apply text-[10px] font-bold uppercase tracking-[0.22em] text-text-secondary;
+    font-family: var(--font-sans);
+    font-size: 11px;
+    line-height: 1.5;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--color-text-secondary);
   }
 
-  .text-link {
-    @apply inline-flex items-center gap-1 text-sm font-semibold text-accent hover:text-accent-hover;
+  /* Display headline — Fraunces with refined optical settings */
+  .headline-display {
+    font-family: var(--font-display);
+    font-variation-settings: "opsz" 144, "SOFT" 0, "WONK" 0;
+    font-feature-settings: "ss01", "ss02";
+    font-weight: 500;
+    letter-spacing: -0.035em;
+    text-wrap: balance;
+    color: var(--color-text-main);
+  }
+
+  /* Buttons — three flavors. No scale animation. Color/bg only. */
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1.25rem;
+    background: var(--color-accent);
+    color: #fff;
+    border-radius: 999px;
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: -0.005em;
+    transition: background-color 0.2s ease;
+  }
+  .btn-primary:hover { background: var(--color-accent-hover); }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.875rem;
+    color: var(--color-text-main);
+    border-radius: 999px;
+    font-size: 14px;
+    font-weight: 500;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+  .btn-ghost:hover {
+    background: var(--color-surface-sunken);
+    color: var(--color-text-main);
+  }
+
+  .btn-text {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    color: var(--color-accent);
+    font-size: 14px;
+    font-weight: 500;
+    transition: color 0.2s ease;
+  }
+  .btn-text:hover { color: var(--color-accent-hover); }
+  .btn-text svg { transition: transform 0.2s ease; }
+  .btn-text:hover svg { transform: translateX(2px); }
+
+  /* Input bare — Apple/Stripe style underline-only. Replaces all bordered inputs. */
+  .input-bare {
+    width: 100%;
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid var(--hairline);
+    padding: 0.5rem 0;
+    font-size: 14px;
+    color: var(--color-text-main);
+    transition: border-color 0.2s ease;
+    border-radius: 0;
+  }
+  .input-bare::placeholder { color: var(--color-text-tertiary); }
+  .input-bare:focus {
+    outline: none;
+    border-bottom-color: var(--color-accent);
+  }
+  .input-bare:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  /* Tab bar — single source of truth for all in-page tabs */
+  .tab-bar {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+    border-bottom: 1px solid var(--hairline);
+  }
+
+  .tab-item {
+    position: relative;
+    padding: 0.75rem 0;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+    transition: color 0.2s ease;
+    white-space: nowrap;
+  }
+  .tab-item:hover { color: var(--color-text-main); }
+  .tab-item.is-active { color: var(--color-text-main); }
+  .tab-item.is-active::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -1px;
+    height: 2px;
+    background: var(--color-accent);
+  }
+
+  /* Metric row — editorial list pattern. Replaces nested chips/cards. */
+  .metric-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 1rem;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--hairline);
+    transition: padding 0.2s ease, color 0.2s ease;
+  }
+  .metric-row:last-child { border-bottom: none; }
+  .metric-row.is-link:hover {
+    padding-left: 4px;
+  }
+  .metric-row.is-link:hover .metric-row-label {
+    color: var(--color-accent);
   }
 }
 
+/* ─────────────────────────────────────────────────────────────────────────────
+   Utilities — small, sharp helpers.
+   ───────────────────────────────────────────────────────────────────────── */
 @layer utilities {
-  .bg-app-grid {
-    background-image:
-      linear-gradient(to right, var(--app-grid-line) 1px, transparent 1px),
-      linear-gradient(to bottom, var(--app-grid-line) 1px, transparent 1px),
-      radial-gradient(circle at center, var(--app-grid-dot) 1px, transparent 1px);
-    background-position: 0 0, 0 0, 12px 12px;
-    background-size: 44px 44px, 44px 44px, 24px 24px;
-  }
-
   .no-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
 
-  .no-scrollbar::-webkit-scrollbar {
-    display: none;
-  }
+  .text-balance { text-wrap: balance; }
+  .text-pretty { text-wrap: pretty; }
 }

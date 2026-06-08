@@ -1,22 +1,38 @@
-# DomBeacon (域灯)
+# DomBeacon
 
-DomBeacon (域灯) is a self-hosted domain ops beacon for tracking wanted domain opportunities, managing owned domain portfolios, monitoring expiration and SSL risks, and turning domain events into actionable alerts.
+DomBeacon is a self-hosted domain ops beacon for tracking wanted domain
+opportunities, managing owned domain portfolios, monitoring domain/SSL/DNS
+risks, and detecting brand-abuse candidates through RDAP and public
+Certificate Transparency data.
 
 ## Features
 
-- **Opportunity Tracking**: Monitor wanted domains for availability, expiration, and deletion opportunities
-- **Portfolio Management**: Track owned domains with status, expiration, and health monitoring
-- **Action Queue**: Event-driven workflow with open/snooze/dismiss/resolved states
-- **Status Monitoring**: Tracks `AVAILABLE`, `REGISTERED`, `EXPIRING`, `PENDING_DELETE` states using RDAP
-- **Automated Scanning**: Hourly status checks + Daily summary emails (08:00)
-- **Beautiful UI**: Morandi color scheme, card-based layout, mobile responsive
-- **Bilingual Support**: Full Chinese (zh-CN) and English (en-US) interface with language switcher
-- **Notifications**: Instant alerts on status change + Daily digest
-- **Optional Authentication**: Simple password gate for production deployments
+- **Domain tracking**: Monitor `WANTED` domains for availability and dropping
+  signals, and `OWNED` domains for expiry and operational health.
+- **RDAP status history**: Store latest and historical RDAP snapshots using
+  ICANN RDAP bootstrap discovery.
+- **Action queue**: Convert meaningful events into open, snoozed, dismissed,
+  or resolved work items.
+- **SSL monitoring**: Track certificate issuer, validity window, invalid
+  chains, and certificates expiring in fewer than 30 days.
+- **DNS/RDAP security findings**: Track DNS posture, nameserver/MX drift,
+  SPF/DMARC/CAA/DNSSEC signals, and registrar-lock gaps with bulk triage,
+  saved queue views, and keyboard shortcuts.
+- **Brand Watch**: Generate exact, typo, prefix/suffix, and homoglyph
+  lookalikes; check them through RDAP; discover CT-observed domains from
+  crt.sh; and review persisted risks.
+- **Notifications**: Send events through email, webhooks, ServerChan, and Web
+  Push, with risk event channel presets, delivery history, and retry support.
+- **Audit logs**: Record admin login, config changes, domain mutations, scans,
+  finding updates, and Brand Watch changes.
+- **Cost tracking**: Store per-domain costs and choose the display currency in
+  settings preferences.
+- **PWA support**: Installable UI with a hand-rolled service worker and Web
+  Push subscription flow.
 
 ## Quick Start (Docker)
 
-1. **Clone & Setup**
+1. Clone and prepare the workspace.
 
    ```bash
    git clone <repo>
@@ -25,109 +41,139 @@ DomBeacon (域灯) is a self-hosted domain ops beacon for tracking wanted domain
    mkdir data
    ```
 
-2. **Run**
+2. Set required secrets in `.env`.
+
+   ```env
+   ADMIN_PASSWORD=your-secure-password
+   SESSION_SECRET=your-random-session-secret
+   SECRET_ENCRYPTION_KEY=your-random-storage-secret
+   ```
+
+3. Run the app.
 
    ```bash
    docker-compose up -d
    ```
 
-3. **Access**
-   Open `http://localhost:8080` (Docker default).
+4. Open `http://localhost:8080`.
 
 ## Configuration
 
-### Authentication (Optional)
+### Authentication
 
-Set `ADMIN_PASSWORD` in your `.env` file to enable password protection:
+`ADMIN_PASSWORD` is required for normal deployments. Authentication is disabled
+only when `AUTH_DISABLED=true` is set explicitly.
 
-```env
-ADMIN_PASSWORD=your-secure-password
-```
+Set `TRUST_PROXY_HEADERS=true` only when the app is behind a trusted reverse
+proxy that controls `X-Forwarded-For`.
 
-If not set, the app is publicly accessible.
-
-### SMTP & Notifications
-
-Go to `/settings` to configure:
-- Email provider (Gmail, SMTP2GO, etc.)
-- Target email address
-- Notification rules (Instant alerts, Daily summary)
+`SECRET_ENCRYPTION_KEY` is used to encrypt stored SMTP, webhook, ServerChan,
+and push subscription secrets. If omitted, DomBeacon falls back to
+`SESSION_SECRET` or `ADMIN_PASSWORD`.
 
 ### Database
 
-The database path can be configured via `DATABASE_PATH` environment variable (default: `./data/app.db`). Relative paths are resolved from the process working directory; the parent folder is auto-created on first boot.
+The database path is controlled by `DATABASE_PATH` and defaults to
+`./data/app.db`. Relative paths are resolved from the process working
+directory, and the parent folder is auto-created on first boot.
 
-### Language / 语言
+### Scheduler
 
-The application supports both Chinese (中文) and English:
+The built-in scheduler is enabled by default. It runs:
 
-- **Default Language**: Chinese (zh-CN)
-- **Switch Language**: Click the language button (中/EN) in the header
-- **Persistence**: Language preference is saved in a cookie
+- Hourly domain scans.
+- Hourly Brand Watch scans for enabled due terms.
+- Daily summary at 08:00 in the configured scheduler timezone.
 
-应用支持中英文双语：
+Use `ENABLE_SCHEDULER=false` to disable background jobs. Use
+`SCHEDULER_TIMEZONE=Asia/Shanghai` or another IANA timezone to control local
+wall-clock scheduling.
 
-- **默认语言**：中文
-- **切换语言**：点击页面顶部的语言按钮（中/EN）
-- **持久化**：语言偏好保存在 Cookie 中
+### Notifications
+
+Use the app settings pages to configure SMTP, webhooks, ServerChan, and Web
+Push. VAPID keys are required for Web Push; see
+[docs/pwa-and-push.md](docs/pwa-and-push.md).
 
 ## Usage
 
 ### Adding Domains
 
-1. Navigate to `/domains`
-2. Click "Add Domain"
-3. Select:
-   - **Watch Kind**: OWNED (domains you own) or WANTED (domains you're tracking)
-   - **Priority**: HIGH, MEDIUM, or LOW
-4. Add optional notes and tags
+1. Navigate to `/domains`.
+2. Click "Add Domain".
+3. Select `OWNED` for domains you control or `WANTED` for domains you track.
+4. Set priority, notes, group, and tags as needed.
 
 ### Managing Actions
 
-The action queue (`/actions`) shows events requiring attention:
+The action queue shows events requiring attention:
 
-- **WANTED_AVAILABLE**: A wanted domain became available
-- **WANTED_DROPPING**: A wanted domain is in pending delete/redemption
-- **OWNED_EXPIRING**: An owned domain is expiring soon (<30 days)
-- **SCAN_FAILED**: RDAP scan failed for a domain
+- `WANTED_AVAILABLE`: a wanted domain became registrable.
+- `WANTED_DROPPING`: a wanted domain entered redemption or pending-delete.
+- `OWNED_EXPIRING`: an owned domain is inside the expiry window.
+- `SSL_EXPIRING`: an owned-domain certificate expires soon.
+- `SSL_INVALID`: an owned-domain certificate chain is invalid.
+- `SCAN_FAILED`: a RDAP scan failed.
 
-Actions can be:
-- **Snoozed**: Temporarily hidden until a future date
-- **Dismissed**: Acknowledged but no action needed
-- **Resolved**: Action completed
+Actions can be snoozed, dismissed, or resolved.
 
-### API Access
+### Brand Watch
 
-See [docs/README.md](docs/README.md) for the docs index and [docs/api.md](docs/api.md) for the endpoint list.
+Go to `/brand-watch` to configure brand, product, or company terms. DomBeacon
+generates local candidates, probes them with RDAP, queries crt.sh for
+CT-observed domains containing the watched term, and persists reviewable risks.
+
+### Security Findings
+
+Use `/ops/security` for the aggregate risk dashboard and `/ops/findings` for
+the triage queue. The queue supports URL filters, saved `security-findings`
+views, visible-row bulk lifecycle updates, and keyboard triage shortcuts:
+`J/K` move, `X` select, `R` reopen, `S` snooze, `D` dismiss, and `E` resolve.
+
+## API and Docs
+
+See [docs/README.md](docs/README.md) for the documentation index,
+[docs/api.md](docs/api.md) for endpoint details, and
+[docs/development/product-roadmap.md](docs/development/product-roadmap.md) for
+the current product plan.
 
 ## Development Setup
 
-1. **Install Dependencies**
+1. Install dependencies.
 
    ```bash
-   npm install
+   pnpm install
    ```
 
-2. **Database Setup**
+2. Prepare the database.
 
    ```bash
-   npx drizzle-kit push
+   pnpm exec drizzle-kit push
    ```
 
-3. **Run Dev Server**
+3. Run the dev server.
+
    ```bash
-   npm run dev
+   pnpm dev
    ```
-   Open `http://localhost:3000` (dev).
+
+4. Open `http://localhost:3000`.
+
+## Verification
+
+```bash
+pnpm test
+pnpm build
+```
 
 ## Tech Stack
 
-- **Framework**: Nuxt 4 (Vue 3 + Nitro)
-- **Database**: SQLite (via Drizzle ORM)
-- **Styling**: Tailwind CSS (Custom Morandi Tokens)
-- **i18n**: @nuxtjs/i18n (Chinese & English)
-- **Scheduling**: Node-Cron + DB Locks
-- **Email**: Nodemailer
+- Nuxt 4, Vue 3, Nitro
+- SQLite, Drizzle ORM, better-sqlite3
+- Tailwind CSS v4
+- `@nuxtjs/i18n`
+- Built-in timezone-aware scheduler with DB locks
+- Nodemailer, web-push
 
 ## License
 

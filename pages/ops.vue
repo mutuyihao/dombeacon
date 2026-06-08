@@ -1,9 +1,11 @@
 <template>
-  <div class="space-y-6">
-    <div>
+  <div class="flex min-h-full flex-col gap-6 md:h-full md:min-h-0 md:overflow-hidden">
+    <div class="shrink-0">
       <SubNavTabs :tabs="tabs" />
     </div>
-    <NuxtPage />
+    <div class="min-h-0 flex-1">
+      <NuxtPage />
+    </div>
   </div>
 </template>
 
@@ -14,8 +16,10 @@ const tabs = computed(() => {
   // Ensure tab labels react to locale changes.
   locale.value;
   return [
-    { to: "/actions", label: t("nav.actions") },
-    { to: "/tasks", label: t("nav.tasks") },
+    { to: "/ops/security", label: "Risk", exact: true },
+    { to: "/ops/findings", label: "Findings" },
+    { to: "/ops/actions", label: t("nav.actions") },
+    { to: "/ops/tasks", label: t("nav.tasks") },
   ];
 });
 </script>

@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
 import { domains } from "../../db/schema";
+import { recordAuditEvent } from "../../utils/audit";
 import { checkDomainSSLById } from "../../utils/ssl-check";
 
 const CONCURRENCY = 3;
@@ -12,7 +13,7 @@ const chunk = <T>(items: T[], size: number) => {
   return chunks;
 };
 
-export default defineEventHandler(async () => {
+export default defineEventHandler(async (event) => {
   const db = useDb();
   try {
     const activeDomains = await db
@@ -35,6 +36,14 @@ export default defineEventHandler(async () => {
         const domain = batch[index];
         if (result.status === "fulfilled") {
           checked += 1;
+          if (result.value.error || result.value.validationError) {
+            failed += 1;
+            errors.push({
+              domainId: domain.id,
+              domain: domain.domain,
+              error: result.value.error || result.value.validationError,
+            });
+          }
         } else {
           failed += 1;
           errors.push({
@@ -49,8 +58,28 @@ export default defineEventHandler(async () => {
       });
     }
 
+    await recordAuditEvent({
+      event,
+      eventType: "ssl.check_all",
+      outcome: failed > 0 ? "partial_success" : "success",
+      actorType: "admin",
+      metadata: {
+        activeDomainCount: activeDomains.length,
+        checked,
+        failed,
+        errorCount: errors.length,
+      },
+    });
+
     return success({ checked, failed, errors });
   } catch (error: any) {
+    await recordAuditEvent({
+      event,
+      eventType: "ssl.check_all",
+      outcome: "failure",
+      actorType: "admin",
+      metadata: { reason: error?.message || String(error) },
+    });
     return fail(error.message || "Failed to refresh SSL statuses", 50000);
   }
 });

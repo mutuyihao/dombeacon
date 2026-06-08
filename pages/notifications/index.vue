@@ -1,34 +1,30 @@
 <template>
-  <div class="space-y-6">
-    <!-- Header -->
-    <div class="flex items-center justify-between mb-8">
-      <div>
-        <h1 class="text-2xl font-bold text-text-main mb-2">{{ $t('notification.title') }}</h1>
-        <p class="text-sm text-text-secondary">{{ $t('notification.description') }}</p>
-      </div>
-      <button
-        @click="fetchEvents"
-        :disabled="loading"
-        class="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent/90 transition-colors disabled:opacity-50"
-      >
-        <RefreshIcon class="w-4 h-4" :class="{ 'animate-spin': loading }" />
-        {{ $t('notification.refresh') }}
-      </button>
-    </div>
+  <div class="flex min-h-full flex-col gap-6 md:h-full md:min-h-0 md:overflow-hidden">
 
-    <!-- Filters -->
-    <div class="bg-card border border-card-border rounded-lg p-4 mb-6">
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
-        <!-- Channel Filter -->
+    <!-- ─── PAGE HEADER ─────────────────────────────────────────────── -->
+    <header class="shrink-0">
+      <p class="eyebrow mb-2">Delivery log</p>
+      <div class="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <label class="block text-xs font-medium text-text-secondary mb-1">
+          <h1 class="headline-display text-3xl md:text-4xl">{{ $t('notification.title') }}</h1>
+          <p class="mt-2 max-w-2xl text-sm text-text-secondary">{{ $t('notification.description') }}</p>
+        </div>
+        <button @click="fetchEvents" :disabled="loading" class="btn-ghost disabled:opacity-50">
+          <RefreshIcon class="h-4 w-4" :class="{ 'animate-spin': loading }" />
+          {{ $t('notification.refresh') }}
+        </button>
+      </div>
+    </header>
+
+    <!-- ─── FILTERS ─────────────────────────────────────────────────── -->
+    <section class="shrink-0">
+      <p class="eyebrow mb-5">Filters</p>
+      <div class="grid grid-cols-1 gap-x-8 gap-y-6 md:grid-cols-2 xl:grid-cols-4">
+        <div>
+          <label class="block text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary mb-1">
             {{ $t('notification.channel') }}
           </label>
-          <select
-            v-model="filters.channel"
-            @change="resetAndFetch"
-            class="w-full px-3 py-2 text-sm border border-card-border rounded-lg bg-card focus:outline-none focus:ring-2 focus:ring-accent/50"
-          >
+          <select v-model="filters.channel" @change="resetAndFetch" class="input-bare">
             <option value="">{{ $t('common.all') }}</option>
             <option value="EMAIL">Email</option>
             <option value="WEBHOOK">Webhook</option>
@@ -36,34 +32,22 @@
             <option value="PUSH">Web Push</option>
           </select>
         </div>
-
-        <!-- Status Filter -->
         <div>
-          <label class="block text-xs font-medium text-text-secondary mb-1">
+          <label class="block text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary mb-1">
             {{ $t('notification.status') }}
           </label>
-          <select
-            v-model="filters.status"
-            @change="resetAndFetch"
-            class="w-full px-3 py-2 text-sm border border-card-border rounded-lg bg-card focus:outline-none focus:ring-2 focus:ring-accent/50"
-          >
+          <select v-model="filters.status" @change="resetAndFetch" class="input-bare">
             <option value="">{{ $t('common.all') }}</option>
             <option value="SENT">{{ $t('notification.statuses.sent') }}</option>
             <option value="FAILED">{{ $t('notification.statuses.failed') }}</option>
             <option value="PENDING">{{ $t('notification.statuses.pending') }}</option>
           </select>
         </div>
-
-        <!-- Event Type Filter -->
         <div>
-          <label class="block text-xs font-medium text-text-secondary mb-1">
+          <label class="block text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary mb-1">
             {{ $t('notification.eventType') }}
           </label>
-          <select
-            v-model="filters.eventType"
-            @change="resetAndFetch"
-            class="w-full px-3 py-2 text-sm border border-card-border rounded-lg bg-card focus:outline-none focus:ring-2 focus:ring-accent/50"
-          >
+          <select v-model="filters.eventType" @change="resetAndFetch" class="input-bare">
             <option value="">{{ $t('common.all') }}</option>
             <option value="STATUS_CHANGE">{{ $t('notification.events.status_change') }}</option>
             <option value="WANTED_AVAILABLE">{{ $t('notification.events.wanted_available') }}</option>
@@ -72,17 +56,11 @@
             <option value="DROPPING_ALERT">{{ $t('notification.events.dropping_alert') }}</option>
           </select>
         </div>
-
-        <!-- Date Range -->
         <div>
-          <label class="block text-xs font-medium text-text-secondary mb-1">
+          <label class="block text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary mb-1">
             {{ $t('notification.dateRange') }}
           </label>
-          <select
-            v-model="dateRange"
-            @change="applyDateRange"
-            class="w-full px-3 py-2 text-sm border border-card-border rounded-lg bg-card focus:outline-none focus:ring-2 focus:ring-accent/50"
-          >
+          <select v-model="dateRange" @change="applyDateRange" class="input-bare">
             <option value="">{{ $t('common.all') }}</option>
             <option value="24h">{{ $t('notification.last24h') }}</option>
             <option value="7d">{{ $t('notification.last7d') }}</option>
@@ -91,112 +69,98 @@
         </div>
       </div>
 
-      <div v-if="hasActiveFilters" class="mt-3 flex items-center justify-between">
-        <span class="text-xs text-text-secondary">
+      <div v-if="hasActiveFilters" class="mt-6 flex items-center justify-between text-xs">
+        <span class="text-text-secondary">
           {{ $t('notification.totalCount', { count: total }) }}
         </span>
-        <button
-          @click="clearFilters"
-          class="text-xs text-accent hover:underline"
-        >
+        <button @click="clearFilters" class="btn-text text-xs">
           {{ $t('notification.clearFilters') }}
         </button>
       </div>
-    </div>
+    </section>
 
-    <!-- Loading State -->
-    <div v-if="loading && events.length === 0" class="flex justify-center py-12">
+    <!-- ─── LOADING ─────────────────────────────────────────────────── -->
+    <section class="relative min-h-[26rem] flex-1 overflow-y-auto rounded-[18px] border border-hairline bg-card/45 p-3 md:min-h-0 md:p-4">
+    <div v-if="loading && events.length === 0" class="flex justify-center py-16">
       <LoadingSpinner size="lg" />
     </div>
 
-    <!-- Events List -->
-    <div v-else-if="events.length > 0" class="bg-card border border-card-border rounded-lg overflow-hidden">
-      <div class="overflow-x-auto">
-        <table class="w-full text-sm">
-          <thead class="bg-card-border/30">
-            <tr>
-              <th class="px-4 py-3 text-left font-medium text-text-secondary">{{ $t('notification.time') }}</th>
-              <th class="px-4 py-3 text-left font-medium text-text-secondary">{{ $t('notification.channel') }}</th>
-              <th class="px-4 py-3 text-left font-medium text-text-secondary">{{ $t('notification.eventType') }}</th>
-              <th class="px-4 py-3 text-left font-medium text-text-secondary">{{ $t('notification.domain') }}</th>
-              <th class="px-4 py-3 text-left font-medium text-text-secondary">{{ $t('notification.status') }}</th>
-              <th class="px-4 py-3 text-right font-medium text-text-secondary">{{ $t('common.actions') }}</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="event in events"
-              :key="event.id"
-              class="border-t border-card-border hover:bg-card-border/20 transition-colors cursor-pointer"
-              @click="openDetail(event)"
-            >
-              <td class="px-4 py-3 text-text-secondary whitespace-nowrap">
-                {{ formatTime(event.createdAt) }}
-              </td>
-              <td class="px-4 py-3">
-                <span
-                  :class="[
-                    'px-2 py-0.5 text-xs rounded-full font-medium',
-                    channelClass(event.channel)
-                  ]"
-                >
-                  {{ event.channel }}
-                </span>
-              </td>
-              <td class="px-4 py-3 text-text-main">
-                <span class="text-xs">{{ formatEventType(event.eventType) }}</span>
-                <span v-if="event.retryOf" class="ml-1 text-xs text-text-secondary">
-                  ({{ $t('notification.retryOf', { id: event.retryOf }) }})
-                </span>
-              </td>
-              <td class="px-4 py-3 text-text-main font-mono text-xs">
-                {{ event.domain || '—' }}
-              </td>
-              <td class="px-4 py-3">
-                <span
-                  :class="[
-                    'px-2 py-0.5 text-xs rounded-full font-medium',
-                    statusClass(event.status)
-                  ]"
-                >
-                  {{ formatStatus(event.status) }}
-                </span>
-              </td>
-              <td class="px-4 py-3 text-right">
-                <button
-                  v-if="event.status === 'FAILED'"
-                  @click.stop="retryEvent(event)"
-                  :disabled="retryingId === event.id"
-                  class="px-3 py-1 text-xs text-accent hover:bg-accent/10 rounded transition-colors disabled:opacity-50"
-                >
-                  <span v-if="retryingId !== event.id">{{ $t('notification.retry') }}</span>
-                  <LoadingSpinner v-else size="sm" />
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+    <!-- ─── EVENTS TABLE ────────────────────────────────────────────── -->
+    <div v-else-if="events.length > 0">
+      <div class="surface overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-hairline-strong">
+                <th class="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">{{ $t('notification.time') }}</th>
+                <th class="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">{{ $t('notification.channel') }}</th>
+                <th class="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">{{ $t('notification.eventType') }}</th>
+                <th class="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">{{ $t('notification.domain') }}</th>
+                <th class="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">{{ $t('notification.status') }}</th>
+                <th class="px-6 py-4 text-right text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">{{ $t('common.actions') }}</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-hairline">
+              <tr
+                v-for="event in events"
+                :key="event.id"
+                class="cursor-pointer transition-colors hover:bg-surface-sunken"
+                @click="openDetail(event)"
+              >
+                <td class="px-6 py-4 whitespace-nowrap font-mono text-xs text-text-secondary">
+                  {{ formatTime(event.createdAt) }}
+                </td>
+                <td class="px-6 py-4">
+                  <span :class="['text-[11px] font-semibold uppercase tracking-[0.14em]', channelToneClass(event.channel)]">
+                    {{ event.channel }}
+                  </span>
+                </td>
+                <td class="px-6 py-4 text-text-main">
+                  <span class="text-xs">{{ formatEventType(event.eventType) }}</span>
+                  <span v-if="event.retryOf" class="ml-1 text-xs text-text-tertiary">
+                    ({{ $t('notification.retryOf', { id: event.retryOf }) }})
+                  </span>
+                </td>
+                <td class="px-6 py-4 font-mono text-xs text-text-main">
+                  {{ event.domain || '—' }}
+                </td>
+                <td class="px-6 py-4">
+                  <span :class="['flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.14em]', statusToneClass(event.status)]">
+                    <span :class="['h-1.5 w-1.5 rounded-full', statusDotClass(event.status)]" />
+                    {{ formatStatus(event.status) }}
+                  </span>
+                </td>
+                <td class="px-6 py-4 text-right">
+                  <button
+                    v-if="event.status === 'FAILED'"
+                    @click.stop="retryEvent(event)"
+                    :disabled="retryingId === event.id"
+                    class="btn-text text-xs disabled:opacity-50"
+                  >
+                    <span v-if="retryingId !== event.id">{{ $t('notification.retry') }}</span>
+                    <LoadingSpinner v-else size="sm" />
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
 
-      <!-- Load More -->
-      <div v-if="hasMore" class="border-t border-card-border p-4 text-center">
-        <button
-          @click="loadMore"
-          :disabled="loading"
-          class="px-4 py-2 text-sm text-accent hover:bg-accent/10 rounded-lg transition-colors disabled:opacity-50"
-        >
-          {{ loading ? $t('common.loading') : $t('notification.loadMore') }}
-        </button>
+        <div v-if="hasMore" class="border-t border-hairline p-4 text-center">
+          <button @click="loadMore" :disabled="loading" class="btn-text text-xs disabled:opacity-50">
+            {{ loading ? $t('common.loading') : $t('notification.loadMore') }}
+          </button>
+        </div>
       </div>
     </div>
 
-    <!-- Empty State -->
-    <div v-else class="text-center py-16">
-      <BellIcon class="w-16 h-16 mx-auto text-text-tertiary mb-4" />
-      <p class="text-text-secondary">{{ $t('notification.noEvents') }}</p>
+    <!-- ─── EMPTY ───────────────────────────────────────────────────── -->
+    <div v-else class="py-24 text-center">
+      <BellIcon class="mx-auto mb-4 h-8 w-8 text-text-tertiary" />
+      <p class="text-sm text-text-secondary">{{ $t('notification.noEvents') }}</p>
     </div>
+    </section>
 
-    <!-- Detail Modal -->
     <NotificationDetailModal
       :is-open="detailOpen"
       :event="selectedEvent"
@@ -239,7 +203,7 @@ const dateRange = ref('');
 const hasMore = computed(() => events.value.length < total.value);
 
 const hasActiveFilters = computed(() => {
-  return Object.values(filters.value).some(v => v !== '') || dateRange.value !== '';
+  return Object.values(filters.value).some((v) => v !== '') || dateRange.value !== '';
 });
 
 const buildQueryParams = () => {
@@ -283,6 +247,7 @@ const resetAndFetch = () => {
 };
 
 const loadMore = () => {
+  if (loading.value || !hasMore.value) return;
   page.value += 1;
   fetchEvents();
 };
@@ -332,15 +297,17 @@ const retryEvent = async (event) => {
     resetAndFetch();
   } catch (error) {
     console.error('Retry failed:', error);
-    toast.error(error.data?.msg || t('notification.retryFailed'));
+    toast.error(error?.data?.msg || t('notification.retryFailed'));
   } finally {
     retryingId.value = null;
   }
 };
 
 const formatTime = (ts) => {
-  if (!ts) return '';
-  return new Date(ts).toLocaleString();
+  if (!ts) return '-';
+  const date = new Date(ts);
+  if (Number.isNaN(date.getTime())) return '-';
+  return date.toLocaleString();
 };
 
 const formatEventType = (type) => {
@@ -357,22 +324,31 @@ const formatStatus = (status) => {
   return translated === key ? status : translated;
 };
 
-const channelClass = (channel) => {
+const channelToneClass = (channel) => {
   switch (channel) {
-    case 'EMAIL': return 'bg-accent/10 text-accent border border-accent/20';
-    case 'WEBHOOK': return 'bg-status-registered/10 text-status-registered border border-status-registered/20';
-    case 'SERVERCHAN': return 'bg-status-expiring/10 text-status-expiring border border-status-expiring/20';
-    case 'PUSH': return 'bg-status-available/10 text-status-available border border-status-available/20';
-    default: return 'bg-status-unknown/10 text-status-unknown border border-status-unknown/20';
+    case 'EMAIL': return 'text-accent';
+    case 'WEBHOOK': return 'text-status-registered';
+    case 'SERVERCHAN': return 'text-status-expiring';
+    case 'PUSH': return 'text-status-available';
+    default: return 'text-status-unknown';
   }
 };
 
-const statusClass = (status) => {
+const statusToneClass = (status) => {
   switch (status) {
-    case 'SENT': return 'bg-status-available/10 text-status-available border border-status-available/20';
-    case 'FAILED': return 'bg-status-dropping/10 text-status-dropping border border-status-dropping/20';
-    case 'PENDING': return 'bg-status-expiring/10 text-status-expiring border border-status-expiring/20';
-    default: return 'bg-status-unknown/10 text-status-unknown border border-status-unknown/20';
+    case 'SENT': return 'text-status-available';
+    case 'FAILED': return 'text-status-dropping';
+    case 'PENDING': return 'text-status-expiring';
+    default: return 'text-status-unknown';
+  }
+};
+
+const statusDotClass = (status) => {
+  switch (status) {
+    case 'SENT': return 'bg-status-available';
+    case 'FAILED': return 'bg-status-dropping';
+    case 'PENDING': return 'bg-status-expiring';
+    default: return 'bg-status-unknown';
   }
 };
 

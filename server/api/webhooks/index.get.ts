@@ -1,22 +1,15 @@
 import { webhookConfigs } from "~/server/db/schema";
-
-const parseJson = (value: string | null | undefined, fallback: any) => {
-  try {
-    return value ? JSON.parse(value) : fallback;
-  } catch {
-    return fallback;
-  }
-};
+import { parseProtectedJson } from "~/server/utils/secrets";
 
 const sanitizeWebhook = (webhook: any) => {
-  const headers = parseJson(webhook.headersJson, {});
+  const headers = parseProtectedJson(webhook.headersJson, {});
   return {
     id: webhook.id,
     name: webhook.name,
     url: webhook.url,
     method: webhook.method,
     enabled: Boolean(webhook.enabled),
-    eventTypes: parseJson(webhook.eventTypes, []),
+    eventTypes: parseProtectedJson(webhook.eventTypes, []),
     headerCount: Object.keys(headers).length,
     createdAt: webhook.createdAt,
   };

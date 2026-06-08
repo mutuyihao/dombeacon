@@ -20,10 +20,12 @@ verbose code references and decision history.
 - [ui-ux-improvements.md](ui-ux-improvements.md) — Phase 1 UI polish narrative
 - [ui-ux-testing-checklist.md](ui-ux-testing-checklist.md) — manual QA pass for Phase 1
 - [domain-detail-optimization.md](domain-detail-optimization.md) — domain detail page polish
+- [v1.2-changelog.md](v1.2-changelog.md) — v1.2 shipped-feature changelog
+- [ui-function-quality-improvement-plan.md](ui-function-quality-improvement-plan.md) — UI and interaction quality plan
 
 ## Planning drafts
 
-- [v1-2-pwa-goofy-lynx.md](v1-2-pwa-goofy-lynx.md) — v1.2 implementation plan (now shipped; see [../development/v1.2-changelog.md](../development/v1.2-changelog.md) for what landed)
+- [v1-2-pwa-goofy-lynx.md](v1-2-pwa-goofy-lynx.md) — v1.2 implementation plan (now shipped; see [v1.2-changelog.md](v1.2-changelog.md) for what landed)
 - [product-direction-plan.md](product-direction-plan.md) — early product direction notes
 - [product-blueprint.md](product-blueprint.md) — full product blueprint
 - [blueprint-implementation-status.md](blueprint-implementation-status.md) — blueprint vs implementation tracking

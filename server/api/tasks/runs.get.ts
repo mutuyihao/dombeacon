@@ -4,6 +4,15 @@ import { desc, gt, lt } from "drizzle-orm";
 const clamp = (n: number, min: number, max: number) =>
   Math.max(min, Math.min(max, n));
 
+const parseRunResult = (json: string | null) => {
+  if (!json) return {};
+  try {
+    return JSON.parse(json);
+  } catch {
+    return { parseError: true };
+  }
+};
+
 export default defineEventHandler(async (event) => {
   const db = useDb();
   const query = getQuery(event);
@@ -32,7 +41,7 @@ export default defineEventHandler(async (event) => {
   return success({
     items: pageRows.map((i) => ({
       ...i,
-      result: i.resultJson ? JSON.parse(i.resultJson) : {},
+      result: parseRunResult(i.resultJson),
     })),
     nextCursor,
     limit,

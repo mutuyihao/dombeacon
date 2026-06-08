@@ -10,6 +10,10 @@ import {
   sendServerchan,
   formatServerchanMessage,
 } from "../../../utils/serverchan";
+import {
+  parseProtectedJson,
+  revealSecretText,
+} from "../../../utils/secrets";
 
 /**
  * Retry a failed notification.
@@ -67,9 +71,10 @@ export default defineEventHandler(async (event) => {
         if (!webhook) {
           errorMessage = "Webhook config no longer exists";
         } else {
-          const headers = webhook.headersJson
-            ? JSON.parse(webhook.headersJson)
-            : {};
+          const headers = parseProtectedJson<Record<string, string>>(
+            webhook.headersJson,
+            {},
+          );
           const result = await sendWebhook(
             webhook.url,
             {
@@ -99,7 +104,10 @@ export default defineEventHandler(async (event) => {
           const message = metadata.eventData
             ? formatServerchanMessage(original.eventType, metadata.eventData)
             : { title: metadata.message?.title || "Retry", desp: "", short: "" };
-          success_ = await sendServerchan(config.sendKey, message);
+          success_ = await sendServerchan(
+            revealSecretText(config.sendKey),
+            message,
+          );
         }
       }
     } else if (original.channel === "PUSH") {

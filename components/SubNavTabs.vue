@@ -1,15 +1,10 @@
 <template>
-  <nav class="flex p-1 bg-card border border-card-border rounded-xl overflow-x-auto max-w-full">
+  <nav class="tab-bar overflow-x-auto no-scrollbar">
     <NuxtLink
       v-for="tab in tabs"
       :key="tab.to"
       :to="tab.to"
-      :class="[
-        'px-4 py-1.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap',
-        isActive(tab)
-          ? 'bg-background text-text-main shadow-sm'
-          : 'text-text-secondary hover:text-text-main',
-      ]"
+      :class="['tab-item', isActive(tab) && 'is-active']"
     >
       {{ tab.label }}
     </NuxtLink>

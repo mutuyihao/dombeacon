@@ -1,9 +1,13 @@
 import { serverchanConfigs } from "~/server/db/schema";
+import { recordAuditEvent } from "~/server/utils/audit";
+import { maskSecretText, protectSecretText } from "~/server/utils/secrets";
 
-const maskSendKey = (sendKey: string | null | undefined) => {
-  if (!sendKey || sendKey.length < 8) return "****";
-  return `${sendKey.slice(0, 4)}****${sendKey.slice(-4)}`;
-};
+const normalizeEventTypes = (value: unknown) =>
+  Array.isArray(value)
+    ? value
+        .map((eventType) => String(eventType || "").trim().toUpperCase())
+        .filter(Boolean)
+    : [];
 
 export default defineEventHandler(async (event) => {
   try {
@@ -11,6 +15,7 @@ export default defineEventHandler(async (event) => {
     const db = useDb();
 
     const { name, sendKey, eventTypes, enabled = true } = body;
+    const normalizedEventTypes = normalizeEventTypes(eventTypes);
 
     if (!name || !sendKey) {
       return fail("Name and SendKey are required", 40000);
@@ -24,18 +29,33 @@ export default defineEventHandler(async (event) => {
       .insert(serverchanConfigs)
       .values({
         name,
-        sendKey,
-        eventTypes: eventTypes ? JSON.stringify(eventTypes) : null,
+        sendKey: protectSecretText(sendKey),
+        eventTypes: normalizedEventTypes.length
+          ? JSON.stringify(normalizedEventTypes)
+          : null,
         enabled,
         createdAt: new Date(),
       })
       .returning();
 
+    await recordAuditEvent({
+      event,
+      eventType: "notifications.serverchan_create",
+      outcome: "success",
+      actorType: "admin",
+      metadata: {
+        id: result.id,
+        name: result.name,
+        enabled: Boolean(result.enabled),
+        eventTypes: normalizedEventTypes,
+      },
+    });
+
     return success({
       id: result.id,
       name: result.name,
-      sendKeyMasked: maskSendKey(result.sendKey),
-      eventTypes: eventTypes || [],
+      sendKeyMasked: maskSecretText(result.sendKey),
+      eventTypes: normalizedEventTypes,
       enabled: Boolean(result.enabled),
       createdAt: result.createdAt,
     });

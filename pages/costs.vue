@@ -1,7 +1,5 @@
-<template>
-  <DataCostsPage />
-</template>
-
 <script setup lang="ts">
-import DataCostsPage from './data/costs.vue';
+definePageMeta({
+  redirect: "/data/costs",
+});
 </script>

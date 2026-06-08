@@ -2,9 +2,20 @@ import {
   domains,
   domainStatusLatest,
   domainStatusHistory,
+  riskFindings,
   sslStatusLatest,
 } from "../../db/schema";
 import { eq, desc } from "drizzle-orm";
+import { getDomainRiskSummary } from "../../utils/risk-summary";
+
+const parseFindingEvidence = (value: string | null) => {
+  if (!value) return null;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return { parseError: true };
+  }
+};
 
 export default defineEventHandler(async (event) => {
   try {
@@ -32,6 +43,15 @@ export default defineEventHandler(async (event) => {
       .from(sslStatusLatest)
       .where(eq(sslStatusLatest.domainId, domainId))
       .get();
+
+    const riskSummary = await getDomainRiskSummary(domainId);
+    const securityFindings = await db
+      .select()
+      .from(riskFindings)
+      .where(eq(riskFindings.domainId, domainId))
+      .orderBy(desc(riskFindings.lastSeenAt), desc(riskFindings.id))
+      .limit(20)
+      .all();
 
     // History (paginated - first page)
     const historyLimit = 50;
@@ -83,6 +103,11 @@ export default defineEventHandler(async (event) => {
       },
       latest: parsedLatest,
       sslLatest,
+      riskSummary,
+      securityFindings: securityFindings.map((finding) => ({
+        ...finding,
+        evidence: parseFindingEvidence(finding.evidenceJson),
+      })),
       history,
       historyNextCursor,
     });

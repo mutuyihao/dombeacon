@@ -26,10 +26,15 @@ export default defineEventHandler(async (event) => {
       return fail("snoozedUntil is required when status is SNOOZED", 40000);
     }
 
+    const parsedSnoozedUntil = snoozedUntil ? new Date(snoozedUntil) : undefined;
+    if (parsedSnoozedUntil && Number.isNaN(parsedSnoozedUntil.getTime())) {
+      return fail("Invalid snoozedUntil", 40000);
+    }
+
     await updateActionStatus(
       id,
       status as ActionStatus,
-      snoozedUntil ? new Date(snoozedUntil) : undefined,
+      parsedSnoozedUntil,
     );
 
     return success({ updated: true });

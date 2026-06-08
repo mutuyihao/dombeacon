@@ -1,113 +1,89 @@
 <template>
-  <div class="space-y-6">
-    <!-- Header -->
-    <div class="flex items-center justify-between mb-8">
-      <div>
-        <h1 class="text-2xl font-bold text-text-main mb-2">{{ $t('serverchan.title') }}</h1>
-        <p class="text-sm text-text-secondary">{{ $t('serverchan.noServerchanHint') }}</p>
-      </div>
-      <button
-        @click="openAddModal"
-        class="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent/90 transition-colors"
-      >
-        <PlusIcon class="w-4 h-4" />
-        {{ $t('serverchan.addServerchan') }}
-      </button>
-    </div>
+  <div class="flex min-h-full flex-col gap-6 md:h-full md:min-h-0 md:overflow-hidden">
 
-    <!-- Loading State -->
-    <div v-if="loading" class="flex justify-center py-12">
+    <header class="shrink-0">
+      <p class="eyebrow mb-3">Server酱</p>
+      <div class="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 class="headline-display text-3xl md:text-4xl">{{ $t('serverchan.title') }}</h1>
+          <p class="mt-2 max-w-2xl text-sm text-text-secondary">{{ $t('serverchan.noServerchanHint') }}</p>
+        </div>
+        <button @click="openAddModal" class="btn-primary">
+          <PlusIcon class="h-4 w-4" />
+          {{ $t('serverchan.addServerchan') }}
+        </button>
+      </div>
+    </header>
+
+    <section class="relative min-h-[26rem] flex-1 overflow-y-auto rounded-[18px] border border-hairline bg-card/45 p-3 pr-4 md:min-h-0 md:p-4 md:pr-5">
+    <div v-if="loading" class="flex justify-center py-16">
       <LoadingSpinner size="lg" />
     </div>
 
-    <!-- Server酱 List -->
-    <div v-else-if="serverchanList.length > 0" class="grid gap-4">
-      <div
+    <div v-else-if="serverchanList.length > 0">
+      <article
         v-for="config in serverchanList"
         :key="config.id"
-        class="bg-card border border-card-border rounded-lg p-6 hover:shadow-md transition-shadow"
+        class="group grid grid-cols-1 items-start gap-x-8 gap-y-3 border-b border-hairline py-6 transition-colors hover:bg-surface-sunken/50 lg:grid-cols-[minmax(0,1fr)_auto]"
       >
-        <div class="flex items-start justify-between">
-          <div class="flex-1">
-            <div class="flex items-center gap-3 mb-2">
-              <h3 class="text-lg font-semibold text-text-main">{{ config.name }}</h3>
-              <span
-                :class="[
-                  'px-2 py-0.5 text-xs rounded-full',
-                  config.enabled
-                    ? 'bg-status-available/10 text-status-available border border-status-available/20'
-                    : 'bg-status-unknown/10 text-status-unknown border border-status-unknown/20'
-                ]"
-              >
-                {{ config.enabled ? $t('serverchan.enabled') : $t('serverchan.disabled') }}
-              </span>
-            </div>
-
-            <div class="space-y-2 text-sm">
-              <div class="flex items-center gap-2 text-text-secondary">
-                <KeyIcon class="w-4 h-4" />
-                <span class="font-mono text-xs">{{ config.sendKeyMasked || maskSendKey(config.sendKey) }}</span>
-              </div>
-
-              <div v-if="config.eventTypes" class="flex items-start gap-2 text-text-secondary">
-                <BellIcon class="w-4 h-4 mt-0.5" />
-                <div class="flex flex-wrap gap-1">
-                  <span
-                    v-for="event in parseEventTypes(config.eventTypes)"
-                    :key="event"
-                    class="px-2 py-0.5 bg-card-border/50 rounded text-xs"
-                  >
-                    {{ $t(`serverchan.events.${event}`) }}
-                  </span>
-                </div>
-              </div>
-            </div>
+        <div class="min-w-0">
+          <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <h3 class="font-display text-xl font-medium tracking-[-0.025em] text-text-main">{{ config.name }}</h3>
+            <span :class="['flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.16em]', config.enabled ? 'text-status-available' : 'text-status-unknown']">
+              <span :class="['h-1.5 w-1.5 rounded-full', config.enabled ? 'bg-status-available' : 'bg-status-unknown']" />
+              {{ config.enabled ? $t('serverchan.enabled') : $t('serverchan.disabled') }}
+            </span>
           </div>
 
-          <div class="flex items-center gap-2 ml-4">
-            <button
-              @click="testServerchan(config.id)"
-              :disabled="testingId === config.id"
-              class="p-2 text-text-secondary hover:text-accent hover:bg-card-border/50 rounded transition-colors disabled:opacity-50"
-              :title="$t('serverchan.testServerchan')"
-            >
-              <PlayIcon v-if="testingId !== config.id" class="w-4 h-4" />
-              <LoadingSpinner v-else size="sm" />
-            </button>
-            <button
-              @click="deleteServerchan(config.id)"
-              class="p-2 text-text-secondary hover:text-status-dropping hover:bg-status-dropping/10 rounded transition-colors"
-              :title="$t('serverchan.deleteServerchan')"
-            >
-              <TrashIcon class="w-4 h-4" />
-            </button>
+          <div class="mt-3 space-y-2 text-sm">
+            <div class="flex items-center gap-2 text-text-secondary">
+              <KeyIcon class="h-3.5 w-3.5 text-text-tertiary" />
+              <span class="font-mono text-xs">{{ config.sendKeyMasked || '****' }}</span>
+            </div>
+
+            <div v-if="config.eventTypes" class="flex items-start gap-2 text-text-secondary">
+              <BellIcon class="mt-0.5 h-3.5 w-3.5 text-text-tertiary" />
+              <div class="flex flex-wrap gap-x-3 gap-y-1 text-xs">
+                <span v-for="event in parseEventTypes(config.eventTypes)" :key="event" class="font-mono">
+                  {{ $t(`serverchan.events.${event}`) }}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
+
+        <div class="flex items-center gap-1">
+          <button
+            @click="testServerchan(config.id)"
+            :disabled="testingId === config.id"
+            class="rounded-full p-2 text-text-tertiary transition-colors hover:bg-card hover:text-accent disabled:opacity-50"
+            :title="$t('serverchan.testServerchan')"
+          >
+            <PlayIcon v-if="testingId !== config.id" class="h-4 w-4" />
+            <LoadingSpinner v-else size="sm" />
+          </button>
+          <button
+            @click="deleteServerchan(config.id)"
+            class="rounded-full p-2 text-text-tertiary transition-colors hover:bg-card hover:text-status-dropping"
+            :title="$t('serverchan.deleteServerchan')"
+          >
+            <TrashIcon class="h-4 w-4" />
+          </button>
+        </div>
+      </article>
     </div>
 
-    <!-- Empty State -->
-    <div v-else class="text-center py-16">
-      <MessageSquareIcon class="w-16 h-16 mx-auto text-text-tertiary mb-4" />
-      <p class="text-text-secondary mb-4">{{ $t('serverchan.noServerchan') }}</p>
-      <button
-        @click="openAddModal"
-        class="inline-flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent/90 transition-colors"
-      >
-        <PlusIcon class="w-4 h-4" />
+    <div v-else class="py-24 text-center">
+      <MessageSquareIcon class="mx-auto mb-4 h-8 w-8 text-text-tertiary" />
+      <p class="mb-6 text-sm text-text-secondary">{{ $t('serverchan.noServerchan') }}</p>
+      <button @click="openAddModal" class="btn-primary">
+        <PlusIcon class="h-4 w-4" />
         {{ $t('serverchan.addServerchan') }}
       </button>
     </div>
+    </section>
 
-    <!-- Add/Edit Modal -->
-    <ServerchanModal
-      :is-open="modalOpen"
-      :config="editingConfig"
-      @close="closeModal"
-      @save="handleSave"
-    />
-
-    <!-- Confirm Dialog -->
+    <ServerchanModal :is-open="modalOpen" :config="editingConfig" @close="closeModal" @save="handleSave" />
     <ConfirmDialog
       :is-open="deleteDialog.isOpen"
       :title="$t('serverchan.deleteServerchan')"
@@ -137,12 +113,8 @@ const serverchanList = ref([]);
 const modalOpen = ref(false);
 const editingConfig = ref(null);
 const testingId = ref(null);
-const deleteDialog = ref({
-  isOpen: false,
-  configId: null,
-});
+const deleteDialog = ref({ isOpen: false, configId: null });
 
-// Fetch Server酱 configs
 const fetchServerchan = async () => {
   loading.value = true;
   try {
@@ -156,24 +128,12 @@ const fetchServerchan = async () => {
   }
 };
 
-// Parse JSON fields
 const parseEventTypes = (json) => {
   if (Array.isArray(json)) return json;
   if (!json) return [];
-  try {
-    return JSON.parse(json);
-  } catch {
-    return [];
-  }
+  try { return JSON.parse(json); } catch { return []; }
 };
 
-// Mask SendKey for security
-const maskSendKey = (sendKey) => {
-  if (!sendKey || sendKey.length < 8) return '****';
-  return sendKey.substring(0, 4) + '****' + sendKey.substring(sendKey.length - 4);
-};
-
-// Modal handlers
 const openAddModal = () => {
   editingConfig.value = null;
   modalOpen.value = true;
@@ -186,26 +146,20 @@ const closeModal = () => {
 
 const handleSave = async (configData) => {
   try {
-    await $fetch('/api/serverchan', {
-      method: 'POST',
-      body: configData,
-    });
+    await $fetch('/api/serverchan', { method: 'POST', body: configData });
     toast.success(t('serverchan.addSuccess'));
     closeModal();
     await fetchServerchan();
   } catch (error) {
     console.error('Failed to save Server酱:', error);
-    toast.error(error.data?.message || t('serverchan.addError'));
+    toast.error(error?.data?.message || t('serverchan.addError'));
   }
 };
 
-// Test Server酱
 const testServerchan = async (id) => {
   testingId.value = id;
   try {
-    const response = await $fetch(`/api/serverchan/${id}/test`, {
-      method: 'POST',
-    });
+    const response = await $fetch(`/api/serverchan/${id}/test`, { method: 'POST' });
     if (response?.code === 0 && response?.data?.ok) {
       toast.success(t('serverchan.testSuccess'));
     } else {
@@ -219,20 +173,18 @@ const testServerchan = async (id) => {
   }
 };
 
-// Delete Server酱
 const deleteServerchan = (id) => {
-  deleteDialog.value = {
-    isOpen: true,
-    configId: id,
-  };
+  deleteDialog.value = { isOpen: true, configId: id };
 };
 
 const confirmDelete = async () => {
   const id = deleteDialog.value.configId;
+  if (!id) {
+    deleteDialog.value.isOpen = false;
+    return;
+  }
   try {
-    await $fetch(`/api/serverchan/${id}`, {
-      method: 'DELETE',
-    });
+    await $fetch(`/api/serverchan/${id}`, { method: 'DELETE' });
     toast.success(t('serverchan.deleteSuccess'));
     await fetchServerchan();
   } catch (error) {
@@ -244,7 +196,6 @@ const confirmDelete = async () => {
   }
 };
 
-// Load configs on mount
 onMounted(() => {
   fetchServerchan();
 });

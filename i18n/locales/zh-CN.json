@@ -43,7 +43,8 @@
     "webhooks": "Webhooks",
     "serverchan": "Server酱",
     "notifications": "通知",
-    "settings": "设置"
+    "settings": "设置",
+    "more": "更多"
   },
   "dashboard": {
     "kicker": "总览",
@@ -95,6 +96,8 @@
     "loggingIn": "登录中..."
   },
   "domain": {
+    "portfolio": "组合",
+    "totalSuffix": "个域名",
     "addDomain": "添加域名",
     "domainName": "域名",
     "watchKind": "监控类型",
@@ -256,6 +259,9 @@
     "installed": "已安装",
     "installAvailable": "可安装",
     "installUnavailable": "不可安装",
+    "costPreferences": "成本偏好",
+    "costCurrency": "成本币种",
+    "costCurrencyHint": "所有成本汇总和新增记录都使用这个币种。系统不做汇率换算，请先自行核算金额再录入。",
     "notifications": "通知设置 (SMTP)",
     "targetEmail": "目标邮箱",
     "smtpHost": "SMTP 主机",
@@ -380,11 +386,14 @@
     "refreshAll": "刷新全部",
     "checkNow": "立即检查",
     "lastChecked": "最后检查",
+    "checkedHost": "检查主机",
     "issuer": "颁发者",
+    "validationError": "验证问题",
     "daysUntilExpiryLabel": "剩余天数",
     "validFrom": "生效时间",
     "validTo": "到期时间",
     "daysUntilExpiry": "{days} 天后过期",
+    "daysShort": "天",
     "noData": "暂无 SSL 证书数据",
     "filters": {
       "all": "全部",
@@ -401,8 +410,10 @@
       "noSSL": "无 SSL"
     },
     "checkSuccess": "SSL 检查成功",
+    "checkWarning": "SSL 检查完成，但存在问题：{error}",
     "checkError": "SSL 检查失败",
     "refreshSuccess": "刷新成功",
+    "refreshPartial": "刷新完成，{failed} 个失败",
     "refreshError": "刷新失败",
     "retainedAfterError": "已保留上次成功的证书信息；最近一次检查失败：{error}"
   },
@@ -431,7 +442,8 @@
       "successMessage": "成功导入 {count} 个域名",
       "failedMessage": "{count} 个域名导入失败",
       "error": "导入失败",
-      "invalidFile": "请选择 CSV 文件"
+      "invalidFile": "请选择 CSV 文件",
+      "fileTooLarge": "CSV 文件不能超过 10MB"
     },
     "format": {
       "title": "CSV 格式说明",
@@ -454,6 +466,7 @@
     "type": "类型",
     "amount": "金额",
     "currency": "货币",
+    "globalCurrencyHint": "使用设置里的全局成本币种。保存前请自行完成金额核算。",
     "registrar": "注册商",
     "registrarPlaceholder": "如 GoDaddy、Namecheap 等",
     "paymentDate": "付款日期",

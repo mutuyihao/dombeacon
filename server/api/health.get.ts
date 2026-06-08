@@ -6,7 +6,6 @@ export default defineEventHandler(async () => {
     return success({
       ok: true,
       now: new Date().toISOString(),
-      dbPath: getDbPath(),
     });
   } catch (e: any) {
     return fail(e.message || "Unhealthy", 50000);

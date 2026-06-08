@@ -1,17 +1,19 @@
 import { domainStatusLatest, domainStatusHistory } from "../db/schema";
 import { eq } from "drizzle-orm";
 import { useDb } from "./db";
+import { domainToASCII } from "node:url";
+import { syncRdapRiskFindings } from "./rdap-risk";
 
 const RDAP_TIMEOUT_MS = 7000;
+const RDAP_BOOTSTRAP_URL = "https://data.iana.org/rdap/dns.json";
+const RDAP_BOOTSTRAP_CACHE_MS = 24 * 60 * 60 * 1000;
+const RDAP_FALLBACK_BASE = "https://rdap.org/";
 
-const RDAP_SERVERS: Record<string, string> = {
-  com: "https://rdap.verisign.com/com/v1/domain/",
-  net: "https://rdap.verisign.com/net/v1/domain/",
-  org: "https://rdap.publicinterestregistry.net/rdap/org/domain/",
-  io: "https://rdap.nic.io/domain/",
-  me: "https://rdap.nic.me/domain/",
-  // Fallback or generic bootstrap would be better but hardcoding common ones for MVP
-};
+type RdapBootstrapService = [string[], string[]];
+
+let rdapBootstrapCache:
+  | { expiresAt: number; services: RdapBootstrapService[] }
+  | null = null;
 
 type RdapSummary = {
   handle: string | null;
@@ -48,9 +50,131 @@ type RdapSummary = {
   }>;
 };
 
+const normalizeDomainForRdap = (domain: string) => {
+  const trimmed = String(domain || "").trim().replace(/\.$/, "").toLowerCase();
+  return domainToASCII(trimmed) || trimmed;
+};
+
+const getAsciiTld = (domain: string) => {
+  const normalized = normalizeDomainForRdap(domain);
+  const parts = normalized.split(".").filter(Boolean);
+  return parts.length > 1 ? parts[parts.length - 1] : "";
+};
+
+const isUsableServiceUrl = (url: string) => /^https?:\/\//i.test(url);
+
+const pickBootstrapServiceUrl = (
+  services: RdapBootstrapService[],
+  tld: string,
+) => {
+  for (const [tlds, urls] of services) {
+    const matchesTld = tlds.some(
+      (entry) => normalizeDomainForRdap(entry) === tld,
+    );
+    if (!matchesTld) continue;
+
+    return (
+      urls.find((url) => /^https:\/\//i.test(url)) ||
+      urls.find(isUsableServiceUrl) ||
+      null
+    );
+  }
+
+  return null;
+};
+
+const fetchRdapBootstrap = async (
+  fetchImpl: typeof fetch,
+  nowMs = Date.now(),
+) => {
+  const canUseSharedCache = fetchImpl === fetch;
+  if (
+    canUseSharedCache &&
+    rdapBootstrapCache &&
+    rdapBootstrapCache.expiresAt > nowMs
+  ) {
+    return rdapBootstrapCache.services;
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), RDAP_TIMEOUT_MS);
+
+  const response = await fetchImpl(RDAP_BOOTSTRAP_URL, {
+    headers: { Accept: "application/json" },
+    signal: controller.signal,
+  }).finally(() => clearTimeout(timeoutId));
+
+  if (!response.ok) {
+    throw new Error(`RDAP bootstrap failed: HTTP ${response.status}`);
+  }
+
+  const data = (await response.json()) as { services?: unknown };
+  const services = Array.isArray(data?.services)
+    ? (data.services.filter(
+        (service): service is RdapBootstrapService =>
+          Array.isArray(service) &&
+          Array.isArray(service[0]) &&
+          Array.isArray(service[1]),
+      ) as RdapBootstrapService[])
+    : [];
+
+  if (!services.length) {
+    throw new Error("RDAP bootstrap returned no DNS services");
+  }
+
+  if (canUseSharedCache) {
+    rdapBootstrapCache = {
+      expiresAt: nowMs + RDAP_BOOTSTRAP_CACHE_MS,
+      services,
+    };
+  }
+
+  return services;
+};
+
+export const resolveRdapServiceBase = async (
+  domain: string,
+  fetchImpl: typeof fetch = fetch,
+) => {
+  const tld = getAsciiTld(domain);
+  if (!tld) return RDAP_FALLBACK_BASE;
+
+  try {
+    const services = await fetchRdapBootstrap(fetchImpl);
+    return pickBootstrapServiceUrl(services, tld) || RDAP_FALLBACK_BASE;
+  } catch (error) {
+    console.warn(`RDAP bootstrap discovery failed for ${domain}:`, error);
+    return RDAP_FALLBACK_BASE;
+  }
+};
+
+export const buildRdapDomainUrl = (serviceBase: string, domain: string) => {
+  const normalizedDomain = normalizeDomainForRdap(domain);
+  const baseUrl = new URL(
+    serviceBase.endsWith("/") ? serviceBase : `${serviceBase}/`,
+  );
+  const path = baseUrl.pathname.endsWith("/")
+    ? baseUrl.pathname
+    : `${baseUrl.pathname}/`;
+  baseUrl.pathname = path;
+
+  if (path.toLowerCase().endsWith("/domain/")) {
+    return new URL(encodeURIComponent(normalizedDomain), baseUrl).toString();
+  }
+
+  return new URL(
+    `domain/${encodeURIComponent(normalizedDomain)}`,
+    baseUrl,
+  ).toString();
+};
+
+export const resetRdapBootstrapCacheForTests = () => {
+  rdapBootstrapCache = null;
+};
+
 const parseRdap = (
   data: any,
-  ctx: { domain: string; rdapBase: string },
+  ctx: { domain: string; rdapUrl: string },
 ): {
   status: string;
   expiresAt: Date | null;
@@ -219,7 +343,7 @@ const parseRdap = (
     );
     const href = String(selfLink?.href || "").trim();
     if (href) return href;
-    return `${ctx.rdapBase}${ctx.domain}`;
+    return ctx.rdapUrl;
   })();
 
   const rdapSummary: RdapSummary = {
@@ -265,6 +389,10 @@ type CheckDomainResult = {
 
 type CheckDomainOptions = {
   fetchImpl?: typeof fetch;
+  resolveRdapServiceBaseImpl?: (
+    domain: string,
+    fetchImpl: typeof fetch,
+  ) => Promise<string> | string;
   updateStatusImpl?: typeof updateStatus;
   updateErrorImpl?: typeof updateError;
 };
@@ -274,18 +402,23 @@ export const checkDomain = async (
   domainId: number,
   options: CheckDomainOptions = {},
 ): Promise<CheckDomainResult | null> => {
-  const tld = domain.split(".").pop();
-  const rdapBase = RDAP_SERVERS[tld || ""] || "https://rdap.org/domain/"; // Fallback to generic RDAP gateway
-
   try {
     const fetchImpl = options.fetchImpl ?? fetch;
+    const normalizedDomain = normalizeDomainForRdap(domain);
+    const resolveRdapServiceBaseImpl =
+      options.resolveRdapServiceBaseImpl ?? resolveRdapServiceBase;
     const updateStatusImpl = options.updateStatusImpl ?? updateStatus;
     const updateErrorImpl = options.updateErrorImpl ?? updateError;
+    const rdapBase = await resolveRdapServiceBaseImpl(
+      normalizedDomain,
+      fetchImpl,
+    );
+    const rdapUrl = buildRdapDomainUrl(rdapBase, normalizedDomain);
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), RDAP_TIMEOUT_MS);
 
-    const response = await fetchImpl(`${rdapBase}${domain}`, {
+    const response = await fetchImpl(rdapUrl, {
       headers: { Accept: "application/rdap+json" },
       signal: controller.signal,
     }).finally(() => clearTimeout(timeoutId));
@@ -308,7 +441,7 @@ export const checkDomain = async (
     if (!response.ok) {
       // Error or rate limit - update error fields without changing status
       const errorMsg = `RDAP Check failed: HTTP ${response.status}`;
-      console.error(`${errorMsg} for ${domain}`);
+      console.error(`${errorMsg} for ${normalizedDomain}`);
       await updateErrorImpl(domainId, errorMsg);
       return null;
     }
@@ -316,7 +449,7 @@ export const checkDomain = async (
     const data = await response.json();
     const { status, expiresAt, registrar, nameservers, rdapSummary } = parseRdap(
       data,
-      { domain, rdapBase },
+      { domain: normalizedDomain, rdapUrl },
     );
 
     return await updateStatusImpl(
@@ -409,6 +542,15 @@ async function updateStatus(
     rdapSummaryJson,
     parseReason: reason,
   });
+
+  try {
+    await syncRdapRiskFindings(domainId, rdapSummaryJson, { db });
+  } catch (error: any) {
+    console.error(
+      `RDAP risk sync failed for domain ${domainId}:`,
+      error?.message || error,
+    );
+  }
 
   return {
     changed: isChanged,

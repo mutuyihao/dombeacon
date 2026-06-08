@@ -36,7 +36,11 @@ export default defineEventHandler(async (event) => {
       );
     }
     if (query.domainId) {
-      conditions.push(eq(notificationEvents.domainId, Number(query.domainId)));
+      const domainId = Number(query.domainId);
+      if (!Number.isFinite(domainId) || domainId <= 0) {
+        return fail("Invalid domainId", 40000);
+      }
+      conditions.push(eq(notificationEvents.domainId, domainId));
     }
     if (query.from) {
       const fromDate = new Date(String(query.from));

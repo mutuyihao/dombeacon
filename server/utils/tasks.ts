@@ -4,6 +4,7 @@ import {
   taskRuns,
   domainStatusLatest,
   sslStatusLatest,
+  brandWatchTerms,
 } from "../db/schema";
 import { eq, lt, or, and } from "drizzle-orm";
 import { checkDomain } from "./scanner";
@@ -13,6 +14,9 @@ import { notifyWebhooks } from "./webhook";
 import { notifyServerchan } from "./serverchan";
 import { notifyPush } from "./push";
 import { scanDomainSSL } from "./ssl";
+import { scanDomainSecurity } from "./security-scan";
+import { scanBrandWatchTerm } from "./brand-watch";
+import { getCurrentRiskMetricsSnapshot } from "./risk-metrics";
 
 const LOCK_TTL_MS = 1000 * 60 * 30; // 30 minutes
 const SCAN_BATCH_SIZE = 5; // Domains processed in parallel per batch
@@ -67,6 +71,15 @@ async function releaseLock(taskName: string) {
   const db = useDb();
   await db.delete(taskLocks).where(eq(taskLocks.taskName, taskName));
 }
+
+const safeRiskMetricsSnapshot = async (db: ReturnType<typeof useDb>) => {
+  try {
+    return await getCurrentRiskMetricsSnapshot({ db });
+  } catch (error: any) {
+    console.warn("Risk metrics snapshot failed:", error?.message || error);
+    return null;
+  }
+};
 
 /**
  * Fan out a notification to all configured channels in parallel.
@@ -152,14 +165,23 @@ const processDomain = async (
   ok: boolean;
   newlyDropping?: { domain: string; id: number };
   actionIds: number[];
+  securityFindings: number;
   error?: string;
 }> => {
   const db = useDb();
   const actionIds: number[] = [];
+  let securityFindings = 0;
   let newlyDropping: { domain: string; id: number } | undefined;
 
   try {
-    const result = await checkDomain(d.domain, d.id);
+    let result: Awaited<ReturnType<typeof checkDomain>> = null;
+    let rdapError: any = null;
+
+    try {
+      result = await checkDomain(d.domain, d.id);
+    } catch (error: any) {
+      rdapError = error;
+    }
 
     // Update SSL status for every active domain. Only owned domains create
     // SSL actions/notifications, because those are account-owner obligations.
@@ -266,6 +288,24 @@ const processDomain = async (
       }
     } catch (sslError: any) {
       console.error(`SSL check failed for ${d.domain}:`, sslError.message);
+    }
+
+    if (d.watchKind === "OWNED") {
+      try {
+        const securityResult = await scanDomainSecurity(d.id, d.domain, {
+          notify: true,
+        });
+        securityFindings = securityResult.findings.length;
+      } catch (securityError: any) {
+        console.error(
+          `DNS security scan failed for ${d.domain}:`,
+          securityError.message,
+        );
+      }
+    }
+
+    if (rdapError) {
+      throw rdapError;
     }
 
     // `checkDomain()` returns `null` only on scan failure (network error / non-404 non-OK).
@@ -405,7 +445,7 @@ const processDomain = async (
       actionIds.push(action.id);
     }
 
-    return { ok: true, actionIds, newlyDropping };
+    return { ok: true, actionIds, securityFindings, newlyDropping };
   } catch (e: any) {
     try {
       const action = await createAction({
@@ -418,7 +458,7 @@ const processDomain = async (
     } catch (actionError) {
       console.error("Failed to create SCAN_FAILED action:", actionError);
     }
-    return { ok: false, actionIds, error: e.message };
+    return { ok: false, actionIds, securityFindings, error: e.message };
   }
 };
 
@@ -446,6 +486,7 @@ export const runDomainScan = async () => {
   const errors: any[] = [];
   const newlyDropping: { domain: string; id: number }[] = [];
   const actionsCreated: number[] = [];
+  let securityFindingsSeen = 0;
 
   try {
     const db = useDb();
@@ -474,6 +515,7 @@ export const runDomainScan = async () => {
           }
           if (r.value.newlyDropping) newlyDropping.push(r.value.newlyDropping);
           actionsCreated.push(...r.value.actionIds);
+          securityFindingsSeen += r.value.securityFindings;
         } else {
           fail++;
           errors.push({ domain: d.domain, error: String(r.reason) });
@@ -505,6 +547,7 @@ export const runDomainScan = async () => {
 
     // Log run
     const db = useDb();
+    const riskMetrics = await safeRiskMetricsSnapshot(db);
     await db.insert(taskRuns).values({
       taskName: "hourly-scan",
       startedAt: new Date(start),
@@ -516,6 +559,8 @@ export const runDomainScan = async () => {
         errors: errors.slice(0, 10),
         newlyDropping: newlyDropping.length,
         actionsCreated: actionsCreated.length,
+        securityFindingsSeen,
+        riskMetrics,
       }),
     });
   }
@@ -574,11 +619,101 @@ export const runDailySummary = async () => {
     await releaseLock("daily-summary");
     // Log run
     const db = useDb();
+    const riskMetrics = await safeRiskMetricsSnapshot(db);
     await db.insert(taskRuns).values({
       taskName: "daily-summary",
       startedAt: new Date(start),
       finishedAt: new Date(),
-      resultJson: JSON.stringify({ success: true }),
+      resultJson: JSON.stringify({ success: true, riskMetrics }),
+    });
+  }
+};
+
+export const runBrandWatchScan = async () => {
+  if (!(await acquireLock("brand-watch"))) {
+    console.log("Brand watch scan locked, skipping.");
+    return;
+  }
+
+  const start = Date.now();
+  let termsChecked = 0;
+  let candidatesChecked = 0;
+  let registered = 0;
+  let available = 0;
+  let unknown = 0;
+  let error = 0;
+  let ctDiscovered = 0;
+  let ctError = 0;
+  let notificationsSent = 0;
+  const errors: any[] = [];
+
+  try {
+    const db = useDb();
+    const now = new Date();
+    const enabledTerms = await db
+      .select()
+      .from(brandWatchTerms)
+      .where(eq(brandWatchTerms.enabled, true))
+      .all();
+
+    const dueTerms = enabledTerms.filter((term) => {
+      if (!term.lastScannedAt) return true;
+      const frequencyMs =
+        Math.max(1, term.scanFrequencyHours || 24) * 60 * 60 * 1000;
+      return now.getTime() - new Date(term.lastScannedAt).getTime() >= frequencyMs;
+    });
+
+    for (const term of dueTerms) {
+      try {
+        const result = await scanBrandWatchTerm(term, {
+          db,
+          limit: 100,
+          includeCt: true,
+          ctLimit: 50,
+          notify: true,
+        });
+        termsChecked += 1;
+        candidatesChecked += result.checked;
+        registered += result.registered;
+        available += result.available;
+        unknown += result.unknown;
+        error += result.error;
+        ctDiscovered += result.ctDiscovered;
+        ctError += result.ctError;
+        notificationsSent += result.notificationsSent;
+      } catch (scanError: any) {
+        error += 1;
+        errors.push({
+          termId: term.id,
+          term: term.term,
+          error: scanError?.message || String(scanError),
+        });
+      }
+    }
+  } catch (taskError: any) {
+    errors.push({ general: taskError?.message || String(taskError) });
+  } finally {
+    await releaseLock("brand-watch");
+
+    const db = useDb();
+    const riskMetrics = await safeRiskMetricsSnapshot(db);
+    await db.insert(taskRuns).values({
+      taskName: "brand-watch",
+      startedAt: new Date(start),
+      finishedAt: new Date(),
+      resultJson: JSON.stringify({
+        termsChecked,
+        candidatesChecked,
+        registered,
+        available,
+        unknown,
+        error,
+        ctDiscovered,
+        ctError,
+        notificationsSent,
+        errors: errors.slice(0, 10),
+        riskMetrics,
+      }),
     });
   }
 };

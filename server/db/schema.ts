@@ -76,6 +76,171 @@ export const notificationRules = sqliteTable("notification_rules", {
   smtpConfigJson: text("smtp_config_json"), // host, port, user, pass, from
 });
 
+export const appSettings = sqliteTable("app_settings", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(
+    () => new Date(),
+  ),
+});
+
+export const auditLogs = sqliteTable(
+  "audit_logs",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    eventType: text("event_type").notNull(),
+    actorType: text("actor_type").notNull().default("anonymous"),
+    actorId: text("actor_id"),
+    ipAddress: text("ip_address"),
+    userAgent: text("user_agent"),
+    outcome: text("outcome").notNull().default("success"),
+    metadata: text("metadata"),
+    createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(
+      () => new Date(),
+    ),
+  },
+  (table) => ({
+    eventTypeIdx: index("idx_audit_logs_event_type_v12").on(table.eventType),
+    outcomeIdx: index("idx_audit_logs_outcome_v12").on(table.outcome),
+    createdAtIdx: index("idx_audit_logs_created_at_v12").on(table.createdAt),
+  }),
+);
+
+export const dnsSnapshots = sqliteTable(
+  "dns_snapshots",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    domainId: integer("domain_id").references(() => domains.id, {
+      onDelete: "cascade",
+    }).notNull(),
+    recordsJson: text("records_json").notNull(),
+    recordHash: text("record_hash").notNull(),
+    source: text("source").notNull().default("dns"),
+    error: text("error"),
+    checkedAt: integer("checked_at", { mode: "timestamp" }).$defaultFn(
+      () => new Date(),
+    ),
+  },
+  (table) => ({
+    domainIdIdx: index("idx_dns_snapshots_domain_id_v12").on(table.domainId),
+    recordHashIdx: index("idx_dns_snapshots_record_hash_v12").on(
+      table.recordHash,
+    ),
+    checkedAtIdx: index("idx_dns_snapshots_checked_at_v12").on(
+      table.checkedAt,
+    ),
+  }),
+);
+
+export const riskFindings = sqliteTable(
+  "risk_findings",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    domainId: integer("domain_id").references(() => domains.id, {
+      onDelete: "cascade",
+    }).notNull(),
+    findingType: text("finding_type").notNull(),
+    severity: text("severity").notNull().default("LOW"),
+    status: text("status").notNull().default("OPEN"),
+    evidenceJson: text("evidence_json"),
+    firstSeenAt: integer("first_seen_at", { mode: "timestamp" }).$defaultFn(
+      () => new Date(),
+    ),
+    lastSeenAt: integer("last_seen_at", { mode: "timestamp" }).$defaultFn(
+      () => new Date(),
+    ),
+    snoozedUntil: integer("snoozed_until", { mode: "timestamp" }),
+    resolvedAt: integer("resolved_at", { mode: "timestamp" }),
+  },
+  (table) => ({
+    domainIdIdx: index("idx_risk_findings_domain_id_v12").on(table.domainId),
+    findingTypeIdx: index("idx_risk_findings_finding_type_v12").on(
+      table.findingType,
+    ),
+    severityIdx: index("idx_risk_findings_severity_v12").on(table.severity),
+    statusIdx: index("idx_risk_findings_status_v12").on(table.status),
+    lastSeenAtIdx: index("idx_risk_findings_last_seen_at_v12").on(
+      table.lastSeenAt,
+    ),
+  }),
+);
+
+export const brandWatchTerms = sqliteTable(
+  "brand_watch_terms",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    term: text("term").notNull(),
+    normalizedTerm: text("normalized_term").notNull(),
+    termType: text("term_type").notNull().default("BRAND"),
+    matchStrategy: text("match_strategy").notNull().default("STANDARD"),
+    tldsJson: text("tlds_json").notNull().default('["com","net","org"]'),
+    severity: text("severity").notNull().default("MEDIUM"),
+    enabled: integer("enabled", { mode: "boolean" }).default(true),
+    scanFrequencyHours: integer("scan_frequency_hours").default(24),
+    lastScannedAt: integer("last_scanned_at", { mode: "timestamp" }),
+    createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(
+      () => new Date(),
+    ),
+    updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(
+      () => new Date(),
+    ),
+  },
+  (table) => ({
+    normalizedTermIdx: index("idx_brand_watch_terms_normalized_term_v12").on(
+      table.normalizedTerm,
+    ),
+    enabledIdx: index("idx_brand_watch_terms_enabled_v12").on(table.enabled),
+    severityIdx: index("idx_brand_watch_terms_severity_v12").on(
+      table.severity,
+    ),
+  }),
+);
+
+export const brandWatchCandidates = sqliteTable(
+  "brand_watch_candidates",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    termId: integer("term_id").references(() => brandWatchTerms.id, {
+      onDelete: "cascade",
+    }).notNull(),
+    domain: text("domain").notNull(),
+    label: text("label").notNull(),
+    tld: text("tld").notNull(),
+    mutationType: text("mutation_type").notNull(),
+    status: text("status").notNull().default("UNKNOWN"),
+    severity: text("severity").notNull().default("MEDIUM"),
+    source: text("source").notNull().default("rdap"),
+    evidenceJson: text("evidence_json"),
+    reviewStatus: text("review_status").notNull().default("OPEN"),
+    reviewNote: text("review_note"),
+    reviewedAt: integer("reviewed_at", { mode: "timestamp" }),
+    reviewedBy: text("reviewed_by"),
+    firstSeenAt: integer("first_seen_at", { mode: "timestamp" }),
+    lastSeenAt: integer("last_seen_at", { mode: "timestamp" }),
+    checkedAt: integer("checked_at", { mode: "timestamp" }),
+    lastError: text("last_error"),
+    createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(
+      () => new Date(),
+    ),
+    updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(
+      () => new Date(),
+    ),
+  },
+  (table) => ({
+    termIdIdx: index("idx_brand_watch_candidates_term_id_v12").on(
+      table.termId,
+    ),
+    domainIdx: index("idx_brand_watch_candidates_domain_v12").on(table.domain),
+    statusIdx: index("idx_brand_watch_candidates_status_v12").on(table.status),
+    reviewStatusIdx: index("idx_brand_watch_candidates_review_status_v12").on(
+      table.reviewStatus,
+    ),
+    lastSeenAtIdx: index("idx_brand_watch_candidates_last_seen_at_v12").on(
+      table.lastSeenAt,
+    ),
+  }),
+);
+
 export const taskLocks = sqliteTable("task_locks", {
   taskName: text("task_name").primaryKey(),
   lockedUntil: integer("locked_until", { mode: "timestamp" }),
@@ -185,6 +350,7 @@ export const sslStatusLatest = sqliteTable(
     domainId: integer("domain_id")
       .references(() => domains.id, { onDelete: "cascade" })
       .primaryKey(),
+    checkedHost: text("checked_host"),
     hasSSL: integer("has_ssl", { mode: "boolean" }).default(false),
     isValid: integer("is_valid", { mode: "boolean" }).default(false),
     issuer: text("issuer"),
@@ -192,6 +358,7 @@ export const sslStatusLatest = sqliteTable(
     validTo: integer("valid_to", { mode: "timestamp" }),
     daysUntilExpiry: integer("days_until_expiry"),
     checkedAt: integer("checked_at", { mode: "timestamp" }),
+    validationError: text("validation_error"),
     lastError: text("last_error"),
     lastErrorAt: integer("last_error_at", { mode: "timestamp" }),
   },
@@ -209,12 +376,14 @@ export const sslStatusHistory = sqliteTable("ssl_status_history", {
   domainId: integer("domain_id").references(() => domains.id, {
     onDelete: "cascade",
   }),
+  checkedHost: text("checked_host"),
   hasSSL: integer("has_ssl", { mode: "boolean" }),
   isValid: integer("is_valid", { mode: "boolean" }),
   issuer: text("issuer"),
   validFrom: integer("valid_from", { mode: "timestamp" }),
   validTo: integer("valid_to", { mode: "timestamp" }),
   daysUntilExpiry: integer("days_until_expiry"),
+  validationError: text("validation_error"),
   checkedAt: integer("checked_at", { mode: "timestamp" }),
 });
 

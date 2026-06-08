@@ -1,119 +1,95 @@
 <template>
-  <div class="space-y-6">
-    <!-- Header -->
-    <div class="flex items-center justify-between mb-8">
-      <div>
-        <h1 class="text-2xl font-bold text-text-main mb-2">{{ $t('webhook.title') }}</h1>
-        <p class="text-sm text-text-secondary">{{ $t('webhook.noWebhooksHint') }}</p>
-      </div>
-      <button
-        @click="openAddModal"
-        class="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent/90 transition-colors"
-      >
-        <PlusIcon class="w-4 h-4" />
-        {{ $t('webhook.addWebhook') }}
-      </button>
-    </div>
+  <div class="flex min-h-full flex-col gap-6 md:h-full md:min-h-0 md:overflow-hidden">
 
-    <!-- Loading State -->
-    <div v-if="loading" class="flex justify-center py-12">
+    <header class="shrink-0">
+      <p class="eyebrow mb-2">Outbound</p>
+      <div class="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 class="headline-display text-3xl md:text-4xl">{{ $t('webhook.title') }}</h1>
+          <p class="mt-2 max-w-2xl text-sm text-text-secondary">{{ $t('webhook.noWebhooksHint') }}</p>
+        </div>
+        <button @click="openAddModal" class="btn-primary">
+          <PlusIcon class="h-4 w-4" />
+          {{ $t('webhook.addWebhook') }}
+        </button>
+      </div>
+    </header>
+
+    <section class="relative min-h-[26rem] flex-1 overflow-y-auto rounded-[18px] border border-hairline bg-card/45 p-3 pr-4 md:min-h-0 md:p-4 md:pr-5">
+    <div v-if="loading" class="flex justify-center py-16">
       <LoadingSpinner size="lg" />
     </div>
 
-    <!-- Webhooks List -->
-    <div v-else-if="webhooks.length > 0" class="grid gap-4">
-      <div
+    <div v-else-if="webhooks.length > 0">
+      <article
         v-for="webhook in webhooks"
         :key="webhook.id"
-        class="bg-card border border-card-border rounded-lg p-6 hover:shadow-md transition-shadow"
+        class="group grid grid-cols-1 items-start gap-x-8 gap-y-3 border-b border-hairline py-6 transition-colors hover:bg-surface-sunken/50 lg:grid-cols-[minmax(0,1fr)_auto]"
       >
-        <div class="flex items-start justify-between">
-          <div class="flex-1">
-            <div class="flex items-center gap-3 mb-2">
-              <h3 class="text-lg font-semibold text-text-main">{{ webhook.name }}</h3>
-              <span
-                :class="[
-                  'px-2 py-0.5 text-xs rounded-full',
-                  webhook.enabled
-                    ? 'bg-status-available/10 text-status-available border border-status-available/20'
-                    : 'bg-status-unknown/10 text-status-unknown border border-status-unknown/20'
-                ]"
-              >
-                {{ webhook.enabled ? $t('webhook.enabled') : $t('webhook.disabled') }}
-              </span>
-            </div>
-
-            <div class="space-y-2 text-sm">
-              <div class="flex items-center gap-2 text-text-secondary">
-                <LinkIcon class="w-4 h-4" />
-                <span class="font-mono text-xs">{{ webhook.method }}</span>
-                <span class="truncate">{{ webhook.url }}</span>
-              </div>
-
-              <div v-if="webhook.eventTypes" class="flex items-start gap-2 text-text-secondary">
-                <BellIcon class="w-4 h-4 mt-0.5" />
-                <div class="flex flex-wrap gap-1">
-                  <span
-                    v-for="event in parseEventTypes(webhook.eventTypes)"
-                    :key="event"
-                    class="px-2 py-0.5 bg-card-border/50 rounded text-xs"
-                  >
-                    {{ $t(`webhook.events.${event}`) }}
-                  </span>
-                </div>
-              </div>
-
-              <div v-if="webhook.headersJson" class="flex items-center gap-2 text-text-secondary">
-                <CodeIcon class="w-4 h-4" />
-                <span>{{ Object.keys(parseHeaders(webhook.headersJson)).length }} custom headers</span>
-              </div>
-            </div>
+        <div class="min-w-0">
+          <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <h3 class="font-display text-xl font-medium tracking-[-0.025em] text-text-main">{{ webhook.name }}</h3>
+            <span :class="['flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.16em]', webhook.enabled ? 'text-status-available' : 'text-status-unknown']">
+              <span :class="['h-1.5 w-1.5 rounded-full', webhook.enabled ? 'bg-status-available' : 'bg-status-unknown']" />
+              {{ webhook.enabled ? $t('webhook.enabled') : $t('webhook.disabled') }}
+            </span>
           </div>
 
-          <div class="flex items-center gap-2 ml-4">
-            <button
-              @click="testWebhook(webhook.id)"
-              :disabled="testingId === webhook.id"
-              class="p-2 text-text-secondary hover:text-accent hover:bg-card-border/50 rounded transition-colors disabled:opacity-50"
-              :title="$t('webhook.testWebhook')"
-            >
-              <PlayIcon v-if="testingId !== webhook.id" class="w-4 h-4" />
-              <LoadingSpinner v-else size="sm" />
-            </button>
-            <button
-              @click="deleteWebhook(webhook.id)"
-              class="p-2 text-text-secondary hover:text-status-dropping hover:bg-status-dropping/10 rounded transition-colors"
-              :title="$t('webhook.deleteWebhook')"
-            >
-              <TrashIcon class="w-4 h-4" />
-            </button>
+          <div class="mt-3 space-y-2 text-sm">
+            <div class="flex items-center gap-2 text-text-secondary">
+              <LinkIcon class="h-3.5 w-3.5 text-text-tertiary" />
+              <span class="font-mono text-xs font-semibold text-text-main">{{ webhook.method }}</span>
+              <span class="truncate font-mono text-xs">{{ webhook.url }}</span>
+            </div>
+
+            <div v-if="parseEventTypes(webhook.eventTypes).length" class="flex items-start gap-2 text-text-secondary">
+              <BellIcon class="mt-0.5 h-3.5 w-3.5 text-text-tertiary" />
+              <div class="flex flex-wrap gap-x-3 gap-y-1 text-xs">
+                <span v-for="event in parseEventTypes(webhook.eventTypes)" :key="event" class="font-mono">
+                  {{ $t(`webhook.events.${event}`) }}
+                </span>
+              </div>
+            </div>
+
+            <div v-if="webhook.headerCount" class="flex items-center gap-2 text-text-tertiary">
+              <CodeIcon class="h-3.5 w-3.5" />
+              <span class="text-xs">{{ webhook.headerCount }} custom headers</span>
+            </div>
           </div>
         </div>
-      </div>
+
+        <div class="flex items-center gap-1">
+          <button
+            @click="testWebhook(webhook.id)"
+            :disabled="testingId === webhook.id"
+            class="rounded-full p-2 text-text-tertiary transition-colors hover:bg-card hover:text-accent disabled:opacity-50"
+            :title="$t('webhook.testWebhook')"
+          >
+            <PlayIcon v-if="testingId !== webhook.id" class="h-4 w-4" />
+            <LoadingSpinner v-else size="sm" />
+          </button>
+          <button
+            @click="deleteWebhook(webhook.id)"
+            class="rounded-full p-2 text-text-tertiary transition-colors hover:bg-card hover:text-status-dropping"
+            :title="$t('webhook.deleteWebhook')"
+          >
+            <TrashIcon class="h-4 w-4" />
+          </button>
+        </div>
+      </article>
     </div>
 
-    <!-- Empty State -->
-    <div v-else class="text-center py-16">
-      <WebhookIcon class="w-16 h-16 mx-auto text-text-tertiary mb-4" />
-      <p class="text-text-secondary mb-4">{{ $t('webhook.noWebhooks') }}</p>
-      <button
-        @click="openAddModal"
-        class="inline-flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent/90 transition-colors"
-      >
-        <PlusIcon class="w-4 h-4" />
+    <div v-else class="py-24 text-center">
+      <WebhookIcon class="mx-auto mb-4 h-8 w-8 text-text-tertiary" />
+      <p class="mb-6 text-sm text-text-secondary">{{ $t('webhook.noWebhooks') }}</p>
+      <button @click="openAddModal" class="btn-primary">
+        <PlusIcon class="h-4 w-4" />
         {{ $t('webhook.addWebhook') }}
       </button>
     </div>
+    </section>
 
-    <!-- Add/Edit Modal -->
-    <WebhookModal
-      :is-open="modalOpen"
-      :webhook="editingWebhook"
-      @close="closeModal"
-      @save="handleSave"
-    />
-
-    <!-- Confirm Dialog -->
+    <WebhookModal :is-open="modalOpen" :webhook="editingWebhook" @close="closeModal" @save="handleSave" />
     <ConfirmDialog
       :is-open="deleteDialog.isOpen"
       :title="$t('webhook.deleteWebhook')"
@@ -144,12 +120,8 @@ const webhooks = ref([]);
 const modalOpen = ref(false);
 const editingWebhook = ref(null);
 const testingId = ref(null);
-const deleteDialog = ref({
-  isOpen: false,
-  webhookId: null,
-});
+const deleteDialog = ref({ isOpen: false, webhookId: null });
 
-// Fetch webhooks
 const fetchWebhooks = async () => {
   loading.value = true;
   try {
@@ -163,24 +135,11 @@ const fetchWebhooks = async () => {
   }
 };
 
-// Parse JSON fields
 const parseEventTypes = (json) => {
-  try {
-    return JSON.parse(json || '[]');
-  } catch {
-    return [];
-  }
+  if (Array.isArray(json)) return json;
+  try { return JSON.parse(json || '[]'); } catch { return []; }
 };
 
-const parseHeaders = (json) => {
-  try {
-    return JSON.parse(json || '{}');
-  } catch {
-    return {};
-  }
-};
-
-// Modal handlers
 const openAddModal = () => {
   editingWebhook.value = null;
   modalOpen.value = true;
@@ -193,31 +152,22 @@ const closeModal = () => {
 
 const handleSave = async (webhookData) => {
   try {
-    await $fetch('/api/webhooks', {
-      method: 'POST',
-      body: webhookData,
-    });
+    await $fetch('/api/webhooks', { method: 'POST', body: webhookData });
     toast.success(t('webhook.addSuccess'));
     closeModal();
     await fetchWebhooks();
   } catch (error) {
     console.error('Failed to save webhook:', error);
-    toast.error(error.data?.message || t('webhook.addError'));
+    toast.error(error?.data?.message || t('webhook.addError'));
   }
 };
 
-// Test webhook
 const testWebhook = async (id) => {
   testingId.value = id;
   try {
-    const response = await $fetch(`/api/webhooks/${id}/test`, {
-      method: 'POST',
-    });
-    if (response.success) {
-      toast.success(t('webhook.testSuccess'));
-    } else {
-      toast.error(t('webhook.testFailed'));
-    }
+    const response = await $fetch(`/api/webhooks/${id}/test`, { method: 'POST' });
+    if (response?.code === 0 && response?.data?.ok) toast.success(t('webhook.testSuccess'));
+    else toast.error(response?.data?.error || response?.msg || t('webhook.testFailed'));
   } catch (error) {
     console.error('Failed to test webhook:', error);
     toast.error(t('webhook.testFailed'));
@@ -226,20 +176,18 @@ const testWebhook = async (id) => {
   }
 };
 
-// Delete webhook
 const deleteWebhook = (id) => {
-  deleteDialog.value = {
-    isOpen: true,
-    webhookId: id,
-  };
+  deleteDialog.value = { isOpen: true, webhookId: id };
 };
 
 const confirmDelete = async () => {
   const id = deleteDialog.value.webhookId;
+  if (!id) {
+    deleteDialog.value.isOpen = false;
+    return;
+  }
   try {
-    await $fetch(`/api/webhooks/${id}`, {
-      method: 'DELETE',
-    });
+    await $fetch(`/api/webhooks/${id}`, { method: 'DELETE' });
     toast.success(t('webhook.deleteSuccess'));
     await fetchWebhooks();
   } catch (error) {
@@ -251,7 +199,6 @@ const confirmDelete = async () => {
   }
 };
 
-// Load webhooks on mount
 onMounted(() => {
   fetchWebhooks();
 });

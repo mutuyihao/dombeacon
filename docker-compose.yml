@@ -17,7 +17,7 @@ services:
       # Optional: also set container TZ for other libs/logs
       - TZ=Asia/Shanghai
       # Optional: Set ADMIN_PASSWORD for authentication
-      # - ADMIN_PASSWORD=your-secure-password
+      - ADMIN_PASSWORD=123456
     healthcheck:
       test:
         [

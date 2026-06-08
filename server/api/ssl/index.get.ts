@@ -11,6 +11,7 @@ export default defineEventHandler(async (event) => {
         domain: domains.domain,
         watchKind: domains.watchKind,
         priority: domains.priority,
+        checkedHost: sslStatusLatest.checkedHost,
         hasSSL: sslStatusLatest.hasSSL,
         isValid: sslStatusLatest.isValid,
         issuer: sslStatusLatest.issuer,
@@ -18,6 +19,7 @@ export default defineEventHandler(async (event) => {
         validTo: sslStatusLatest.validTo,
         daysUntilExpiry: sslStatusLatest.daysUntilExpiry,
         checkedAt: sslStatusLatest.checkedAt,
+        validationError: sslStatusLatest.validationError,
         lastError: sslStatusLatest.lastError,
         lastErrorAt: sslStatusLatest.lastErrorAt,
       })
