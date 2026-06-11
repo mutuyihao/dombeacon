@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { pushSubscriptions } from "../../db/schema";
 import { recordAuditEvent } from "../../utils/audit";
+import { isPushConfigured } from "../../utils/push";
 import { protectSecretText } from "../../utils/secrets";
 import {
   findPushSubscriptionByEndpoint,
@@ -16,6 +17,10 @@ import {
  */
 export default defineEventHandler(async (event) => {
   try {
+    if (!isPushConfigured()) {
+      return fail("Web Push is not configured", 40900);
+    }
+
     const body = await readBody(event);
     if (!body?.endpoint || !body?.keys?.p256dh || !body?.keys?.auth) {
       return fail("Invalid subscription payload", 40000);
@@ -23,6 +28,15 @@ export default defineEventHandler(async (event) => {
 
     const endpoint = String(body.endpoint).trim();
     if (!endpoint) {
+      return fail("Invalid subscription endpoint", 40000);
+    }
+    let endpointUrl: URL;
+    try {
+      endpointUrl = new URL(endpoint);
+    } catch {
+      return fail("Invalid subscription endpoint", 40000);
+    }
+    if (endpointUrl.protocol !== "https:") {
       return fail("Invalid subscription endpoint", 40000);
     }
 

@@ -7,12 +7,12 @@ worker behavior stays explicit and easy to audit.
 ## What you get
 
 - **Installable** - Chrome / Edge / Android Chrome show an install prompt
-  via `beforeinstallprompt`; the header's "Install" button surfaces only
+  via `beforeinstallprompt`; the Settings page exposes the install action only
   when the prompt is available.
 - **Offline shell** - navigations fall back to `/offline` when offline; API
-  requests are never cached.
+  requests and other non-static same-origin GETs are never cached.
 - **Web Push** - VAPID-authenticated push delivered to subscribed browsers,
-  with deep-link to `/actions` on click.
+  with same-origin deep-link handling on click.
 
 ## Files
 
@@ -35,12 +35,13 @@ worker behavior stays explicit and easy to audit.
 |---|---|
 | Pre-cached shell (`/`, `/offline`, `/manifest.webmanifest`, icons) | cache-first via install-time `cache.addAll` |
 | Any `/api/*` request, including GET | network-only (never cached) |
-| Static assets | stale-while-revalidate |
+| Static assets (`/_nuxt/*`, scripts, styles, images, fonts, manifest) | stale-while-revalidate |
+| Other same-origin GET requests | network-only |
 | Navigations | network-first, fall back to cached HTML or `/offline` |
 
-The offline page is always reachable because the app has no login session.
-Keeping every API request network-only avoids caching domain, notification, or
-mutation data in the no-login deployment model.
+The offline page is always reachable because it is pre-cached. Keeping every
+API request and other non-static GET network-only avoids caching domain,
+notification, or mutation data in the no-login deployment model.
 
 ## Setup - Web Push
 
@@ -60,7 +61,8 @@ VAPID_SUBJECT=mailto:you@example.com
 
 These are read at runtime via `nuxt.config.ts`'s `runtimeConfig`. The public
 key is exposed via `/api/push/vapid-public`; the private key never leaves the
-server.
+server. The endpoint reports `configured: true` only when public key, private
+key, and subject are all present.
 
 ### 2. Subscribe In The UI
 
@@ -71,6 +73,10 @@ The composable handles:
 2. Calls `Notification.requestPermission()`.
 3. Calls `pushManager.subscribe({ userVisibleOnly: true, applicationServerKey })`.
 4. POSTs the subscription JSON to `/api/push/subscribe`.
+
+If the browser already has a subscription tied to an older VAPID public key,
+the client unsubscribes locally and creates a fresh subscription before saving
+it to the server.
 
 The settings card surfaces these states explicitly:
 
@@ -117,7 +123,6 @@ Verifications worth doing before deploying:
 - DevTools > Application > Service Workers: status is `activated and running`,
   scope `/`.
 - DevTools > Network: throttle to "Offline" then refresh `/domains`; you
-  should land on the cached shell or `/offline`, while `/api/*` calls remain
-  network-only.
+  should land on `/offline`, while `/api/*` calls remain network-only.
 - DevTools > Application > Push: trigger a test push to confirm the service
-  worker click handler navigates to `/actions`.
+  worker click handler navigates to a same-origin path such as `/actions`.

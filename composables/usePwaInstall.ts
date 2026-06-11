@@ -3,11 +3,15 @@ type BeforeInstallPromptEvent = Event & {
   userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
 };
 
+type NavigatorWithStandalone = Navigator & {
+  standalone?: boolean;
+};
+
 const isStandalone = () => {
   if (!import.meta.client) return false;
-  // iOS Safari uses navigator.standalone
-  // @ts-ignore
-  const iosStandalone = typeof navigator !== "undefined" && navigator.standalone;
+  const iosStandalone =
+    typeof navigator !== "undefined" &&
+    Boolean((navigator as NavigatorWithStandalone).standalone);
   const displayModeStandalone = window.matchMedia?.("(display-mode: standalone)")
     ?.matches;
   return Boolean(iosStandalone || displayModeStandalone);
@@ -23,6 +27,10 @@ export const usePwaInstall = () => {
 
   const refreshInstalled = () => {
     installed.value = isStandalone();
+    if (installed.value) {
+      promptEvent.value = null;
+      canInstall.value = false;
+    }
   };
 
   const install = async () => {
@@ -30,17 +38,21 @@ export const usePwaInstall = () => {
     if (!promptEvent.value) return false;
 
     const evt = promptEvent.value;
-    await evt.prompt();
+    let outcome: "accepted" | "dismissed" | undefined;
     try {
-      await evt.userChoice;
+      await evt.prompt();
+      outcome = (await evt.userChoice).outcome;
     } catch {
-      /* ignore */
+      promptEvent.value = null;
+      canInstall.value = false;
+      refreshInstalled();
+      return false;
     }
 
     promptEvent.value = null;
     canInstall.value = false;
     refreshInstalled();
-    return true;
+    return outcome === "accepted" || installed.value;
   };
 
   return {

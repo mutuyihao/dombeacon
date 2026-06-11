@@ -27,8 +27,20 @@ export default defineNuxtPlugin(() => {
     installed.value = true;
   };
 
+  const onDisplayModeChange = () => refreshInstalled();
+  const onVisibilityChange = () => {
+    if (document.visibilityState === "visible") refreshInstalled();
+  };
+  const standaloneMedia = window.matchMedia?.("(display-mode: standalone)");
+
   window.addEventListener("beforeinstallprompt", onBeforeInstall);
   window.addEventListener("appinstalled", onInstalled);
+  document.addEventListener("visibilitychange", onVisibilityChange);
+  if (standaloneMedia?.addEventListener) {
+    standaloneMedia.addEventListener("change", onDisplayModeChange);
+  } else {
+    standaloneMedia?.addListener?.(onDisplayModeChange);
+  }
 
   // Best-effort cleanup (Nuxt plugins live for app lifetime, but keep it tidy).
   window.addEventListener(
@@ -36,6 +48,12 @@ export default defineNuxtPlugin(() => {
     () => {
       window.removeEventListener("beforeinstallprompt", onBeforeInstall);
       window.removeEventListener("appinstalled", onInstalled);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      if (standaloneMedia?.removeEventListener) {
+        standaloneMedia.removeEventListener("change", onDisplayModeChange);
+      } else {
+        standaloneMedia?.removeListener?.(onDisplayModeChange);
+      }
     },
     { once: true },
   );

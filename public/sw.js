@@ -7,7 +7,7 @@
  *   - Web Push handler + click navigation
  */
 
-const VERSION = "v1.2.0";
+const VERSION = "v1.3.0";
 const PRECACHE = `precache-${VERSION}`;
 const RUNTIME = `runtime-${VERSION}`;
 const OFFLINE_URL = "/offline";
@@ -18,6 +18,7 @@ const PRECACHE_URLS = [
   "/manifest.webmanifest",
   "/icons/icon-192.svg",
   "/icons/icon-512.svg",
+  "/icons/icon-maskable.svg",
 ];
 
 self.addEventListener("install", (event) => {
@@ -53,13 +54,43 @@ self.addEventListener("activate", (event) => {
 
 const isApi = (url) => url.pathname.startsWith("/api/");
 
+const isCacheableStaticRequest = (request, url) => {
+  const cacheableDestinations = new Set([
+    "font",
+    "image",
+    "manifest",
+    "script",
+    "style",
+  ]);
+
+  if (cacheableDestinations.has(request.destination)) return true;
+  if (url.pathname.startsWith("/_nuxt/")) return true;
+  return /\.(?:css|js|mjs|woff2?|png|jpe?g|gif|webp|svg|ico|webmanifest)$/i.test(
+    url.pathname,
+  );
+};
+
+const normalizeNavigationTarget = (value, fallback = "/actions") => {
+  try {
+    const url = new URL(value || fallback, self.location.origin);
+    if (url.origin !== self.location.origin) return fallback;
+    return `${url.pathname}${url.search}${url.hash}`;
+  } catch {
+    return fallback;
+  }
+};
+
 const networkWithTimeout = (request, timeoutMs = 3000) =>
   new Promise((resolve, reject) => {
+    const controller = new AbortController();
     const timer = setTimeout(
-      () => reject(new Error("network timeout")),
+      () => {
+        controller.abort();
+        reject(new Error("network timeout"));
+      },
       timeoutMs,
     );
-    fetch(request).then(
+    fetch(request, { signal: controller.signal }).then(
       (res) => {
         clearTimeout(timer);
         resolve(res);
@@ -103,6 +134,10 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  if (!isCacheableStaticRequest(request, url)) {
+    return;
+  }
+
   // Static assets: stale-while-revalidate.
   event.respondWith(
     (async () => {
@@ -110,7 +145,9 @@ self.addEventListener("fetch", (event) => {
       const cached = await cache.match(request);
       const fetchPromise = fetch(request)
         .then((res) => {
-          if (res && res.ok) cache.put(request, res.clone());
+          if (res && res.ok && res.type === "basic") {
+            cache.put(request, res.clone());
+          }
           return res;
         })
         .catch(() => cached);
@@ -120,21 +157,27 @@ self.addEventListener("fetch", (event) => {
 });
 
 self.addEventListener("push", (event) => {
-  if (!event.data) return;
   let payload;
   try {
-    payload = event.data.json();
+    payload = event.data ? event.data.json() : {};
   } catch (e) {
     payload = { title: "DomBeacon", body: event.data.text() };
   }
 
   const title = payload.title || "DomBeacon";
+  const payloadData =
+    payload.data && typeof payload.data === "object" && !Array.isArray(payload.data)
+      ? payload.data
+      : {};
   const options = {
     body: payload.body || "",
     icon: payload.icon || "/icons/icon-192.svg",
     badge: "/icons/icon-192.svg",
-    data: { url: payload.url || "/actions", ...(payload.data || {}) },
-    tag: payload.data?.eventType || undefined,
+    data: {
+      ...payloadData,
+      url: normalizeNavigationTarget(payload.url || payloadData.url),
+    },
+    tag: payloadData.eventType || undefined,
   };
 
   event.waitUntil(self.registration.showNotification(title, options));
@@ -142,7 +185,7 @@ self.addEventListener("push", (event) => {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const target = event.notification.data?.url || "/actions";
+  const target = normalizeNavigationTarget(event.notification.data?.url);
   event.waitUntil(
     (async () => {
       const allClients = await self.clients.matchAll({

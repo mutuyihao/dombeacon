@@ -18,6 +18,17 @@ type PushState =
   | "denied"
   | "error";
 
+export const detectPushSupport = () =>
+  Boolean(
+    import.meta.client &&
+      typeof window !== "undefined" &&
+      typeof navigator !== "undefined" &&
+      window.isSecureContext &&
+      "serviceWorker" in navigator &&
+      "PushManager" in window &&
+      "Notification" in window,
+  );
+
 const urlBase64ToUint8Array = (base64String: string) => {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
@@ -27,26 +38,65 @@ const urlBase64ToUint8Array = (base64String: string) => {
   return out;
 };
 
+const toUint8Array = (value: BufferSource | null | undefined) => {
+  if (!value) return null;
+  if (value instanceof ArrayBuffer) return new Uint8Array(value);
+  return new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
+};
+
+const arrayBufferEquals = (left: BufferSource | null | undefined, right: Uint8Array) => {
+  const current = toUint8Array(left);
+  if (!current) return true;
+  if (current.byteLength !== right.byteLength) return false;
+  return current.every((value, index) => value === right[index]);
+};
+
+const getReadyServiceWorker = () =>
+  Promise.race([
+    navigator.serviceWorker.ready,
+    new Promise<never>((_, reject) =>
+      setTimeout(
+        () => reject(new Error("Service worker is not ready yet")),
+        8000,
+      ),
+    ),
+  ]);
+
+const getSubscriptionPayload = (subscription: PushSubscription) => {
+  const json = subscription.toJSON();
+  if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) {
+    throw new Error("Browser returned an incomplete push subscription");
+  }
+  return {
+    endpoint: json.endpoint,
+    keys: {
+      p256dh: json.keys.p256dh,
+      auth: json.keys.auth,
+    },
+  };
+};
+
 export const usePushSubscription = () => {
   const state = useState<PushState>("push-state", () => "idle");
   const errorMessage = useState<string>("push-error", () => "");
   const supported = useState<boolean>(
     "push-supported",
-    () =>
-      import.meta.client &&
-      "serviceWorker" in navigator &&
-      "PushManager" in window &&
-      "Notification" in window,
+    () => detectPushSupport(),
   );
+
+  const refreshSupport = () => {
+    supported.value = detectPushSupport();
+    return supported.value;
+  };
 
   const refreshState = async () => {
     if (!import.meta.client) return;
-    if (!supported.value) {
+    if (!refreshSupport()) {
       state.value = "unsupported";
       return;
     }
     try {
-      const reg = await navigator.serviceWorker.ready;
+      const reg = await getReadyServiceWorker();
       const sub = await reg.pushManager.getSubscription();
       if (sub) {
         state.value = "subscribed";
@@ -62,7 +112,7 @@ export const usePushSubscription = () => {
   };
 
   const subscribe = async () => {
-    if (!import.meta.client || !supported.value) {
+    if (!import.meta.client || !refreshSupport()) {
       state.value = "unsupported";
       return false;
     }
@@ -81,9 +131,10 @@ export const usePushSubscription = () => {
       const publicKey = vapidData?.publicKey || "";
       if (!vapidData?.configured || !publicKey) {
         state.value = "not-configured";
-        errorMessage.value = "VAPID keys not configured on server";
+        errorMessage.value = "VAPID keys are not fully configured on server";
         return false;
       }
+      const applicationServerKey = urlBase64ToUint8Array(publicKey);
 
       const permission = await Notification.requestPermission();
       if (permission !== "granted") {
@@ -91,21 +142,28 @@ export const usePushSubscription = () => {
         return false;
       }
 
-      const reg = await navigator.serviceWorker.ready;
+      const reg = await getReadyServiceWorker();
       let sub = await reg.pushManager.getSubscription();
+      if (
+        sub &&
+        !arrayBufferEquals(sub.options?.applicationServerKey, applicationServerKey)
+      ) {
+        await sub.unsubscribe();
+        sub = null;
+      }
       if (!sub) {
         sub = await reg.pushManager.subscribe({
           userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(publicKey),
+          applicationServerKey,
         });
       }
 
-      const json = sub.toJSON();
+      const subscription = getSubscriptionPayload(sub);
       const response = await $fetch("/api/push/subscribe", {
         method: "POST",
         body: {
-          endpoint: json.endpoint,
-          keys: json.keys,
+          endpoint: subscription.endpoint,
+          keys: subscription.keys,
           userAgent: navigator.userAgent,
         },
       });
@@ -121,18 +179,18 @@ export const usePushSubscription = () => {
   };
 
   const unsubscribe = async () => {
-    if (!import.meta.client || !supported.value) return false;
+    if (!import.meta.client || !refreshSupport()) return false;
     try {
-      const reg = await navigator.serviceWorker.ready;
+      const reg = await getReadyServiceWorker();
       const sub = await reg.pushManager.getSubscription();
       if (sub) {
         const endpoint = sub.endpoint;
-        await sub.unsubscribe();
         const response = await $fetch("/api/push/subscribe", {
           method: "DELETE",
           body: { endpoint },
         });
         unwrapApiEnvelope(response, "Push unsubscribe failed");
+        await sub.unsubscribe();
       }
       state.value = "idle";
       return true;

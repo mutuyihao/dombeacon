@@ -8,8 +8,11 @@
 export default defineEventHandler(async () => {
   const config = useRuntimeConfig();
   const publicKey = config.public.vapidPublicKey || "";
+  const configured = Boolean(
+    publicKey && config.vapidPrivateKey && config.vapidSubject,
+  );
   return success({
     publicKey,
-    configured: !!publicKey,
+    configured,
   });
 });

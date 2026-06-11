@@ -4,12 +4,6 @@ import { maskSecretText, revealSecretText } from "./secrets";
 
 /**
  * Web Push notification helper.
- *
- * The full implementation (VAPID keys, web-push package, payload formatting)
- * is wired up in workstream 1.2 of v1.2 once `web-push` is added as a
- * dependency. This stub keeps the code that *would* fan out push messages
- * import-safe so the notification retry endpoint can call it without
- * crashing at module load.
  */
 
 export interface WebPushPayload {
@@ -19,6 +13,9 @@ export interface WebPushPayload {
   url?: string;
   data?: any;
 }
+
+const MAX_PUSH_TITLE_LENGTH = 90;
+const MAX_PUSH_BODY_LENGTH = 240;
 
 /**
  * True if VAPID env vars are configured. Until the user generates and sets
@@ -30,6 +27,53 @@ export const isPushConfigured = () => {
     process.env.VAPID_PRIVATE_KEY &&
     process.env.VAPID_SUBJECT
   );
+};
+
+const cleanPushText = (value: unknown, fallback = "") => {
+  const text = String(value ?? fallback)
+    .replace(/[\u0000-\u001f\u007f]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return text || fallback;
+};
+
+const truncatePushText = (value: string, maxLength: number) =>
+  value.length > maxLength ? `${value.slice(0, maxLength - 1)}…` : value;
+
+const safeJsonPreview = (value: unknown) => {
+  try {
+    const json = JSON.stringify(value ?? {});
+    return json && json !== "{}" ? json : "Domain event received";
+  } catch {
+    return "Domain event received";
+  }
+};
+
+export const normalizePushNavigationUrl = (
+  value: unknown,
+  fallback = "/actions",
+) => {
+  if (typeof value !== "string" || !value.trim()) return fallback;
+  try {
+    const url = new URL(value, "https://dombeacon.local");
+    if (url.origin !== "https://dombeacon.local") return fallback;
+    return `${url.pathname}${url.search}${url.hash}`;
+  } catch {
+    return fallback;
+  }
+};
+
+const defaultPushUrl = (eventType: string) => {
+  if (eventType === "SECURITY_FINDING_HIGH") return "/risk/findings";
+  if (eventType === "DAILY_SUMMARY") return "/";
+  return "/actions";
+};
+
+const pushErrorMessage = (error: any) => {
+  const statusCode = error?.statusCode || error?.status;
+  const base = error?.message || String(error);
+  if (statusCode) return `HTTP ${statusCode}: ${base}`;
+  return base;
 };
 
 /**
@@ -70,7 +114,7 @@ export const sendWebPush = async (
     );
     return { success: true };
   } catch (e: any) {
-    return { success: false, error: e.message };
+    return { success: false, error: pushErrorMessage(e) };
   }
 };
 
@@ -91,7 +135,11 @@ export const formatPushPayload = (
   eventType: string,
   eventData: any,
 ): WebPushPayload => {
-  const domain = eventData?.domain || "";
+  const data =
+    eventData && typeof eventData === "object" && !Array.isArray(eventData)
+      ? eventData
+      : {};
+  const domain = cleanPushText(data.domain, "Domain");
   const titleMap: Record<string, string> = {
     WANTED_AVAILABLE: `🎉 ${domain} is available`,
     WANTED_DROPPING: `⚠️ ${domain} pending delete`,
@@ -104,13 +152,21 @@ export const formatPushPayload = (
     DROPPING_ALERT: `🚨 Domains dropping`,
     STATUS_CHANGE: `🔄 ${domain} status changed`,
   };
+  const fallbackBody = safeJsonPreview(data);
+  const url = normalizePushNavigationUrl(data.url, defaultPushUrl(eventType));
 
   return {
-    title: titleMap[eventType] || `DomBeacon: ${eventType}`,
-    body: eventData?.message || JSON.stringify(eventData).slice(0, 200),
+    title: truncatePushText(
+      cleanPushText(titleMap[eventType] || `DomBeacon: ${eventType}`),
+      MAX_PUSH_TITLE_LENGTH,
+    ),
+    body: truncatePushText(
+      cleanPushText(data.message, fallbackBody),
+      MAX_PUSH_BODY_LENGTH,
+    ),
     icon: "/icons/icon-192.svg",
-    url: "/actions",
-    data: { eventType, ...eventData },
+    url,
+    data: { eventType, ...data, url },
   };
 };
 
@@ -182,7 +238,9 @@ export const notifyPush = async (params: {
     if (
       !result.success &&
       result.error &&
-      /410|gone|unsubscribed/i.test(result.error)
+      /HTTP (404|410)|\b(404|410)\b|gone|not found|unsubscribed|expired/i.test(
+        result.error,
+      )
     ) {
       await db
         .update(pushSubscriptions)

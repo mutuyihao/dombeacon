@@ -1,14 +1,17 @@
 {
   "name": "DomBeacon",
   "short_name": "DomBeacon",
-  "description": "Self-hosted domain ops beacon for tracking opportunities, managing portfolios, and monitoring expiration/SSL risks",
+  "description": "自托管域名运维信标，用于跟踪机会、管理资产组合并监控到期、SSL 与 DNS 风险",
+  "id": "/",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
   "orientation": "any",
   "background_color": "#EDF5F3",
   "theme_color": "#0E6B6F",
   "lang": "zh-CN",
+  "dir": "ltr",
   "categories": ["productivity", "utilities"],
   "icons": [
     {
@@ -32,19 +35,22 @@
   ],
   "shortcuts": [
     {
-      "name": "Domains",
+      "name": "域名列表",
       "url": "/domains",
-      "description": "Open domain list"
+      "description": "打开域名列表",
+      "icons": [{ "src": "/icons/icon-192.svg", "sizes": "192x192" }]
     },
     {
-      "name": "Action Queue",
+      "name": "行动队列",
       "url": "/actions",
-      "description": "Pending actions"
+      "description": "查看待处理行动",
+      "icons": [{ "src": "/icons/icon-192.svg", "sizes": "192x192" }]
     },
     {
-      "name": "Notifications",
+      "name": "通知记录",
       "url": "/notifications",
-      "description": "Notification history"
+      "description": "查看通知历史",
+      "icons": [{ "src": "/icons/icon-192.svg", "sizes": "192x192" }]
     }
   ]
 }

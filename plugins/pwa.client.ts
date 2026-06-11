@@ -6,11 +6,17 @@ export default defineNuxtPlugin(() => {
   if (!import.meta.client) return;
   if (!("serviceWorker" in navigator)) return;
 
+  let refreshing = false;
+  let hadController = Boolean(navigator.serviceWorker.controller);
+
   // Register after window load so it doesn't compete with first paint
   const register = async () => {
     try {
       const reg = await navigator.serviceWorker.register("/sw.js", {
         scope: "/",
+      });
+      reg.update().catch(() => {
+        /* best-effort update check */
       });
 
       // Auto-prompt the SW to activate when an update is found.
@@ -29,8 +35,11 @@ export default defineNuxtPlugin(() => {
       });
 
       // Reload once the new SW takes control so users see the new build.
-      let refreshing = false;
       navigator.serviceWorker.addEventListener("controllerchange", () => {
+        if (!hadController) {
+          hadController = true;
+          return;
+        }
         if (refreshing) return;
         refreshing = true;
         window.location.reload();

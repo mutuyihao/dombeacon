@@ -18,6 +18,14 @@ export default defineEventHandler(async (event) => {
     if (!endpoint) {
       return fail("Endpoint required", 40000);
     }
+    try {
+      const endpointUrl = new URL(endpoint);
+      if (endpointUrl.protocol !== "https:") {
+        return fail("Endpoint required", 40000);
+      }
+    } catch {
+      return fail("Endpoint required", 40000);
+    }
 
     const db = useDb();
     const match = await findPushSubscriptionByEndpoint(db, endpoint);
