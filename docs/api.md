@@ -134,7 +134,7 @@ matching destination is configured.
 |---|---|---|
 | `GET` | `/api/ssl` | Latest SSL snapshot list. |
 | `POST` | `/api/ssl/:id/check` | Force-rescan a single domain by id. |
-| `POST` | `/api/ssl/check-all` | Scan SSL for all active domains in batches of three; returns `{ checked, failed, errors }` and writes an audit event. |
+| `POST` | `/api/ssl/check-all` | Scan SSL for active `OWNED` domains in batches of three; pass `?includeWanted=true` to include `WANTED` domains. Returns `{ checked, failed, errors }` and writes an audit event. |
 
 ## Costs
 

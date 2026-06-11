@@ -5,6 +5,7 @@ import {
   normalizeTimeZone,
   scheduleRecurringTask,
 } from "../utils/schedule";
+import { logger } from "../utils/logger";
 
 export default defineNitroPlugin((nitroApp) => {
   const parseBool = (v: string | undefined, defaultValue: boolean) => {
@@ -18,23 +19,23 @@ export default defineNitroPlugin((nitroApp) => {
 
   const enabled = parseBool(process.env.ENABLE_SCHEDULER, true);
   if (!enabled) {
-    console.log("Scheduler disabled via ENABLE_SCHEDULER.");
+    logger.info("Scheduler disabled via ENABLE_SCHEDULER");
     return;
   }
 
   const timezone = normalizeTimeZone(process.env.SCHEDULER_TIMEZONE || "UTC");
 
-  console.log(`Starting Scheduler... timezone=${timezone}`);
+  logger.info("Starting scheduler", { timezone });
 
   const stopHourlyScan = scheduleRecurringTask(
     "Hourly scan",
     (now) => getNextHourlyRun(now, timezone),
     async () => {
       try {
-        console.log("Triggering hourly scan...");
+        logger.info("Triggering hourly scan");
         await runDomainScan();
       } catch (e: any) {
-        console.error("Hourly scan failed:", e?.message || e);
+        logger.error("Hourly scan failed", { error: e });
       }
     },
   );
@@ -44,10 +45,10 @@ export default defineNitroPlugin((nitroApp) => {
     (now) => getNextDailyRun(now, timezone, 8, 0),
     async () => {
       try {
-        console.log("Triggering daily summary...");
+        logger.info("Triggering daily summary");
         await runDailySummary();
       } catch (e: any) {
-        console.error("Daily summary failed:", e?.message || e);
+        logger.error("Daily summary failed", { error: e });
       }
     },
   );

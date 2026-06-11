@@ -110,6 +110,10 @@ const isEdit = computed(() => !!props.domain?.id);
 
 const { t } = useI18n();
 const toast = useToast();
+const runtimeConfig = useRuntimeConfig();
+const allowSingleLabelDomains = computed(
+  () => runtimeConfig.public.allowSingleLabelDomains === true,
+);
 
 const resetForm = () => {
   errors.value.domain = '';
@@ -144,7 +148,11 @@ const validateDomain = () => {
     return false;
   }
 
-  if (!isValidDomainName(domain)) {
+  if (
+    !isValidDomainName(domain, {
+      allowSingleLabel: allowSingleLabelDomains.value,
+    })
+  ) {
     errors.value.domain = t('domain.invalidDomain');
     return false;
   }

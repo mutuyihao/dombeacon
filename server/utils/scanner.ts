@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { useDb } from "./db";
 import { domainToASCII } from "node:url";
 import { syncRdapRiskFindings } from "./rdap-risk";
+import { refreshDomainRiskSummaries } from "./risk-summary";
 
 const RDAP_TIMEOUT_MS = 7000;
 const RDAP_BOOTSTRAP_URL = "https://data.iana.org/rdap/dns.json";
@@ -546,6 +547,7 @@ async function updateStatus(
 
   try {
     await syncRdapRiskFindings(domainId, rdapSummaryJson, { db });
+    await refreshDomainRiskSummaries([domainId], { db });
   } catch (error: any) {
     console.error(
       `RDAP risk sync failed for domain ${domainId}:`,

@@ -1,3 +1,5 @@
+import { logger } from "./logger";
+
 type LocalDateTimeParts = {
   year: number;
   month: number;
@@ -183,7 +185,7 @@ export const scheduleRecurringTask = (
     const now = new Date();
     const nextRun = getNextRun(now);
     const delayMs = Math.max(1000, nextRun.getTime() - now.getTime());
-    console.log(`${name} scheduled for ${nextRun.toISOString()}`);
+    logger.info("Task scheduled", { name, nextRun: nextRun.toISOString() });
 
     timer = setTimeout(async () => {
       if (stopped) return;

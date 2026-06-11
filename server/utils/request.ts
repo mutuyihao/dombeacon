@@ -1,10 +1,7 @@
-const truthyEnvValues = new Set(["1", "true", "yes", "on"]);
-
-const isTruthyEnv = (value: string | undefined) =>
-  truthyEnvValues.has(String(value || "").trim().toLowerCase());
+import { isTruthyEnvValue } from "./env";
 
 export const shouldTrustProxyHeaders = () =>
-  isTruthyEnv(process.env.TRUST_PROXY_HEADERS);
+  isTruthyEnvValue(process.env.TRUST_PROXY_HEADERS);
 
 export const getRequestClientKey = (event: any) => {
   const headers = event.node?.req?.headers || {};

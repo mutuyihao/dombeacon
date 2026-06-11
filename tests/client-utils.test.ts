@@ -30,6 +30,9 @@ describe("domain input helpers", () => {
     expect(isValidDomainName("example.com")).toBe(true);
     expect(isValidDomainName("sub-domain.example.co")).toBe(true);
     expect(isValidDomainName("localhost")).toBe(false);
+    expect(isValidDomainName("localhost", { allowSingleLabel: true })).toBe(
+      true,
+    );
     expect(isValidDomainName("example..com")).toBe(false);
     expect(isValidDomainName("-example.com")).toBe(false);
     expect(isValidDomainName("example-.com")).toBe(false);

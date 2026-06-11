@@ -36,6 +36,15 @@ const SERVERCHAN_CHANNEL_IDS = new Set([9, 98, 88, 18, 66, 1, 8, 2, 3]);
 const MIN_SERVERCHAN_TIMEOUT_MS = 3000;
 const MAX_SERVERCHAN_TIMEOUT_MS = 30000;
 
+const sanitizeServerchanLogValue = (value: unknown, sendKey: string) => {
+  let text = String(value || "");
+  const encodedSendKey = encodeURIComponent(sendKey);
+  for (const token of [sendKey, encodedSendKey]) {
+    if (token) text = text.split(token).join("****");
+  }
+  return text;
+};
+
 const clampText = (value: unknown, maxLength: number) => {
   const text = String(value || "").trim();
   return text ? text.slice(0, maxLength) : "";
@@ -130,9 +139,12 @@ export const sendServerchanDetailed = async (
 
     if (!response.ok) {
       const body = await response.text().catch(() => "");
-      const error = `HTTP ${response.status} ${response.statusText}${
-        body ? `: ${body.slice(0, 300)}` : ""
-      }`;
+      const error = sanitizeServerchanLogValue(
+        `HTTP ${response.status} ${response.statusText}${
+          body ? `: ${body.slice(0, 300)}` : ""
+        }`,
+        sendKey,
+      );
       console.error(`Server酱 request failed: ${error}`);
       return {
         ok: false,
@@ -142,7 +154,7 @@ export const sendServerchanDetailed = async (
       };
     }
 
-    const text = await response.text();
+    const text = sanitizeServerchanLogValue(await response.text(), sendKey);
     let result: any = {};
     try {
       result = text ? JSON.parse(text) : {};
@@ -153,6 +165,15 @@ export const sendServerchanDetailed = async (
     }
 
     // Server酱 API returns { code: 0, message: "success", data: {...} }
+    if (result && typeof result === "object") {
+      if (result.message) {
+        result.message = sanitizeServerchanLogValue(result.message, sendKey);
+      }
+      if (result.msg) {
+        result.msg = sanitizeServerchanLogValue(result.msg, sendKey);
+      }
+    }
+
     if (Number(result.code) !== 0) {
       const apiMessage =
         result.message || result.msg || `Server酱 API code ${result.code}`;
@@ -171,6 +192,9 @@ export const sendServerchanDetailed = async (
       message: result.message || result.msg || "success",
     };
   } catch (error: any) {
+    if (error?.message) {
+      error.message = sanitizeServerchanLogValue(error.message, sendKey);
+    }
     if (error.name === "AbortError") {
       console.error("Server酱 request timeout");
       return { ok: false, error: `Server酱 request timeout after ${timeout}ms` };

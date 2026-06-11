@@ -3,6 +3,7 @@ import { recordAuditEvent } from "../../utils/audit";
 import { checkDomain } from "../../utils/scanner";
 import { scanDomainSecurity } from "../../utils/security-scan";
 import { scanDomainSSL } from "../../utils/ssl";
+import { getBooleanEnv } from "../../utils/env";
 import { isValidDomainName, normalizeDomainInput } from "~/utils/domain";
 
 export default defineEventHandler(async (event) => {
@@ -15,7 +16,11 @@ export default defineEventHandler(async (event) => {
     }
 
     const domainName = normalizeDomainInput(body.domain);
-    if (!isValidDomainName(domainName)) {
+    if (
+      !isValidDomainName(domainName, {
+        allowSingleLabel: getBooleanEnv("ALLOW_SINGLE_LABEL_DOMAINS"),
+      })
+    ) {
       return fail("Invalid domain format", 40001);
     }
     const watchKind = body.watchKind || "WANTED";
@@ -52,11 +57,9 @@ export default defineEventHandler(async (event) => {
     // Trigger an immediate scan so the UI isn't "empty" right after adding.
     // Keep failures non-fatal for create.
     try {
-      const scans: Promise<any>[] = [
-        checkDomain(domainName, result.id),
-        scanDomainSSL(result.id, domainName),
-      ];
+      const scans: Promise<any>[] = [checkDomain(domainName, result.id)];
       if (result.watchKind === "OWNED") {
+        scans.push(scanDomainSSL(result.id, domainName));
         scans.push(scanDomainSecurity(result.id, domainName, { notify: true }));
       }
       await Promise.allSettled(scans);

@@ -8,6 +8,20 @@
       "when": 1781104751343,
       "tag": "0000_pretty_jazinda",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1781165963041,
+      "tag": "0001_rich_doctor_doom",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1781167106760,
+      "tag": "0002_numerous_clint_barton",
+      "breakpoints": true
     }
   ]
 }

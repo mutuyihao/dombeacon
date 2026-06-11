@@ -3,6 +3,7 @@ import { domains, sslStatusLatest } from "../db/schema";
 import { createAction } from "./actions";
 import { fanoutNotification } from "./notification-fanout";
 import { scanDomainSSL } from "./ssl";
+import { useDb } from "./db";
 
 export const checkDomainSSLById = async (id: number) => {
   const db = useDb();

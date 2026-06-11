@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { domains } from "../../db/schema";
 import { recordAuditEvent } from "../../utils/audit";
 import { checkDomainSSLById } from "../../utils/ssl-check";
@@ -16,10 +16,17 @@ const chunk = <T>(items: T[], size: number) => {
 export default defineEventHandler(async (event) => {
   const db = useDb();
   try {
+    const query = getQuery(event);
+    const includeWanted =
+      String(query.includeWanted || "").trim().toLowerCase() === "true";
     const activeDomains = await db
       .select({ id: domains.id, domain: domains.domain })
       .from(domains)
-      .where(eq(domains.isActive, true))
+      .where(
+        includeWanted
+          ? eq(domains.isActive, true)
+          : and(eq(domains.isActive, true), eq(domains.watchKind, "OWNED")),
+      )
       .all();
 
     const errors: Array<{ domainId: number; domain: string; error: string }> =
@@ -65,6 +72,7 @@ export default defineEventHandler(async (event) => {
       actorType: "admin",
       metadata: {
         activeDomainCount: activeDomains.length,
+        includeWanted,
         checked,
         failed,
         errorCount: errors.length,

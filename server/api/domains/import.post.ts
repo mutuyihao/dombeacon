@@ -2,6 +2,7 @@ import { db } from "../../db";
 import { domains } from "../../db/schema";
 import { eq } from "drizzle-orm";
 import { recordAuditEvent } from "../../utils/audit";
+import { getBooleanEnv } from "../../utils/env";
 import { isValidDomainName, normalizeDomainInput } from "~/utils/domain";
 
 interface ImportResult {
@@ -70,7 +71,11 @@ export default defineEventHandler(async (event) => {
         const normalizedDomain = normalizeDomainInput(domain);
 
         // Validate domain
-        if (!isValidDomainName(normalizedDomain)) {
+        if (
+          !isValidDomainName(normalizedDomain, {
+            allowSingleLabel: getBooleanEnv("ALLOW_SINGLE_LABEL_DOMAINS"),
+          })
+        ) {
           result.failed++;
           result.errors.push({
             row: i + 2,

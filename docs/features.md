@@ -79,9 +79,9 @@ extending. For richer historical narratives, use `docs/_archive/`.
 
 ## SSL Certificate Monitoring
 
-- **What**: For active domains, fetch live TLS certificate metadata, record
-  issuer/validity, preserve latest/history rows, and emit `SSL_EXPIRING` or
-  `SSL_INVALID` actions for owned domains.
+- **What**: For active owned domains, fetch live TLS certificate metadata,
+  record issuer/validity, preserve latest/history rows, and emit
+  `SSL_EXPIRING` or `SSL_INVALID` actions.
 - **Tables**: `ssl_status_latest`, `ssl_status_history`, `actions`.
 - **Endpoints**: `GET /api/ssl`, `POST /api/ssl/:id/check`,
   `POST /api/ssl/check-all`.

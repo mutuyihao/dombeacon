@@ -689,7 +689,7 @@
   "ssl": {
     "title": "SSL 证书",
     "description": "查看证书是否有效、何时过期，以及最近一次检查结果。",
-    "refreshAll": "刷新全部",
+    "refreshAll": "刷新拥有域名",
     "checkNow": "立即检查",
     "lastChecked": "最后检查",
     "checkedHost": "检查主机",

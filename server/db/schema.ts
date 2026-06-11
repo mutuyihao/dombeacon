@@ -173,6 +173,46 @@ export const riskFindings = sqliteTable(
   }),
 );
 
+export const domainRiskSummaries = sqliteTable(
+  "domain_risk_summaries",
+  {
+    domainId: integer("domain_id")
+      .references(() => domains.id, { onDelete: "cascade" })
+      .primaryKey(),
+    riskScore: integer("risk_score").notNull().default(0),
+    openFindingsCount: integer("open_findings_count").notNull().default(0),
+    highestSeverity: text("highest_severity"),
+    lastSecurityScanAt: integer("last_security_scan_at", {
+      mode: "timestamp",
+    }),
+    dnssecStatus: text("dnssec_status").notNull().default("UNKNOWN"),
+    dmarcPolicy: text("dmarc_policy").notNull().default("unknown"),
+    registrarLockStatus: text("registrar_lock_status")
+      .notNull()
+      .default("UNKNOWN"),
+    spfConfigured: integer("spf_configured", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    caaConfigured: integer("caa_configured", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    bimiConfigured: integer("bimi_configured", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(
+      () => new Date(),
+    ),
+  },
+  (table) => ({
+    riskScoreIdx: index("idx_domain_risk_summaries_risk_score_v14").on(
+      table.riskScore,
+    ),
+    openFindingsIdx: index(
+      "idx_domain_risk_summaries_open_findings_v14",
+    ).on(table.openFindingsCount),
+  }),
+);
+
 export const taskLocks = sqliteTable("task_locks", {
   taskName: text("task_name").primaryKey(),
   lockedUntil: integer("locked_until", { mode: "timestamp" }),
@@ -386,6 +426,7 @@ export const pushSubscriptions = sqliteTable(
   {
     id: integer("id").primaryKey({ autoIncrement: true }),
     endpoint: text("endpoint").notNull().unique(),
+    endpointHash: text("endpoint_hash"),
     p256dh: text("p256dh").notNull(),
     auth: text("auth").notNull(),
     userAgent: text("user_agent"),
@@ -395,6 +436,9 @@ export const pushSubscriptions = sqliteTable(
     ),
   },
   (table) => ({
+    endpointHashIdx: index("idx_push_subscriptions_endpoint_hash_v14").on(
+      table.endpointHash,
+    ),
     enabledIdx: index("idx_push_subscriptions_enabled_v12").on(table.enabled),
   }),
 );

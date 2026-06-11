@@ -5,6 +5,7 @@ import {
   buildRiskFindingStatusUpdate,
   validateRiskFindingStatusUpdate,
 } from "../../../utils/security-findings";
+import { refreshDomainRiskSummaries } from "../../../utils/risk-summary";
 
 export default defineEventHandler(async (event) => {
   try {
@@ -22,7 +23,8 @@ export default defineEventHandler(async (event) => {
     const { status, snoozedUntil } = validation;
     const updateData = buildRiskFindingStatusUpdate(status, snoozedUntil);
 
-    const [updated] = await useDb()
+    const db = useDb();
+    const [updated] = await db
       .update(riskFindings)
       .set(updateData)
       .where(eq(riskFindings.id, id))
@@ -31,6 +33,8 @@ export default defineEventHandler(async (event) => {
     if (!updated) {
       return fail("Finding not found", 40400);
     }
+
+    await refreshDomainRiskSummaries([updated.domainId], { db });
 
     await recordAuditEvent({
       event,

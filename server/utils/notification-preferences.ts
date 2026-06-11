@@ -7,6 +7,7 @@ import {
   serverchanConfigs,
   webhookConfigs,
 } from "../db/schema";
+import { allowsPrivateWebhookTargets } from "./webhook";
 
 const EVENT_CHANNEL_PRESETS_KEY = "notifications.eventChannelPresets";
 const CHANNEL_SETTINGS_KEY = "notifications.channelSettings";
@@ -312,10 +313,16 @@ export const getNotificationChannelDiagnostics = async (options?: {
       process.env.VAPID_PRIVATE_KEY &&
       process.env.VAPID_SUBJECT,
   );
+  const privateWebhookTargetsAllowed = allowsPrivateWebhookTargets();
 
   const base: Record<
     ChannelName,
-    { configured: boolean; destinationCount: number; message: string }
+    {
+      configured: boolean;
+      destinationCount: number;
+      message: string;
+      privateTargetsAllowed?: boolean;
+    }
   > = {
     EMAIL: {
       configured: emailConfigured,
@@ -327,8 +334,10 @@ export const getNotificationChannelDiagnostics = async (options?: {
     WEBHOOK: {
       configured: matchingWebhooks.length > 0,
       destinationCount: matchingWebhooks.length,
-      message:
-        matchingWebhooks.length > 0
+      privateTargetsAllowed: privateWebhookTargetsAllowed,
+      message: privateWebhookTargetsAllowed
+        ? "Private webhook targets are allowed; SSRF protection is relaxed for trusted LAN destinations."
+        : matchingWebhooks.length > 0
           ? `${matchingWebhooks.length} matching webhook destination(s).`
           : eventType
             ? `No enabled webhook matches ${eventType}.`
@@ -365,9 +374,12 @@ export const getNotificationChannelDiagnostics = async (options?: {
       enabled,
       configured: diagnostic.configured,
       destinationCount: diagnostic.destinationCount,
+      privateTargetsAllowed: diagnostic.privateTargetsAllowed === true,
       severity: !enabled
         ? "disabled"
-        : diagnostic.configured
+        : diagnostic.privateTargetsAllowed
+          ? "warning"
+          : diagnostic.configured
           ? "ok"
           : "warning",
       message: enabled

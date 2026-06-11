@@ -4,6 +4,7 @@ import {
   normalizeFindingIds,
   validateRiskFindingStatusUpdate,
 } from "../../../utils/security-findings";
+import { refreshDomainRiskSummaries } from "../../../utils/risk-summary";
 
 export default defineEventHandler(async (event) => {
   try {
@@ -26,6 +27,10 @@ export default defineEventHandler(async (event) => {
       status,
       snoozedUntil,
     });
+    await refreshDomainRiskSummaries(
+      [...new Set(updated.map((finding) => finding.domainId))],
+      { db },
+    );
 
     await recordAuditEvent({
       event,

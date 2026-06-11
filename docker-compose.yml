@@ -5,12 +5,18 @@ services:
     container_name: dombeacon
     restart: unless-stopped
     ports:
-      - "8080:3000"
+      - "127.0.0.1:8080:3000"
     volumes:
       - ./data:/app/data
     environment:
       - DATABASE_PATH=/app/data/app.db
       - BASE_URL=http://localhost:8080
+      # Set a stable value in .env before storing SMTP/Webhook/ServerChan/Push secrets.
+      - SECRET_ENCRYPTION_KEY=${SECRET_ENCRYPTION_KEY:-}
+      # Optional auth before exposing outside localhost/trusted networks.
+      - BASIC_AUTH_USERNAME=${BASIC_AUTH_USERNAME:-}
+      - BASIC_AUTH_PASSWORD=${BASIC_AUTH_PASSWORD:-}
+      - DOMBEACON_API_TOKEN=${DOMBEACON_API_TOKEN:-}
       # Scheduler (single-instance default)
       - ENABLE_SCHEDULER=1
       - SCHEDULER_TIMEZONE=Asia/Shanghai

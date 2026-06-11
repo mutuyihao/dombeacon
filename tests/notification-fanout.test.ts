@@ -70,6 +70,7 @@ const createNotificationDb = () => {
     CREATE TABLE push_subscriptions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       endpoint TEXT NOT NULL UNIQUE,
+      endpoint_hash TEXT,
       p256dh TEXT NOT NULL,
       auth TEXT NOT NULL,
       user_agent TEXT,

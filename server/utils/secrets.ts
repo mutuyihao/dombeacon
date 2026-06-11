@@ -4,6 +4,7 @@ import {
   createHash,
   randomBytes,
 } from "node:crypto";
+import { logger } from "./logger";
 
 const SECRET_PREFIX = "enc:v1:";
 const SECRET_SALT = "dombeacon-secret-storage-v1";
@@ -11,14 +12,28 @@ const SECRET_SALT = "dombeacon-secret-storage-v1";
 const getSecretKeyMaterial = () =>
   (process.env.SECRET_ENCRYPTION_KEY || "").trim();
 
+let warnedMissingSecretKey = false;
+
 const getEncryptionKey = () => {
   const material = getSecretKeyMaterial();
   if (!material) return null;
   return createHash("sha256").update(SECRET_SALT).update(material).digest();
 };
 
+export const hasSecretEncryptionKey = () => Boolean(getSecretKeyMaterial());
+
 export const isEncryptedSecret = (value: string | null | undefined) =>
   typeof value === "string" && value.startsWith(SECRET_PREFIX);
+
+export const warnMissingSecretEncryptionKey = (context = "secret storage") => {
+  if (hasSecretEncryptionKey() || warnedMissingSecretKey) return;
+  warnedMissingSecretKey = true;
+  logger.warn("SECRET_ENCRYPTION_KEY is not configured", {
+    scope: "security",
+    context,
+    impact: "secret values are stored in plaintext until a stable key is set",
+  });
+};
 
 export const protectSecretText = (value: string | null | undefined) => {
   if (value === null || value === undefined) return null;
@@ -26,7 +41,10 @@ export const protectSecretText = (value: string | null | undefined) => {
   if (!text || isEncryptedSecret(text)) return text;
 
   const key = getEncryptionKey();
-  if (!key) return text;
+  if (!key) {
+    warnMissingSecretEncryptionKey("new secret values");
+    return text;
+  }
 
   const iv = randomBytes(12);
   const cipher = createCipheriv("aes-256-gcm", key, iv);
@@ -101,3 +119,6 @@ export const parseProtectedJson = <T>(
 
 export const stringifyProtectedJson = (value: unknown) =>
   protectSecretText(JSON.stringify(value));
+
+export const hashSecretLookupValue = (value: string | null | undefined) =>
+  createHash("sha256").update(String(value || ""), "utf8").digest("hex");

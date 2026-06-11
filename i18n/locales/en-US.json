@@ -689,7 +689,7 @@
   "ssl": {
     "title": "SSL Certificates",
     "description": "Check whether certificates are valid, when they expire, and when they were last checked.",
-    "refreshAll": "Refresh All",
+    "refreshAll": "Refresh Owned",
     "checkNow": "Check Now",
     "lastChecked": "Last Checked",
     "checkedHost": "Checked host",

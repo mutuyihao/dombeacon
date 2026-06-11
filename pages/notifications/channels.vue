@@ -165,6 +165,27 @@
       </div>
       <div class="hairline mt-5" />
 
+      <div
+        v-if="webhookDiagnostics"
+        :class="[
+          'mt-5 rounded-2xl border p-4 text-sm',
+          webhookDiagnostics.privateTargetsAllowed
+            ? 'border-status-dropping/30 bg-status-dropping/10 text-status-dropping'
+            : 'border-status-available/30 bg-status-available/10 text-status-available',
+        ]"
+      >
+        <p class="font-semibold">
+          {{
+            webhookDiagnostics.privateTargetsAllowed
+              ? 'SSRF protection relaxed'
+              : 'SSRF protection active'
+          }}
+        </p>
+        <p class="mt-1 text-xs leading-relaxed text-text-secondary">
+          {{ webhookDiagnostics.message }}
+        </p>
+      </div>
+
       <div v-if="webhooksLoading" class="flex justify-center py-12">
         <LoadingSpinner size="lg" />
       </div>
@@ -488,6 +509,10 @@ const channelCards = computed(() => {
     };
   });
 });
+
+const webhookDiagnostics = computed(
+  () => data.value?.data?.channelDiagnostics?.WEBHOOK || null,
+);
 
 const save = async () => {
   saving.value = true;

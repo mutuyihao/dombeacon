@@ -13,6 +13,7 @@ import { and, desc, eq, inArray } from "drizzle-orm";
 import { dnsSnapshots, riskFindings } from "../db/schema";
 import { useDb } from "./db";
 import { notifySecurityFinding } from "./risk-notifications";
+import { refreshDomainRiskSummaries } from "./risk-summary";
 
 export type RiskSeverity = "LOW" | "MEDIUM" | "HIGH";
 
@@ -439,6 +440,7 @@ export const scanDomainSecurity = async (
 
   const findings = evaluateDnsFindings(records, previousRecords);
   const syncResult = await syncRiskFindings(domainId, findings);
+  await refreshDomainRiskSummaries([domainId], { db });
   let notificationsSent = 0;
   if (options?.notify) {
     for (const finding of syncResult.createdRows) {

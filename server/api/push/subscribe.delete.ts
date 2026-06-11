@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { pushSubscriptions } from "../../db/schema";
 import { recordAuditEvent } from "../../utils/audit";
-import { revealSecretText } from "../../utils/secrets";
+import { findPushSubscriptionByEndpoint } from "../../utils/push-subscriptions";
 
 /**
  * Unsubscribe a Web Push endpoint.
@@ -14,15 +14,13 @@ export default defineEventHandler(async (event) => {
       return fail("Endpoint required", 40000);
     }
 
+    const endpoint = String(body.endpoint).trim();
+    if (!endpoint) {
+      return fail("Endpoint required", 40000);
+    }
+
     const db = useDb();
-    const rows = await db.select().from(pushSubscriptions).all();
-    const match = rows.find((row) => {
-      try {
-        return revealSecretText(row.endpoint) === body.endpoint;
-      } catch {
-        return false;
-      }
-    });
+    const match = await findPushSubscriptionByEndpoint(db, endpoint);
 
     const result = match
       ? await db

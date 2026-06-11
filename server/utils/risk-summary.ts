@@ -1,12 +1,17 @@
-import { desc, inArray } from "drizzle-orm";
-import { dnsSnapshots, domainStatusLatest, riskFindings } from "../db/schema";
+import { desc, eq, inArray, sql } from "drizzle-orm";
+import {
+  dnsSnapshots,
+  domainRiskSummaries,
+  domainStatusLatest,
+  riskFindings,
+} from "../db/schema";
 import { useDb } from "./db";
 import {
   parseRdapSummaryStatuses,
   summarizeRegistrarLockStatus,
   type RegistrarLockStatus,
 } from "./rdap-risk";
-import { parseDnsRecordsJson, type DnsSecurityRecords } from "./security-scan";
+import type { DnsSecurityRecords } from "./security-scan";
 
 export type DomainRiskSummary = {
   riskScore: number;
@@ -45,6 +50,17 @@ export const createEmptyRiskSummary = (): DomainRiskSummary => ({
   caaConfigured: false,
   bimiConfigured: false,
 });
+
+const parseRiskDnsRecordsJson = (
+  value: string | null | undefined,
+): DnsSecurityRecords | null => {
+  if (!value) return null;
+  try {
+    return JSON.parse(value) as DnsSecurityRecords;
+  } catch {
+    return null;
+  }
+};
 
 export const calculateRiskScore = (
   findings: Array<{ severity: string; status: string }>,
@@ -129,14 +145,17 @@ export const summarizeDnsPosture = (
   };
 };
 
-export const getDomainRiskSummaries = async (domainIds: number[]) => {
+export const computeDomainRiskSummaries = async (
+  domainIds: number[],
+  options?: { db?: ReturnType<typeof useDb> },
+) => {
   const uniqueIds = [...new Set(domainIds.filter((id) => Number.isFinite(id)))];
   const summaries = new Map<number, DomainRiskSummary>();
   uniqueIds.forEach((id) => summaries.set(id, createEmptyRiskSummary()));
 
   if (uniqueIds.length === 0) return summaries;
 
-  const db = useDb();
+  const db = options?.db ?? useDb();
   const [findingRows, snapshotRows, rdapRows] = await Promise.all([
     db
       .select()
@@ -188,7 +207,9 @@ export const getDomainRiskSummaries = async (domainIds: number[]) => {
     seenSnapshots.add(snapshot.domainId);
 
     const summary = summaries.get(snapshot.domainId) || createEmptyRiskSummary();
-    const posture = summarizeDnsPosture(parseDnsRecordsJson(snapshot.recordsJson));
+    const posture = summarizeDnsPosture(
+      parseRiskDnsRecordsJson(snapshot.recordsJson),
+    );
     summaries.set(snapshot.domainId, {
       ...summary,
       ...posture,
@@ -205,6 +226,102 @@ export const getDomainRiskSummaries = async (domainIds: number[]) => {
       ),
     });
   });
+
+  return summaries;
+};
+
+const toCacheValues = (domainId: number, summary: DomainRiskSummary) => ({
+  domainId,
+  riskScore: summary.riskScore,
+  openFindingsCount: summary.openFindingsCount,
+  highestSeverity: summary.highestSeverity,
+  lastSecurityScanAt: summary.lastSecurityScanAt,
+  dnssecStatus: summary.dnssecStatus,
+  dmarcPolicy: summary.dmarcPolicy,
+  registrarLockStatus: summary.registrarLockStatus,
+  spfConfigured: summary.spfConfigured,
+  caaConfigured: summary.caaConfigured,
+  bimiConfigured: summary.bimiConfigured,
+  updatedAt: new Date(),
+});
+
+const fromCacheRow = (
+  row: typeof domainRiskSummaries.$inferSelect,
+): DomainRiskSummary => ({
+  riskScore: row.riskScore || 0,
+  openFindingsCount: row.openFindingsCount || 0,
+  highestSeverity: row.highestSeverity as DomainRiskSummary["highestSeverity"],
+  lastSecurityScanAt: row.lastSecurityScanAt || null,
+  dnssecStatus: row.dnssecStatus as DomainRiskSummary["dnssecStatus"],
+  dmarcPolicy: row.dmarcPolicy as DomainRiskSummary["dmarcPolicy"],
+  registrarLockStatus:
+    row.registrarLockStatus as DomainRiskSummary["registrarLockStatus"],
+  spfConfigured: Boolean(row.spfConfigured),
+  caaConfigured: Boolean(row.caaConfigured),
+  bimiConfigured: Boolean(row.bimiConfigured),
+});
+
+export const refreshDomainRiskSummaries = async (
+  domainIds: number[],
+  options?: { db?: ReturnType<typeof useDb> },
+) => {
+  const uniqueIds = [...new Set(domainIds.filter((id) => Number.isFinite(id)))];
+  const summaries = await computeDomainRiskSummaries(uniqueIds, options);
+  const db = options?.db ?? useDb();
+  const values = uniqueIds.map((domainId) =>
+    toCacheValues(domainId, summaries.get(domainId) || createEmptyRiskSummary()),
+  );
+
+  if (values.length > 0) {
+    await db
+      .insert(domainRiskSummaries)
+      .values(values)
+      .onConflictDoUpdate({
+        target: domainRiskSummaries.domainId,
+        set: {
+          riskScore: sql`excluded.risk_score`,
+          openFindingsCount: sql`excluded.open_findings_count`,
+          highestSeverity: sql`excluded.highest_severity`,
+          lastSecurityScanAt: sql`excluded.last_security_scan_at`,
+          dnssecStatus: sql`excluded.dnssec_status`,
+          dmarcPolicy: sql`excluded.dmarc_policy`,
+          registrarLockStatus: sql`excluded.registrar_lock_status`,
+          spfConfigured: sql`excluded.spf_configured`,
+          caaConfigured: sql`excluded.caa_configured`,
+          bimiConfigured: sql`excluded.bimi_configured`,
+          updatedAt: sql`excluded.updated_at`,
+        },
+      });
+  }
+
+  return summaries;
+};
+
+export const getDomainRiskSummaries = async (
+  domainIds: number[],
+  options?: { db?: ReturnType<typeof useDb>; populateMissing?: boolean },
+) => {
+  const uniqueIds = [...new Set(domainIds.filter((id) => Number.isFinite(id)))];
+  const summaries = new Map<number, DomainRiskSummary>();
+  uniqueIds.forEach((id) => summaries.set(id, createEmptyRiskSummary()));
+
+  if (uniqueIds.length === 0) return summaries;
+
+  const db = options?.db ?? useDb();
+  const rows = await db
+    .select()
+    .from(domainRiskSummaries)
+    .where(inArray(domainRiskSummaries.domainId, uniqueIds))
+    .all();
+
+  rows.forEach((row) => summaries.set(row.domainId, fromCacheRow(row)));
+
+  const cachedIds = new Set(rows.map((row) => row.domainId));
+  const missingIds = uniqueIds.filter((id) => !cachedIds.has(id));
+  if (missingIds.length > 0 && options?.populateMissing !== false) {
+    const computed = await refreshDomainRiskSummaries(missingIds, { db });
+    computed.forEach((summary, domainId) => summaries.set(domainId, summary));
+  }
 
   return summaries;
 };

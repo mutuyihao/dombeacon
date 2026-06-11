@@ -1,10 +1,11 @@
 import { eq } from "drizzle-orm";
 import { pushSubscriptions } from "../../db/schema";
 import { recordAuditEvent } from "../../utils/audit";
+import { protectSecretText } from "../../utils/secrets";
 import {
-  protectSecretText,
-  revealSecretText,
-} from "../../utils/secrets";
+  findPushSubscriptionByEndpoint,
+  hashPushEndpoint,
+} from "../../utils/push-subscriptions";
 
 /**
  * Register (or re-enable) a Web Push subscription.
@@ -20,24 +21,21 @@ export default defineEventHandler(async (event) => {
       return fail("Invalid subscription payload", 40000);
     }
 
+    const endpoint = String(body.endpoint).trim();
+    if (!endpoint) {
+      return fail("Invalid subscription endpoint", 40000);
+    }
+
     const db = useDb();
-    const existingRows = await db
-      .select()
-      .from(pushSubscriptions)
-      .all();
-    const existing = existingRows.find((row) => {
-      try {
-        return revealSecretText(row.endpoint) === body.endpoint;
-      } catch {
-        return false;
-      }
-    });
+    const endpointHash = hashPushEndpoint(endpoint);
+    const existing = await findPushSubscriptionByEndpoint(db, endpoint);
 
     if (existing) {
       await db
         .update(pushSubscriptions)
         .set({
-          endpoint: protectSecretText(body.endpoint),
+          endpoint: protectSecretText(endpoint),
+          endpointHash,
           p256dh: protectSecretText(body.keys.p256dh),
           auth: protectSecretText(body.keys.auth),
           userAgent: body.userAgent || existing.userAgent,
@@ -61,7 +59,8 @@ export default defineEventHandler(async (event) => {
     const [row] = await db
       .insert(pushSubscriptions)
       .values({
-        endpoint: protectSecretText(body.endpoint),
+        endpoint: protectSecretText(endpoint),
+        endpointHash,
         p256dh: protectSecretText(body.keys.p256dh),
         auth: protectSecretText(body.keys.auth),
         userAgent: body.userAgent || null,

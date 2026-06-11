@@ -55,6 +55,10 @@ export default defineNuxtConfig({
     vapidSubject: process.env.VAPID_SUBJECT || "mailto:admin@example.com",
     public: {
       vapidPublicKey: process.env.VAPID_PUBLIC_KEY || "",
+      allowSingleLabelDomains:
+        String(process.env.ALLOW_SINGLE_LABEL_DOMAINS || "")
+          .trim()
+          .toLowerCase() === "true",
     },
   },
   vite: {

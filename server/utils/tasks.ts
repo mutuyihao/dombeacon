@@ -12,10 +12,16 @@ import { fanoutNotification } from "./notification-fanout";
 import { scanDomainSSL } from "./ssl";
 import { scanDomainSecurity } from "./security-scan";
 import { getCurrentRiskMetricsSnapshot } from "./risk-metrics";
+import { logger } from "./logger";
+import { getIntegerEnv } from "./env";
 
 const LOCK_TTL_MS = 1000 * 60 * 30; // 30 minutes
-const SCAN_BATCH_SIZE = 5; // Domains processed in parallel per batch
-const SCAN_BATCH_DELAY_MS = 1000; // Delay between batches to spare RDAP/SSL targets
+
+const getScanBatchSize = () =>
+  getIntegerEnv("SCAN_BATCH_SIZE", 5, 1);
+
+const getScanBatchDelayMs = () =>
+  getIntegerEnv("SCAN_BATCH_DELAY_MS", 1000, 0);
 
 /**
  * Atomic lock acquisition using a single SQL statement.
@@ -64,7 +70,7 @@ const safeRiskMetricsSnapshot = async (db: ReturnType<typeof useDb>) => {
   try {
     return await getCurrentRiskMetricsSnapshot({ db });
   } catch (error: any) {
-    console.warn("Risk metrics snapshot failed:", error?.message || error);
+    logger.warn("Risk metrics snapshot failed", { error });
     return null;
   }
 };
@@ -89,6 +95,7 @@ const handleSSLAlerts = async (params: {
   const isExpiring =
     sslResult.hasSSL &&
     sslResult.daysUntilExpiry !== undefined &&
+    sslResult.daysUntilExpiry !== null &&
     sslResult.daysUntilExpiry < 30;
   const isInvalid = sslResult.hasSSL && !sslResult.isValid;
 
@@ -209,40 +216,41 @@ const processDomain = async (
       rdapError = error;
     }
 
-    // Update SSL status for every active domain. Only owned domains create
-    // SSL actions/notifications, because those are account-owner obligations.
-    try {
-      const prevSSL = await db
-        .select()
-        .from(sslStatusLatest)
-        .where(eq(sslStatusLatest.domainId, d.id))
-        .get();
-
-      const sslResult = await scanDomainSSL(d.id, d.domain);
-      const sslActionIds = await handleSSLAlerts({
-        domainId: d.id,
-        domain: d.domain,
-        watchKind: d.watchKind,
-        priority: d.priority,
-        sslResult,
-        prevSSL,
-      });
-      actionIds.push(...sslActionIds);
-    } catch (sslError: any) {
-      console.error(`SSL check failed for ${d.domain}:`, sslError.message);
-    }
-
     if (d.watchKind === "OWNED") {
+      try {
+        const prevSSL = await db
+          .select()
+          .from(sslStatusLatest)
+          .where(eq(sslStatusLatest.domainId, d.id))
+          .get();
+
+        const sslResult = await scanDomainSSL(d.id, d.domain);
+        const sslActionIds = await handleSSLAlerts({
+          domainId: d.id,
+          domain: d.domain,
+          watchKind: d.watchKind,
+          priority: d.priority,
+          sslResult,
+          prevSSL,
+        });
+        actionIds.push(...sslActionIds);
+      } catch (sslError: any) {
+        logger.error("SSL check failed", {
+          domain: d.domain,
+          error: sslError,
+        });
+      }
+
       try {
         const securityResult = await scanDomainSecurity(d.id, d.domain, {
           notify: true,
         });
         securityFindings = securityResult.findings.length;
       } catch (securityError: any) {
-        console.error(
-          `DNS security scan failed for ${d.domain}:`,
-          securityError.message,
-        );
+        logger.error("DNS security scan failed", {
+          domain: d.domain,
+          error: securityError,
+        });
       }
     }
 
@@ -401,7 +409,9 @@ const processDomain = async (
       });
       actionIds.push(action.id);
     } catch (actionError) {
-      console.error("Failed to create SCAN_FAILED action:", actionError);
+      logger.error("Failed to create SCAN_FAILED action", {
+        error: actionError,
+      });
     }
     return { ok: false, actionIds, securityFindings, error: e.message };
   }
@@ -420,7 +430,7 @@ function chunk<T>(arr: T[], size: number): T[][] {
 
 export const runDomainScan = async () => {
   if (!(await acquireLock("hourly-scan"))) {
-    console.log("Hourly scan locked, skipping.");
+    logger.info("Hourly scan locked, skipping");
     return;
   }
 
@@ -440,7 +450,8 @@ export const runDomainScan = async () => {
       .from(domains)
       .where(eq(domains.isActive, true));
 
-    const batches = chunk(activeDomains, SCAN_BATCH_SIZE);
+    const scanBatchDelayMs = getScanBatchDelayMs();
+    const batches = chunk(activeDomains, getScanBatchSize());
 
     for (let i = 0; i < batches.length; i++) {
       const batch = batches[i];
@@ -468,9 +479,9 @@ export const runDomainScan = async () => {
       });
 
       // Throttle between batches (skip after last)
-      if (i < batches.length - 1) {
+      if (scanBatchDelayMs > 0 && i < batches.length - 1) {
         await new Promise((resolve) =>
-          setTimeout(resolve, SCAN_BATCH_DELAY_MS),
+          setTimeout(resolve, scanBatchDelayMs),
         );
       }
     }
@@ -557,9 +568,9 @@ export const runDailySummary = async () => {
       deduplicateHours: 20,
     });
 
-    console.log(
-      `Daily summary sent with ${notableDomains.length} notable domains`,
-    );
+    logger.info("Daily summary sent", {
+      notableDomainCount: notableDomains.length,
+    });
   } finally {
     await releaseLock("daily-summary");
     // Log run
