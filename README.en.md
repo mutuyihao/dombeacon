@@ -18,30 +18,76 @@ DomBeacon is a self-hosted domain operations beacon for tracking wanted domain o
 
 ## Quick Start With Docker
 
-1. Clone the project and prepare the workspace.
+This project uses the repository `docker-compose.yml` to build the image locally. Compose mounts host `./data` into `/app/data` in the container, so the SQLite database is written to `./data/app.db` by default. The app binds to `127.0.0.1:8080` by default and is not exposed publicly.
+
+1. Clone the project.
 
    ```bash
    git clone <repo>
    cd dombeacon
+   ```
+
+2. Prepare local configuration and the data directory.
+
+   ```bash
    cp .env.example .env
    mkdir data
    ```
 
-2. Set runtime secrets and access control in `.env`.
+3. Edit `.env` and set at least one stable `SECRET_ENCRYPTION_KEY`.
 
    ```env
-   SECRET_ENCRYPTION_KEY=your-random-storage-secret
-   BASIC_AUTH_USERNAME=admin
-   BASIC_AUTH_PASSWORD=change-me
+   SECRET_ENCRYPTION_KEY=replace-with-a-stable-random-secret
    ```
 
-3. Start the app.
+   Generate one with either command:
 
    ```bash
-   docker-compose up -d
+   openssl rand -base64 32
    ```
 
-4. Open `http://localhost:8080`.
+   ```bash
+   node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+   ```
+
+4. If you only access `http://localhost:8080` locally, access control can stay empty at first. If you expose the service to a LAN, the public internet, a reverse proxy, or any untrusted network, enable Basic Auth or a Bearer token in `.env`.
+
+   ```env
+   BASIC_AUTH_USERNAME=admin
+   BASIC_AUTH_PASSWORD=change-me
+   # Or:
+   DOMBEACON_API_TOKEN=replace-with-a-long-random-token
+   ```
+
+5. Build and start the service.
+
+   ```bash
+   docker compose up -d --build
+   ```
+
+   If your environment still uses legacy Compose, replace `docker compose` with `docker-compose`.
+
+6. Check runtime status.
+
+   ```bash
+   docker compose ps
+   docker compose logs -f app
+   ```
+
+7. Open `http://localhost:8080`.
+
+Common maintenance commands:
+
+```bash
+# Stop the service while keeping ./data
+docker compose down
+
+# Rebuild and restart after pulling new code
+git pull
+docker compose up -d --build
+```
+
+Do not delete `SECRET_ENCRYPTION_KEY` from `.env`, and do not rotate it during migration or reinstall. Existing encrypted notification secrets cannot be decrypted without the same key.
 
 ## Access Model
 

@@ -18,30 +18,76 @@ DomBeacon 是一个自托管的域名运维信标，用于跟踪想要注册的�
 
 ## Docker 快速开始
 
-1. 克隆项目并准备工作目录。
+这个项目默认用本仓库的 `docker-compose.yml` 本地构建镜像。Compose 会把宿主机 `./data` 挂载到容器内 `/app/data`，SQLite 数据库默认写入 `./data/app.db`；端口默认只绑定到 `127.0.0.1:8080`，不会直接暴露到外网。
+
+1. 克隆项目。
 
    ```bash
    git clone <repo>
    cd dombeacon
+   ```
+
+2. 准备本地配置和数据目录。
+
+   ```bash
    cp .env.example .env
    mkdir data
    ```
 
-2. 在 `.env` 中设置运行密钥和访问控制。
+3. 编辑 `.env`，至少设置一个长期稳定的 `SECRET_ENCRYPTION_KEY`。
 
    ```env
-   SECRET_ENCRYPTION_KEY=your-random-storage-secret
-   BASIC_AUTH_USERNAME=admin
-   BASIC_AUTH_PASSWORD=change-me
+   SECRET_ENCRYPTION_KEY=replace-with-a-stable-random-secret
    ```
 
-3. 启动服务。
+   可以用下面任意一种方式生成：
 
    ```bash
-   docker-compose up -d
+   openssl rand -base64 32
    ```
 
-4. 打开 `http://localhost:8080`。
+   ```bash
+   node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+   ```
+
+4. 如果只在本机访问 `http://localhost:8080`，访问控制可以先留空。只要把服务暴露到局域网、公网、反向代理或任何非可信网络，就必须在 `.env` 中启用 Basic Auth 或 Bearer Token。
+
+   ```env
+   BASIC_AUTH_USERNAME=admin
+   BASIC_AUTH_PASSWORD=change-me
+   # 或者：
+   DOMBEACON_API_TOKEN=replace-with-a-long-random-token
+   ```
+
+5. 构建并启动服务。
+
+   ```bash
+   docker compose up -d --build
+   ```
+
+   如果你的环境仍使用旧版 Compose，可以把 `docker compose` 换成 `docker-compose`。
+
+6. 检查运行状态。
+
+   ```bash
+   docker compose ps
+   docker compose logs -f app
+   ```
+
+7. 打开 `http://localhost:8080`。
+
+常用维护命令：
+
+```bash
+# 停止服务，保留 ./data 数据
+docker compose down
+
+# 拉取代码后重建并滚动启动
+git pull
+docker compose up -d --build
+```
+
+不要删除 `.env` 中的 `SECRET_ENCRYPTION_KEY`，也不要在迁移或重装时更换它；否则数据库中已加密的通知密钥无法解密。
 
 ## 访问模型
 
