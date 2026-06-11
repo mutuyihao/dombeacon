@@ -1,5 +1,5 @@
-/* DomBeacon (域灯) — Service Worker (v1.2)
- * Hand-rolled (Nuxt 4.2 + @vite-pwa/nuxt has known compat risks).
+/* DomBeacon Service Worker.
+ * Hand-rolled so caching and push behavior stay explicit.
  * Provides:
  *   - Stale-while-revalidate for static assets
  *   - Network-only for all API requests (no sensitive response caching)
@@ -24,7 +24,7 @@ self.addEventListener("install", (event) => {
   event.waitUntil(
     (async () => {
       const cache = await caches.open(PRECACHE);
-      // Use addAll with `cache: 'reload'` to bypass HTTP cache during install
+      // Use addAll with `cache: 'reload'` to bypass HTTP cache during install.
       await Promise.all(
         PRECACHE_URLS.map((url) =>
           cache
@@ -43,8 +43,8 @@ self.addEventListener("activate", (event) => {
       const keys = await caches.keys();
       await Promise.all(
         keys
-          .filter((k) => k !== PRECACHE && k !== RUNTIME)
-          .map((k) => caches.delete(k)),
+          .filter((key) => key !== PRECACHE && key !== RUNTIME)
+          .map((key) => caches.delete(key)),
       );
       await self.clients.claim();
     })(),
@@ -55,7 +55,10 @@ const isApi = (url) => url.pathname.startsWith("/api/");
 
 const networkWithTimeout = (request, timeoutMs = 3000) =>
   new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error("network timeout")), timeoutMs);
+    const timer = setTimeout(
+      () => reject(new Error("network timeout")),
+      timeoutMs,
+    );
     fetch(request).then(
       (res) => {
         clearTimeout(timer);
@@ -72,7 +75,7 @@ self.addEventListener("fetch", (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Only handle same-origin GETs
+  // Only handle same-origin GETs.
   if (request.method !== "GET" || url.origin !== self.location.origin) {
     return;
   }
@@ -82,7 +85,7 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Navigation requests → network first, fall back to offline page
+  // Navigation requests: network first, fall back to offline page.
   if (request.mode === "navigate") {
     event.respondWith(
       (async () => {
@@ -100,7 +103,7 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Static assets: stale-while-revalidate
+  // Static assets: stale-while-revalidate.
   event.respondWith(
     (async () => {
       const cache = await caches.open(RUNTIME);
@@ -116,9 +119,6 @@ self.addEventListener("fetch", (event) => {
   );
 });
 
-// ---------------------------------------------------------------------------
-// Web Push
-// ---------------------------------------------------------------------------
 self.addEventListener("push", (event) => {
   if (!event.data) return;
   let payload;
@@ -149,7 +149,7 @@ self.addEventListener("notificationclick", (event) => {
         type: "window",
         includeUncontrolled: true,
       });
-      // If a window is already open, focus it and navigate
+      // If a window is already open, focus it and navigate.
       for (const client of allClients) {
         if ("focus" in client) {
           await client.focus();
@@ -157,7 +157,7 @@ self.addEventListener("notificationclick", (event) => {
             try {
               await client.navigate(target);
             } catch {
-              /* navigation may fail across origins */
+              // Navigation may fail across origins.
             }
           }
           return;

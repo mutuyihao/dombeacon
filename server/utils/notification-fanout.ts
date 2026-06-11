@@ -1,10 +1,7 @@
 import { and, eq, gte } from "drizzle-orm";
 import { notificationEvents } from "../db/schema";
 import { sendNotification } from "./mail";
-import {
-  applyNotificationChannelPreset,
-  getNotificationEventChannels,
-} from "./notification-preferences";
+import { getEffectiveNotificationChannels } from "./notification-preferences";
 import { notifyPush } from "./push";
 import { notifyServerchan } from "./serverchan";
 import { notifyWebhooks } from "./webhook";
@@ -79,11 +76,13 @@ export const fanoutNotification = async (params: {
   };
 }) => {
   const deduplicateHours = params.deduplicateHours ?? 24;
-  const eventPreset = await getNotificationEventChannels(params.eventType);
-  const channels = applyNotificationChannelPreset(params.channels, eventPreset);
+  const { channels, diagnostics } = await getEffectiveNotificationChannels(
+    params.eventType,
+    params.channels,
+  );
 
   if (!Object.values(channels).some(Boolean)) {
-    return { skipped: false, disabled: true, successCount: 0 };
+    return { skipped: false, disabled: true, successCount: 0, diagnostics };
   }
 
   if (

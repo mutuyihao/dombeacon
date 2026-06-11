@@ -9,6 +9,8 @@
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:watch": "vitest",
     "postinstall": "nuxt prepare"
   },
   "dependencies": {
@@ -30,6 +32,8 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.2.4",
+    "@tailwindcss/vite": "^4.3.0",
+    "@vitest/coverage-v8": "4.1.5",
     "@types/better-sqlite3": "^7.6.13",
     "@types/nodemailer": "^8.0.0",
     "@types/web-push": "^3.6.4",

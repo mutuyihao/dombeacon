@@ -13,6 +13,7 @@ node_modules
 # Logs
 logs
 *.log
+coverage
 
 # Misc
 .DS_Store
@@ -32,6 +33,7 @@ logs
 
 # Temp files
 temp_*
+.codex-tmp
 
 # Local Docker/build caches
 .docker

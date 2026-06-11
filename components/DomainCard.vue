@@ -7,7 +7,7 @@
 
     <header class="flex items-start justify-between gap-3">
       <div class="min-w-0 flex-1">
-        <h3 class="font-display truncate text-lg font-medium tracking-[-0.025em] text-text-main">
+        <h3 class="font-mono truncate text-[14.5px] font-semibold tracking-tight text-text-main">
           {{ domain.domain }}
         </h3>
         <p class="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">

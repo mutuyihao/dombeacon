@@ -1,6 +1,6 @@
 /**
  * PWA bootstrap: register the service worker on the client.
- * Hand-rolled (no @vite-pwa/nuxt) to avoid Nuxt 4.2 compat risks.
+ * Hand-rolled (no @vite-pwa/nuxt) so caching and push behavior stay explicit.
  */
 export default defineNuxtPlugin(() => {
   if (!import.meta.client) return;

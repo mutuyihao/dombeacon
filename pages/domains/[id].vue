@@ -1,5 +1,5 @@
 <template>
-  <div class="mx-auto max-w-5xl space-y-12">
+  <div class="mx-auto max-w-6xl space-y-8 md:space-y-10">
 
     <!-- Breadcrumb -->
     <nav class="flex items-center gap-2 text-xs uppercase tracking-[0.16em] text-text-tertiary">
@@ -20,14 +20,14 @@
       <p class="text-sm text-status-dropping">{{ $t('domain.loadError') }}</p>
     </div>
 
-    <div v-else class="space-y-16">
+    <div v-else class="flex flex-col gap-8 md:gap-10">
 
       <!-- ─── HERO ─────────────────────────────────────────────────── -->
-      <section>
+      <section class="surface overflow-hidden p-6 md:p-7">
         <p class="eyebrow mb-3">Watch entry</p>
         <div class="flex flex-wrap items-end justify-between gap-6">
           <div class="min-w-0 flex-1">
-            <h1 class="font-display text-4xl font-medium tracking-[-0.035em] text-text-main md:text-5xl select-all">
+            <h1 class="font-mono text-3xl font-bold tracking-tight text-text-main md:text-4xl select-all">
               {{ domain.domain }}
             </h1>
             <div class="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-[11px] font-semibold uppercase tracking-[0.16em]">
@@ -62,9 +62,28 @@
           </div>
         </div>
 
+        <div class="hairline mt-6" />
+
+        <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div
+            v-for="card in overviewCards"
+            :key="card.key"
+            class="surface-flat p-4"
+          >
+            <div class="flex items-center justify-between gap-3">
+              <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">{{ card.label }}</p>
+              <span :class="['h-1.5 w-1.5 rounded-full', card.dot]" />
+            </div>
+            <p :class="['mt-3 truncate text-xl font-bold tracking-tight', card.tone]" data-numeric>
+              {{ card.value }}
+            </p>
+            <p class="mt-1 truncate text-xs text-text-tertiary">{{ card.hint }}</p>
+          </div>
+        </div>
+
         <div
           v-if="latest?.lastError"
-          class="surface-flat mt-8 flex flex-col gap-2 p-4 text-xs md:flex-row md:items-start md:justify-between"
+          class="surface-flat mt-5 flex flex-col gap-2 p-4 text-xs md:flex-row md:items-start md:justify-between"
         >
           <div class="min-w-0 flex-1">
             <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-status-dropping">{{ $t('domain.scanError') }}</p>
@@ -75,61 +94,95 @@
       </section>
 
       <!-- ─── INFO + METADATA ─────────────────────────────────────── -->
-      <section class="grid grid-cols-1 gap-16 md:grid-cols-2">
-        <div>
-          <p class="eyebrow mb-3">Information</p>
-          <h2 class="headline-display text-2xl">{{ $t('domain.information') }}</h2>
+      <section class="grid gap-5 lg:grid-cols-[minmax(0,1fr)_22rem]">
+        <div class="surface p-6">
+          <div class="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <p class="eyebrow mb-3">{{ $t('domain.detail.attention') }}</p>
+              <h2 class="headline-display text-2xl">{{ $t('domain.detail.brief') }}</h2>
+            </div>
+            <p class="max-w-md text-xs leading-relaxed text-text-secondary">{{ $t('domain.detail.attentionHint') }}</p>
+          </div>
           <div class="hairline mt-4" />
-          <dl class="mt-1 text-sm">
-            <div class="flex items-center justify-between border-b border-hairline py-3">
-              <dt class="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">{{ $t('domain.expiresAt') }}</dt>
-              <dd class="font-mono text-text-main">{{ formatDate(latest?.expiresAt) }}</dd>
+
+          <div class="mt-5 space-y-3">
+            <div
+              v-for="item in attentionItems"
+              :key="item.key"
+              class="surface-flat flex flex-col gap-3 p-4 md:flex-row md:items-start"
+            >
+              <span :class="['mt-1 h-2 w-2 shrink-0 rounded-full', item.dot]" />
+              <div class="min-w-0 flex-1">
+                <div class="flex flex-wrap items-center gap-2">
+                  <h3 :class="['text-sm font-semibold', item.tone]">{{ item.title }}</h3>
+                  <span v-if="item.meta" class="font-mono text-[10px] uppercase tracking-[0.14em] text-text-tertiary">{{ item.meta }}</span>
+                </div>
+                <p class="mt-1 text-sm leading-relaxed text-text-secondary">{{ item.text }}</p>
+              </div>
             </div>
-            <div class="flex items-center justify-between border-b border-hairline py-3">
-              <dt class="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">{{ $t('domain.lastChecked') }}</dt>
-              <dd class="font-mono text-text-main">{{ formatDate(latest?.checkedAt, true) }}</dd>
-            </div>
-            <div class="flex items-center justify-between border-b border-hairline py-3">
-              <dt class="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">{{ $t('common.createdAt') }}</dt>
-              <dd class="font-mono text-text-main">{{ formatDate(domain.createdAt) }}</dd>
-            </div>
-            <div class="py-4">
-              <dt class="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary mb-2">{{ $t('domain.nameservers') }}</dt>
-              <dd class="flex flex-wrap gap-x-3 gap-y-1 text-xs">
-                <span v-if="latest?.nameservers && latest.nameservers.length" v-for="ns in latest.nameservers" :key="ns" class="font-mono text-text-main">{{ ns }}</span>
-                <span v-else class="text-text-tertiary">{{ $t('domain.noNameservers') }}</span>
-              </dd>
-            </div>
-          </dl>
+          </div>
         </div>
 
-        <div>
-          <p class="eyebrow mb-3">Metadata</p>
-          <h2 class="headline-display text-2xl">{{ $t('domain.metadata') }}</h2>
+        <aside class="surface p-6 lg:sticky lg:top-24 lg:self-start">
+          <p class="eyebrow mb-3">{{ $t('domain.detail.operationalContext') }}</p>
+          <h2 class="headline-display text-xl">{{ $t('domain.information') }}</h2>
           <div class="hairline mt-4" />
-          <div class="mt-6">
-            <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary mb-2">{{ $t('domain.note') }}</p>
-            <p class="surface-flat min-h-15 p-4 text-sm text-text-main">{{ domain.note || $t('domain.noNotes') }}</p>
+
+          <dl class="mt-1 text-sm">
+            <div class="flex items-center justify-between gap-4 border-b border-hairline py-3">
+              <dt class="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">{{ $t('domain.expiresAt') }}</dt>
+              <dd class="text-right font-mono text-text-main">{{ formatDate(primaryExpiryDate) }}</dd>
+            </div>
+            <div class="flex items-center justify-between gap-4 border-b border-hairline py-3">
+              <dt class="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">{{ $t('domain.lastChecked') }}</dt>
+              <dd class="text-right font-mono text-text-main">{{ formatDate(latest?.checkedAt, true) }}</dd>
+            </div>
+            <div class="flex items-center justify-between gap-4 border-b border-hairline py-3">
+              <dt class="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">{{ $t('domain.registrar') }}</dt>
+              <dd class="break-all text-right font-mono text-text-main">{{ latest?.registrar || '—' }}</dd>
+            </div>
+            <div class="flex items-center justify-between gap-4 border-b border-hairline py-3">
+              <dt class="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">{{ $t('domain.detail.source') }}</dt>
+              <dd class="break-all text-right font-mono text-text-main">{{ latest?.source || '—' }}</dd>
+            </div>
+            <div class="flex items-center justify-between gap-4 border-b border-hairline py-3">
+              <dt class="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">{{ $t('common.createdAt') }}</dt>
+              <dd class="text-right font-mono text-text-main">{{ formatDate(domain.createdAt) }}</dd>
+            </div>
+          </dl>
+
+          <div class="mt-5">
+            <p class="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">{{ $t('domain.nameservers') }}</p>
+            <div class="flex flex-wrap gap-x-3 gap-y-1 text-xs">
+              <span v-if="latest?.nameservers && latest.nameservers.length" v-for="ns in latest.nameservers" :key="ns" class="font-mono text-text-main">{{ ns }}</span>
+              <span v-else class="text-text-tertiary">{{ $t('domain.noNameservers') }}</span>
+            </div>
           </div>
-          <div class="mt-6">
-            <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary mb-2">{{ $t('domain.tags') }}</p>
+
+          <div class="mt-5">
+            <p class="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">{{ $t('domain.tags') }}</p>
             <div class="flex flex-wrap gap-x-3 gap-y-1 text-xs">
               <span v-if="domain.tags && domain.tags.length" v-for="tag in domain.tags" :key="tag" class="font-mono text-text-secondary">#{{ tag }}</span>
               <span v-else class="text-text-tertiary">{{ $t('domain.noTags') }}</span>
             </div>
           </div>
-        </div>
+
+          <div class="mt-5">
+            <p class="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">{{ $t('domain.note') }}</p>
+            <p class="surface-flat p-3 text-sm leading-relaxed text-text-main">{{ domain.note || $t('domain.noNotes') }}</p>
+          </div>
+        </aside>
       </section>
 
       <!-- ─── RDAP SUMMARY ────────────────────────────────────────── -->
-      <section v-if="showSecuritySection">
+      <section v-if="showSecuritySection" class="surface p-6">
         <div class="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p class="eyebrow mb-3">Security</p>
-            <h2 class="headline-display text-2xl">Security posture</h2>
+            <p class="eyebrow mb-3">{{ t('domain.detail.securityKicker') }}</p>
+            <h2 class="headline-display text-2xl">{{ t('domain.detail.securityPosture') }}</h2>
           </div>
           <p class="font-mono text-xs text-text-tertiary">
-            Last scan: {{ formatDate(riskSummary?.lastSecurityScanAt, true) }}
+            {{ t('domain.detail.lastScan', { time: formatDate(riskSummary?.lastSecurityScanAt, true) }) }}
           </p>
         </div>
         <div class="hairline mt-4" />
@@ -141,7 +194,7 @@
             class="surface-flat p-4"
           >
             <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">{{ card.label }}</p>
-            <p :class="['mt-2 font-display text-2xl font-medium tracking-[-0.035em]', card.tone]" data-numeric>
+            <p :class="['mt-2 font-sans text-2xl font-bold tracking-tight', card.tone]" data-numeric>
               {{ card.value }}
             </p>
             <p v-if="card.hint" class="mt-1 text-xs text-text-tertiary">{{ card.hint }}</p>
@@ -150,8 +203,8 @@
 
         <div class="mt-8">
           <div class="flex items-center justify-between gap-3">
-            <p class="eyebrow">Findings</p>
-            <span class="font-mono text-xs text-text-tertiary">{{ securityFindings.length }} total</span>
+            <p class="eyebrow">{{ t('domain.detail.findings') }}</p>
+            <span class="font-mono text-xs text-text-tertiary">{{ t('domain.detail.findingsTotal', { count: securityFindings.length }) }}</span>
           </div>
 
           <div v-if="securityFindings.length" class="mt-4 space-y-3">
@@ -163,25 +216,25 @@
               <div class="min-w-0 flex-1">
                 <div class="flex flex-wrap items-center gap-2">
                   <span :class="['rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]', severityBadgeClass(finding.severity)]">
-                    {{ finding.severity }}
+                    {{ severityLabel(finding.severity) }}
                   </span>
-                  <span class="font-mono text-[11px] uppercase tracking-[0.12em] text-text-tertiary">{{ finding.status }}</span>
+                  <span class="font-mono text-[11px] uppercase tracking-[0.12em] text-text-tertiary">{{ statusLabel(finding.status) }}</span>
                 </div>
-                <h3 class="mt-3 text-sm font-semibold text-text-main">{{ findingTitle(finding.findingType) }}</h3>
+                <h3 class="mt-3 text-sm font-semibold text-text-main">{{ findingTypeLabel(finding.findingType) }}</h3>
                 <p class="mt-2 break-words font-mono text-xs leading-5 text-text-secondary">
                   {{ findingEvidenceText(finding) }}
                 </p>
                 <p class="mt-2 font-mono text-[11px] text-text-tertiary">
-                  Last seen: {{ formatDate(finding.lastSeenAt, true) }}
+                  {{ t('domain.detail.lastSeen', { time: formatDate(finding.lastSeenAt, true) }) }}
                 </p>
               </div>
 
               <div v-if="finding.status === 'OPEN'" class="flex shrink-0 gap-2">
                 <button type="button" class="btn-ghost px-3 py-1.5 text-xs" @click="updateFindingStatus(finding, 'DISMISSED')">
-                  Dismiss
+                  {{ t('risk.findings.actions.dismiss') }}
                 </button>
                 <button type="button" class="btn-ghost px-3 py-1.5 text-xs" @click="updateFindingStatus(finding, 'RESOLVED')">
-                  Resolve
+                  {{ t('risk.findings.actions.resolve') }}
                 </button>
               </div>
             </div>
@@ -189,13 +242,72 @@
 
           <div v-else class="surface-flat mt-4 p-6 text-center">
             <CheckCircleIcon class="mx-auto mb-3 h-6 w-6 text-status-available" />
-            <p class="text-sm text-text-secondary">No security findings from the latest scan.</p>
+            <p class="text-sm text-text-secondary">{{ t('domain.detail.noSecurityFindings') }}</p>
           </div>
         </div>
       </section>
 
+      <!-- ─── SSL ─────────────────────────────────────────────────── -->
+      <section v-if="domain.watchKind === 'OWNED' || sslLatest" class="surface p-6">
+        <div class="flex items-end justify-between">
+          <div>
+            <p class="eyebrow mb-3">Certificate</p>
+            <h2 class="headline-display text-2xl">{{ $t('nav.ssl') }}</h2>
+          </div>
+          <button type="button" @click="checkSSLNow" :disabled="sslChecking" class="btn-ghost disabled:opacity-50">
+            <LoadingSpinner v-if="sslChecking" size="sm" color="gray" />
+            <span>{{ sslChecking ? $t('domain.checking') : $t('ssl.checkNow') }}</span>
+          </button>
+        </div>
+        <div class="hairline mt-4" />
+
+        <div v-if="sslLatest" class="mt-6 space-y-6">
+          <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-semibold uppercase tracking-[0.16em]">
+            <span :class="['flex items-center gap-1.5', sslStatusToneClass(sslLatest)]">
+              <span :class="['h-1.5 w-1.5 rounded-full', sslStatusDotClass(sslLatest)]" />
+              {{ sslStatusText(sslLatest) }}
+            </span>
+            <span v-if="sslLatest.issuer" class="text-text-tertiary">·</span>
+            <span v-if="sslLatest.issuer" class="font-mono text-text-secondary normal-case tracking-normal">{{ sslLatest.issuer }}</span>
+          </div>
+
+          <p v-if="sslCheckedHostDiff(sslLatest)" class="font-mono text-xs text-text-secondary">
+            {{ $t('ssl.checkedHost') }}: {{ sslLatest.checkedHost }}
+          </p>
+
+          <dl class="grid grid-cols-1 divide-y divide-hairline md:grid-cols-2 md:divide-x md:divide-y-0">
+            <div class="px-0 py-4 md:px-6 md:first:pl-0">
+              <dt class="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">{{ $t('ssl.lastChecked') }}</dt>
+              <dd class="mt-2 font-mono text-sm text-text-main">{{ formatDate(sslLatest.checkedAt, true) }}</dd>
+            </div>
+            <div class="px-0 py-4 md:px-6">
+              <dt class="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">{{ $t('ssl.daysUntilExpiryLabel') }}</dt>
+              <dd :class="['mt-2 font-sans text-2xl font-bold tracking-tight', sslDaysClass(sslLatest.daysUntilExpiry)]" data-numeric>
+                {{ sslLatest.daysUntilExpiry ?? '—' }}
+              </dd>
+            </div>
+            <div class="px-0 py-4 md:px-6 md:first:pl-0 md:border-t md:border-hairline">
+              <dt class="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">{{ $t('ssl.validFrom') }}</dt>
+              <dd class="mt-2 font-mono text-sm text-text-main">{{ formatDate(sslLatest.validFrom) }}</dd>
+            </div>
+            <div class="px-0 py-4 md:px-6 md:border-t md:border-hairline">
+              <dt class="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">{{ $t('ssl.validTo') }}</dt>
+              <dd class="mt-2 font-mono text-sm text-text-main">{{ formatDate(sslLatest.validTo) }}</dd>
+            </div>
+          </dl>
+
+          <p v-if="sslLatest.lastError" class="surface-flat p-4 text-xs text-status-dropping">{{ sslLastErrorText(sslLatest) }}</p>
+          <p v-if="sslLatest.validationError" class="surface-flat p-4 text-xs text-status-expiring">
+            {{ $t('ssl.validationError') }}: {{ sslLatest.validationError }}
+          </p>
+        </div>
+        <div v-else class="py-12 text-center">
+          <p class="text-sm text-text-secondary">{{ $t('ssl.noData') }}</p>
+        </div>
+      </section>
+
       <!-- RDAP summary -->
-      <section>
+      <section class="surface p-6">
         <div class="flex items-end justify-between">
           <div>
             <p class="eyebrow mb-3">RDAP</p>
@@ -307,67 +419,8 @@
         <p v-else class="text-xs text-text-tertiary">—</p>
       </section>
 
-      <!-- ─── SSL ─────────────────────────────────────────────────── -->
-      <section v-if="domain.watchKind === 'OWNED' || sslLatest">
-        <div class="flex items-end justify-between">
-          <div>
-            <p class="eyebrow mb-3">Certificate</p>
-            <h2 class="headline-display text-2xl">{{ $t('nav.ssl') }}</h2>
-          </div>
-          <button type="button" @click="checkSSLNow" :disabled="sslChecking" class="btn-ghost disabled:opacity-50">
-            <LoadingSpinner v-if="sslChecking" size="sm" color="gray" />
-            <span>{{ sslChecking ? $t('domain.checking') : $t('ssl.checkNow') }}</span>
-          </button>
-        </div>
-        <div class="hairline mt-4" />
-
-        <div v-if="sslLatest" class="mt-6 space-y-6">
-          <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-semibold uppercase tracking-[0.16em]">
-            <span :class="['flex items-center gap-1.5', sslStatusToneClass(sslLatest)]">
-              <span :class="['h-1.5 w-1.5 rounded-full', sslStatusDotClass(sslLatest)]" />
-              {{ sslStatusText(sslLatest) }}
-            </span>
-            <span v-if="sslLatest.issuer" class="text-text-tertiary">·</span>
-            <span v-if="sslLatest.issuer" class="font-mono text-text-secondary normal-case tracking-normal">{{ sslLatest.issuer }}</span>
-          </div>
-
-          <p v-if="sslCheckedHostDiff(sslLatest)" class="font-mono text-xs text-text-secondary">
-            {{ $t('ssl.checkedHost') }}: {{ sslLatest.checkedHost }}
-          </p>
-
-          <dl class="grid grid-cols-1 divide-y divide-hairline md:grid-cols-2 md:divide-x md:divide-y-0">
-            <div class="px-0 py-4 md:px-6 md:first:pl-0">
-              <dt class="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">{{ $t('ssl.lastChecked') }}</dt>
-              <dd class="mt-2 font-mono text-sm text-text-main">{{ formatDate(sslLatest.checkedAt, true) }}</dd>
-            </div>
-            <div class="px-0 py-4 md:px-6">
-              <dt class="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">{{ $t('ssl.daysUntilExpiryLabel') }}</dt>
-              <dd :class="['mt-2 font-display text-2xl font-medium tracking-[-0.035em]', sslDaysClass(sslLatest.daysUntilExpiry)]" data-numeric>
-                {{ sslLatest.daysUntilExpiry ?? '—' }}
-              </dd>
-            </div>
-            <div class="px-0 py-4 md:px-6 md:first:pl-0 md:border-t md:border-hairline">
-              <dt class="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">{{ $t('ssl.validFrom') }}</dt>
-              <dd class="mt-2 font-mono text-sm text-text-main">{{ formatDate(sslLatest.validFrom) }}</dd>
-            </div>
-            <div class="px-0 py-4 md:px-6 md:border-t md:border-hairline">
-              <dt class="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">{{ $t('ssl.validTo') }}</dt>
-              <dd class="mt-2 font-mono text-sm text-text-main">{{ formatDate(sslLatest.validTo) }}</dd>
-            </div>
-          </dl>
-
-          <p v-if="sslLatest.lastError" class="surface-flat p-4 text-xs text-status-dropping">{{ sslLastErrorText(sslLatest) }}</p>
-          <p v-if="sslLatest.validationError" class="surface-flat p-4 text-xs text-status-expiring">
-            {{ $t('ssl.validationError') }}: {{ sslLatest.validationError }}
-          </p>
-        </div>
-        <div v-else class="py-12 text-center">
-          <p class="text-sm text-text-secondary">{{ $t('ssl.noData') }}</p>
-        </div>
-      </section>
-
       <!-- ─── TIMELINE ────────────────────────────────────────────── -->
-      <section>
+      <section class="surface p-6">
         <p class="eyebrow mb-3">Timeline</p>
         <h2 class="headline-display text-2xl">{{ $t('domain.timeline') }}</h2>
         <div class="hairline mt-4" />
@@ -393,7 +446,7 @@
       </section>
 
       <!-- ─── RAW SNAPSHOT ────────────────────────────────────────── -->
-      <details class="group">
+      <details class="surface group p-6">
         <summary class="flex cursor-pointer list-none items-center justify-between gap-3">
           <div>
             <p class="eyebrow mb-1">Raw data</p>
@@ -430,6 +483,7 @@
 <script setup>
 import { format } from 'date-fns';
 import { AlertCircle as AlertCircleIcon, CheckCircle as CheckCircleIcon, ChevronDown as ChevronDownIcon } from 'lucide-vue-next';
+import { unwrapApiEnvelope } from '~/utils/api-envelope';
 
 const { t } = useI18n();
 const toast = useToast();
@@ -458,6 +512,174 @@ watchEffect(() => {
   historyNextCursor.value = data.value?.data?.historyNextCursor ?? null;
 });
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+const RISK_SEVERITY_WEIGHT = {
+  HIGH: 40,
+  MEDIUM: 20,
+  LOW: 5,
+};
+
+const primaryExpiryDate = computed(() =>
+  latest.value?.expiresAt ||
+  latest.value?.rdapSummary?.events?.expiration ||
+  latest.value?.rdapSummary?.events?.registrarExpiration,
+);
+
+const primaryExpiryDays = computed(() => daysUntil(primaryExpiryDate.value));
+
+const openSecurityFindingsCount = computed(() =>
+  securityFindings.value.filter((finding) => finding.status === 'OPEN').length,
+);
+
+const overviewCards = computed(() => {
+  const status = latest.value?.status;
+  const expiryDays = primaryExpiryDays.value;
+  const riskScore = riskSummary.value?.riskScore ?? 0;
+  const ssl = sslLatest.value;
+
+  return [
+    {
+      key: 'status',
+      label: t('domain.detail.statusSignal'),
+      value: status ? t(`domain.status.${status.toLowerCase()}`) : t('domain.status.unknown'),
+      hint: [
+        domain.value?.watchKind === 'OWNED' ? t('domain.owned') : t('domain.wanted'),
+        domain.value?.priority ? t(`domain.${domain.value.priority.toLowerCase()}`) : null,
+      ].filter(Boolean).join(' / '),
+      tone: status ? statusToneClass(status) : 'text-status-unknown',
+      dot: status ? statusDotClass(status) : 'bg-status-unknown',
+    },
+    {
+      key: 'expiry',
+      label: t('domain.detail.expirySignal'),
+      value: formatExpiryValue(expiryDays),
+      hint: formatDate(primaryExpiryDate.value),
+      tone: expiryToneClass(expiryDays),
+      dot: expiryDotClass(expiryDays),
+    },
+    {
+      key: 'ssl',
+      label: t('domain.detail.sslSignal'),
+      value: ssl ? sslStatusText(ssl) : t('domain.detail.notChecked'),
+      hint: ssl?.issuer || formatDate(ssl?.checkedAt, true),
+      tone: ssl ? sslStatusToneClass(ssl) : 'text-status-unknown',
+      dot: ssl ? sslStatusDotClass(ssl) : 'bg-status-unknown',
+    },
+    {
+      key: 'risk',
+      label: t('domain.detail.riskSignal'),
+      value: riskScore,
+      hint: t('domain.detail.openFindings', { count: openSecurityFindingsCount.value }),
+      tone: riskToneClass(riskScore),
+      dot: riskDotClass(riskScore),
+    },
+  ];
+});
+
+const attentionItems = computed(() => {
+  const items = [];
+  const status = latest.value?.status;
+  const expiryDays = primaryExpiryDays.value;
+  const ssl = sslLatest.value;
+
+  if (latest.value?.lastError) {
+    items.push({
+      key: 'scan-error',
+      title: t('domain.detail.scanFailedTitle'),
+      text: t('domain.detail.scanFailedText'),
+      meta: formatDate(latest.value.lastErrorAt, true),
+      tone: 'text-status-dropping',
+      dot: 'bg-status-dropping',
+    });
+  }
+
+  if (domain.value?.watchKind === 'WANTED' && status === 'AVAILABLE') {
+    items.push({
+      key: 'wanted-available',
+      title: t('domain.detail.wantedAvailableTitle'),
+      text: t('domain.detail.wantedAvailableText'),
+      meta: t('domain.status.available'),
+      tone: 'text-status-available',
+      dot: 'bg-status-available',
+    });
+  }
+
+  if (domain.value?.watchKind === 'OWNED' && (status === 'EXPIRING' || status === 'PENDING_DELETE')) {
+    items.push({
+      key: 'owned-expiring',
+      title: t('domain.detail.ownedExpiringTitle'),
+      text: t('domain.detail.ownedExpiringText'),
+      meta: status ? t(`domain.status.${status.toLowerCase()}`) : null,
+      tone: status === 'PENDING_DELETE' ? 'text-status-dropping' : 'text-status-expiring',
+      dot: status === 'PENDING_DELETE' ? 'bg-status-dropping' : 'bg-status-expiring',
+    });
+  }
+
+  if (
+    domain.value?.watchKind === 'OWNED' &&
+    expiryDays != null &&
+    expiryDays >= 0 &&
+    expiryDays < 30 &&
+    status !== 'EXPIRING' &&
+    status !== 'PENDING_DELETE'
+  ) {
+    items.push({
+      key: 'domain-expiry-window',
+      title: t('domain.detail.domainExpiryTitle'),
+      text: t('domain.detail.domainExpiryText', { days: expiryDays }),
+      meta: formatDate(primaryExpiryDate.value),
+      tone: 'text-status-expiring',
+      dot: 'bg-status-expiring',
+    });
+  }
+
+  if (ssl) {
+    if (ssl.hasSSL && !ssl.isValid) {
+      items.push({
+        key: 'ssl-invalid',
+        title: t('domain.detail.sslInvalidTitle'),
+        text: t('domain.detail.sslInvalidText'),
+        meta: ssl.issuer || null,
+        tone: 'text-status-dropping',
+        dot: 'bg-status-dropping',
+      });
+    } else if (ssl.daysUntilExpiry != null && ssl.daysUntilExpiry >= 0 && ssl.daysUntilExpiry < 30) {
+      items.push({
+        key: 'ssl-expiring',
+        title: t('domain.detail.sslExpiringTitle'),
+        text: t('domain.detail.sslExpiringText', { days: ssl.daysUntilExpiry }),
+        meta: formatDate(ssl.validTo),
+        tone: 'text-status-expiring',
+        dot: 'bg-status-expiring',
+      });
+    }
+  }
+
+  if (openSecurityFindingsCount.value > 0) {
+    items.push({
+      key: 'security-findings',
+      title: t('domain.detail.securityFindingsTitle'),
+      text: t('domain.detail.securityFindingsText', { count: openSecurityFindingsCount.value }),
+      meta: t('domain.detail.openFindings', { count: openSecurityFindingsCount.value }),
+      tone: riskToneClass(riskSummary.value?.riskScore ?? 0),
+      dot: riskDotClass(riskSummary.value?.riskScore ?? 0),
+    });
+  }
+
+  if (!items.length) {
+    items.push({
+      key: 'stable',
+      title: t('domain.detail.stableTitle'),
+      text: t('domain.detail.stableText'),
+      meta: formatDate(latest.value?.checkedAt, true),
+      tone: 'text-status-available',
+      dot: 'bg-status-available',
+    });
+  }
+
+  return items;
+});
+
 const rdapEvents = computed(() => [
   { key: 'registration', label: t('domain.rdap.registration'), value: latest.value?.rdapSummary?.events?.registration },
   { key: 'lastChanged', label: t('domain.rdap.lastChanged'), value: latest.value?.rdapSummary?.events?.lastChanged },
@@ -478,9 +700,9 @@ const securityPostureCards = computed(() => {
   return [
     {
       key: 'risk',
-      label: 'Risk score',
+      label: t('domain.detail.riskScore'),
       value: summary.riskScore ?? 0,
-      hint: `${summary.openFindingsCount ?? 0} open findings`,
+      hint: t('domain.detail.openFindings', { count: summary.openFindingsCount ?? 0 }),
       tone: (summary.riskScore ?? 0) >= 60
         ? 'text-status-dropping'
         : (summary.riskScore ?? 0) >= 20
@@ -490,15 +712,15 @@ const securityPostureCards = computed(() => {
     {
       key: 'dnssec',
       label: 'DNSSEC',
-      value: summary.dnssecStatus || 'UNKNOWN',
-      hint: 'DS record posture',
+      value: dnssecStatusLabel(summary.dnssecStatus),
+      hint: t('domain.detail.dnssecHint'),
       tone: summary.dnssecStatus === 'SIGNED' ? 'text-status-available' : 'text-text-main',
     },
     {
       key: 'dmarc',
       label: 'DMARC',
-      value: String(summary.dmarcPolicy || 'unknown').toUpperCase(),
-      hint: 'Mail spoofing policy',
+      value: dmarcPolicyLabel(summary.dmarcPolicy),
+      hint: t('domain.detail.dmarcHint'),
       tone: summary.dmarcPolicy === 'reject'
         ? 'text-status-available'
         : summary.dmarcPolicy === 'missing' || summary.dmarcPolicy === 'none'
@@ -508,15 +730,15 @@ const securityPostureCards = computed(() => {
     {
       key: 'caa',
       label: 'CAA',
-      value: summary.caaConfigured ? 'SET' : 'MISSING',
-      hint: 'Certificate issuer control',
+      value: summary.caaConfigured ? t('domain.detail.caaSet') : t('domain.detail.caaMissing'),
+      hint: t('domain.detail.caaHint'),
       tone: summary.caaConfigured ? 'text-status-available' : 'text-status-expiring',
     },
     {
       key: 'registrar-lock',
-      label: 'Registrar lock',
-      value: summary.registrarLockStatus || 'UNKNOWN',
-      hint: 'Transfer lock',
+      label: t('domain.detail.registrarLock'),
+      value: registrarLockStatusLabel(summary.registrarLockStatus),
+      hint: t('domain.detail.registrarLockHint'),
       tone: summary.registrarLockStatus === 'LOCKED'
         ? 'text-status-available'
         : summary.registrarLockStatus === 'UNLOCKED'
@@ -534,15 +756,12 @@ const loadMoreHistory = async () => {
     const resp = await $fetch(`/api/domains/${id}/history`, {
       query: { cursor: historyNextCursor.value, limit: HISTORY_PAGE_SIZE },
     });
-    if (resp?.code !== 0) {
-      toast.error(resp?.msg || t('domain.loadError'));
-      return;
-    }
-    const items = resp?.data?.items || [];
+    const historyData = unwrapApiEnvelope(resp, t('domain.loadError'));
+    const items = historyData?.items || [];
     historyItems.value = historyItems.value.concat(items);
-    historyNextCursor.value = resp?.data?.nextCursor ?? null;
+    historyNextCursor.value = historyData?.nextCursor ?? null;
   } catch (e) {
-    toast.error(t('domain.loadError'));
+    toast.error(e?.message || e?.data?.msg || t('domain.loadError'));
   } finally {
     historyLoadingMore.value = false;
   }
@@ -555,6 +774,63 @@ const onHistoryScroll = (e) => {
   const remaining = el.scrollHeight - el.scrollTop - el.clientHeight;
   if (remaining < 120) loadMoreHistory();
 };
+
+const daysUntil = (date) => {
+  if (!date) return null;
+  const target = new Date(date).getTime();
+  if (Number.isNaN(target)) return null;
+  return Math.ceil((target - Date.now()) / DAY_MS);
+};
+
+const formatExpiryValue = (days) => {
+  if (days == null) return '—';
+  if (days < 0) return t('domain.detail.daysOverdue', { days: Math.abs(days) });
+  return t('domain.detail.daysLeft', { days });
+};
+
+const expiryToneClass = (days) => {
+  if (days == null) return 'text-status-unknown';
+  if (days < 0) return 'text-status-dropping';
+  if (days < 30) return 'text-status-expiring';
+  return 'text-text-main';
+};
+
+const expiryDotClass = (days) => {
+  if (days == null) return 'bg-status-unknown';
+  if (days < 0) return 'bg-status-dropping';
+  if (days < 30) return 'bg-status-expiring';
+  return 'bg-status-registered';
+};
+
+const riskToneClass = (score) => {
+  if (score >= 60) return 'text-status-dropping';
+  if (score >= 20) return 'text-status-expiring';
+  return 'text-status-available';
+};
+
+const riskDotClass = (score) => {
+  if (score >= 60) return 'bg-status-dropping';
+  if (score >= 20) return 'bg-status-expiring';
+  return 'bg-status-available';
+};
+
+const fallbackLabel = (value) =>
+  String(value || t('risk.common.unknown')).replaceAll('_', ' ').toLowerCase();
+
+const translatedLabel = (key, fallback) => {
+  const value = t(key);
+  return value === key ? fallback : value;
+};
+
+const statusLabel = (value) => translatedLabel(`risk.status.${value}`, fallbackLabel(value));
+const severityLabel = (value) => translatedLabel(`risk.severity.${value}`, fallbackLabel(value));
+const findingTypeLabel = (value) => translatedLabel(`risk.findingTypes.${value}`, fallbackLabel(value));
+const dnssecStatusLabel = (value) =>
+  translatedLabel(`domain.detail.dnssecStatuses.${value || 'UNKNOWN'}`, fallbackLabel(value));
+const dmarcPolicyLabel = (value) =>
+  translatedLabel(`domain.detail.dmarcPolicies.${value || 'unknown'}`, fallbackLabel(value));
+const registrarLockStatusLabel = (value) =>
+  translatedLabel(`domain.detail.registrarLockStatuses.${value || 'UNKNOWN'}`, fallbackLabel(value));
 
 const formatDate = (d, time = false) => {
   if (!d) return '—';
@@ -603,32 +879,61 @@ const severityBadgeClass = (severity) => {
   }
 };
 
-const findingTitle = (type) => {
-  const titles = {
-    DMARC_MISSING: 'DMARC record is missing',
-    DMARC_WEAK_POLICY: 'DMARC policy is weak',
-    CAA_MISSING: 'CAA record is missing',
-    DNSSEC_UNSIGNED: 'DNSSEC is not signed',
-    NAMESERVER_DRIFT: 'Nameserver drift detected',
-    MX_DRIFT: 'Mail exchanger drift detected',
-    REGISTRAR_LOCK_MISSING: 'Registrar transfer lock is missing',
-  };
-  return titles[type] || type;
+const formatEvidenceValue = (value) => {
+  if (Array.isArray(value)) return value.length ? value.join(', ') : t('risk.common.none');
+  if (value === undefined || value === null || value === '') return t('risk.common.unknown');
+  return String(value);
 };
 
 const findingEvidenceText = (finding) => {
   const evidence = finding?.evidence || {};
-  if (finding.findingType === 'DMARC_WEAK_POLICY') {
-    return `policy=${evidence.policy || 'unknown'}, pct=${evidence.pct ?? 'unknown'}`;
+  if (finding?.findingType === 'DMARC_WEAK_POLICY') {
+    return t('risk.evidence.dmarcPolicy', {
+      policy: formatEvidenceValue(evidence.policy),
+      pct: formatEvidenceValue(evidence.pct),
+    });
   }
-  if (finding.findingType === 'NAMESERVER_DRIFT' || finding.findingType === 'MX_DRIFT') {
-    return `previous=${JSON.stringify(evidence.previous || [])}; current=${JSON.stringify(evidence.current || [])}`;
+  if (finding?.findingType === 'NAMESERVER_DRIFT' || finding?.findingType === 'MX_DRIFT') {
+    return t('risk.evidence.drift', {
+      previous: formatEvidenceValue(evidence.previous),
+      current: formatEvidenceValue(evidence.current),
+    });
   }
-  if (finding.findingType === 'REGISTRAR_LOCK_MISSING') {
-    return `lockStatus=${evidence.lockStatus || 'unknown'}; statuses=${JSON.stringify(evidence.statuses || [])}`;
+  if (finding?.findingType === 'REGISTRAR_LOCK_MISSING') {
+    return t('risk.evidence.registrarLock', {
+      lockStatus: formatEvidenceValue(evidence.lockStatus),
+      statuses: formatEvidenceValue(evidence.statuses),
+    });
   }
-  if (evidence.checkedRecord) return `checked=${evidence.checkedRecord}`;
-  return JSON.stringify(evidence);
+  if (evidence.checkedRecord) return t('risk.evidence.checkedRecord', { record: evidence.checkedRecord });
+  return t('risk.evidence.raw', { value: JSON.stringify(evidence).slice(0, 220) });
+};
+
+const applyFindingStatusUpdate = (finding, status) => {
+  const payload = data.value?.data;
+  if (!payload) return;
+
+  const previousOpen = finding?.status === 'OPEN';
+  const nextOpen = status === 'OPEN';
+  const severityWeight = RISK_SEVERITY_WEIGHT[finding?.severity] || 0;
+  const openCountDelta = previousOpen === nextOpen ? 0 : nextOpen ? 1 : -1;
+  const riskScoreDelta = previousOpen === nextOpen ? 0 : nextOpen ? severityWeight : -severityWeight;
+  const currentSummary = payload.riskSummary || {};
+
+  data.value = {
+    ...data.value,
+    data: {
+      ...payload,
+      riskSummary: {
+        ...currentSummary,
+        openFindingsCount: Math.max(0, (currentSummary.openFindingsCount ?? 0) + openCountDelta),
+        riskScore: Math.max(0, Math.min(100, (currentSummary.riskScore ?? 0) + riskScoreDelta)),
+      },
+      securityFindings: (payload.securityFindings || []).map((item) =>
+        item.id === finding.id ? { ...item, status } : item,
+      ),
+    },
+  };
 };
 
 const updateFindingStatus = async (finding, status) => {
@@ -637,14 +942,11 @@ const updateFindingStatus = async (finding, status) => {
       method: 'PATCH',
       body: { status },
     });
-    if (resp?.code !== 0) {
-      toast.error(resp?.msg || 'Failed to update finding');
-      return;
-    }
-    toast.success(status === 'RESOLVED' ? 'Finding resolved' : 'Finding dismissed');
-    await refresh();
+    unwrapApiEnvelope(resp, t('risk.findings.toasts.updateFailed'));
+    applyFindingStatusUpdate(finding, status);
+    toast.success(t('risk.findings.toasts.statusUpdated', { status: statusLabel(status) }));
   } catch (e) {
-    toast.error('Failed to update finding');
+    toast.error(e?.message || e?.data?.msg || t('risk.findings.toasts.updateFailed'));
   }
 };
 
@@ -690,11 +992,12 @@ const priorityToneClass = computed(() => {
 const refreshDomain = async () => {
   refreshing.value = true;
   try {
-    await $fetch(`/api/domains/${id}/refresh`, { method: 'POST' });
+    const response = await $fetch(`/api/domains/${id}/refresh`, { method: 'POST' });
+    unwrapApiEnvelope(response, t('domain.scanError'));
     toast.success(t('domain.scanSuccess'));
-    refresh();
+    await refresh();
   } catch (e) {
-    toast.error(t('domain.scanError'));
+    toast.error(e?.message || e?.data?.msg || t('domain.scanError'));
   } finally {
     refreshing.value = false;
   }
@@ -703,11 +1006,12 @@ const refreshDomain = async () => {
 const checkSSLNow = async () => {
   sslChecking.value = true;
   try {
-    await $fetch(`/api/ssl/${id}/check`, { method: 'POST' });
+    const response = await $fetch(`/api/ssl/${id}/check`, { method: 'POST' });
+    unwrapApiEnvelope(response, t('ssl.checkError'));
     toast.success(t('ssl.checkSuccess'));
     await refresh();
   } catch (e) {
-    toast.error(t('ssl.checkError'));
+    toast.error(e?.message || e?.data?.msg || t('ssl.checkError'));
   } finally {
     sslChecking.value = false;
   }
@@ -756,11 +1060,12 @@ const confirmDelete = () => {
 const handleDelete = async () => {
   deleteDialog.value.isOpen = false;
   try {
-    await $fetch(`/api/domains/${id}`, { method: 'DELETE' });
+    const response = await $fetch(`/api/domains/${id}`, { method: 'DELETE' });
+    unwrapApiEnvelope(response, t('domain.deleteError'));
     toast.success(t('domain.deleteSuccess'));
     navigateTo('/domains');
   } catch (e) {
-    toast.error(t('domain.deleteError'));
+    toast.error(e?.message || e?.data?.msg || t('domain.deleteError'));
   }
 };
 

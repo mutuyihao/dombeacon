@@ -19,22 +19,21 @@ extending. For richer historical narratives, use `docs/_archive/`.
 ## Built-in Scheduler and Tasks
 
 - **What**: Timezone-aware background jobs with DB locks. It runs hourly
-  domain scans, hourly Brand Watch scans, and an 08:00 daily summary.
+  domain scans and an 08:00 daily summary.
 - **Tables**: `task_locks`, `task_runs`.
 - **Endpoints**: `GET /api/tasks/runs`, `POST /api/tasks/trigger`.
 - **Key files**: `server/plugins/scheduler.ts`, `server/utils/schedule.ts`,
-  `server/utils/tasks.ts`, `pages/ops/tasks.vue`.
+  `server/utils/tasks.ts`, `pages/tasks.vue`.
 - **Config**: `ENABLE_SCHEDULER=false` disables jobs;
   `SCHEDULER_TIMEZONE` controls local wall-clock scheduling.
-- **Risk metrics**: `hourly-scan`, `brand-watch`, and `daily-summary` store
+- **Risk metrics**: `hourly-scan` and `daily-summary` store
   normalized `riskMetrics` snapshots in `task_runs.result_json`; the Security
   dashboard reuses those rows for sparkline history.
 
 ## Audit Logs
 
-- **What**: Admin audit stream for login/logout, settings, notification
-  config, domain mutations, imports, manual scans, finding updates, and Brand
-  Watch changes.
+- **What**: Audit stream for settings, notification config, domain mutations,
+  imports, manual scans, finding updates, and notification changes.
 - **Tables**: `audit_logs`.
 - **Endpoints**: `GET /api/audit-logs`.
 - **Key files**: `server/utils/audit.ts`,
@@ -48,7 +47,7 @@ extending. For richer historical narratives, use `docs/_archive/`.
 - **Endpoints**: `GET /api/security/findings`,
   `PATCH /api/security/findings/:id`,
   `PATCH /api/security/findings/bulk`, domain detail risk fields.
-- **UI**: `/ops/findings` is the full-page queue. `/ops/security`
+- **UI**: `/risk/findings` is the full-page queue. `/risk`
   metric cards and domain rows link into this queue with persisted query
   filters. The queue supports visible-row selection and bulk reopen, snooze,
   dismiss, and resolve actions. Operators can save triage views with scoped
@@ -59,7 +58,7 @@ extending. For richer historical narratives, use `docs/_archive/`.
   `E` resolves.
 - **Key files**: `server/utils/security-scan.ts`,
   `server/utils/risk-summary.ts`, `server/utils/rdap-risk.ts`,
-  `pages/ops/findings.vue`, `pages/domains/[id].vue`.
+  `pages/risk/findings.vue`, `pages/domains/[id].vue`.
 - **Lifecycle**: findings use `OPEN`, `SNOOZED`, `DISMISSED`, and `RESOLVED`;
   `SNOOZED` requires `snoozedUntil`.
 - **Notifications**: Newly created high-severity findings emit
@@ -68,41 +67,15 @@ extending. For richer historical narratives, use `docs/_archive/`.
 
 ## Security Dashboard
 
-- **What**: Cross-module risk view for owned-domain posture and Brand Watch
-  registrations. It surfaces open findings, registrar-lock gaps, DNS drift,
-  registered lookalikes, new-in-window trend counts, top risky owned domains,
-  recent risk rows, and task-run risk pressure history.
-- **Tables**: `domains`, `risk_findings`, `brand_watch_terms`,
-  `brand_watch_candidates`.
+- **What**: Owned-domain posture view. It surfaces open findings,
+  registrar-lock gaps, DNS drift, new-in-window trend counts, top risky owned
+  domains, recent risk rows, and task-run risk pressure history.
+- **Tables**: `domains`, `risk_findings`.
 - **Endpoints**: `GET /api/security/summary`, plus filtered drill-down links
-  into `/api/security/findings` and Brand Watch risk queues.
+  into `/api/security/findings`.
 - **Key files**: `server/utils/security-dashboard.ts`,
   `server/utils/risk-metrics.ts`, `server/api/security/summary.get.ts`,
-  `pages/ops/security.vue`, `pages/ops/findings.vue`.
-
-## Brand Watch
-
-- **What**: Brand/product/company terms generate exact, typo, prefix/suffix,
-  and aggressive homoglyph candidates. RDAP checks candidate registration
-  state; crt.sh CT discovery persists observed names containing the watched
-  term. Candidate review state is tracked separately as `OPEN`, `WATCHING`,
-  `DISMISSED`, or `RESOLVED`, with optional reviewer notes.
-  Risk lists can be filtered by review state, RDAP/CT status, term, source,
-  mutation type, and first/last seen windows. Saved Brand Watch risk views use
-  the shared `saved_filters` table with scope `brand-watch-risks`.
-- **Notifications**: Newly observed registered candidates emit
-  `BRAND_WATCH_REGISTERED` through email, webhook, ServerChan, and Web Push.
-  Repeated scans dedupe by candidate id.
-- **Tables**: `brand_watch_terms`, `brand_watch_candidates`,
-  `task_locks`, `task_runs`, `audit_logs`, `saved_filters`.
-- **Endpoints**: `/api/brand-watch/terms*`, `/api/brand-watch/candidates`,
-  `/api/brand-watch/terms/:id/scan`, `GET|PATCH /api/brand-watch/risks*`,
-  `/api/brand-watch/summary`.
-- **Key files**: `server/utils/brand-watch.ts`,
-  `server/api/brand-watch/**/*.ts`, `pages/brand-watch.vue`,
-  `server/utils/tasks.ts`.
-- **Boundary**: The open-source edition uses public RDAP and CT data. It does
-  not claim full-zone real-time new-registration discovery.
+  `pages/risk/index.vue`, `pages/risk/findings.vue`.
 
 ## SSL Certificate Monitoring
 
@@ -119,13 +92,13 @@ extending. For richer historical narratives, use `docs/_archive/`.
 
 - **What**: Instant alerts, daily summaries, and risk alerts with
   deduplication.
-- **Events**: Domain status/expiry/SSL actions, `SECURITY_FINDING_HIGH`, and
-  `BRAND_WATCH_REGISTERED` can reuse the same SMTP channel.
+- **Events**: Domain status/expiry/SSL actions and `SECURITY_FINDING_HIGH`
+  can reuse the same SMTP channel.
 - **Risk controls**: `eventChannelPresets` can enable or disable
   `email`, `webhook`, `serverchan`, and `push` separately for
-  `SECURITY_FINDING_HIGH` and `BRAND_WATCH_REGISTERED`. The Channels UI also
-  shows per-channel diagnostics when a preset is enabled but SMTP, webhook,
-  ServerChan, or push destinations are not actually configured for that event.
+  `SECURITY_FINDING_HIGH`. The Channels UI also shows per-channel diagnostics
+  when a preset is enabled but SMTP, webhook, ServerChan, or push destinations
+  are not actually configured for that event.
 - **Tables**: `notification_rules`, `notification_events`, `app_settings`.
 - **Endpoints**: `GET|POST /api/notifications/config`.
 - **Key files**: `server/utils/mail.ts`,
@@ -138,6 +111,9 @@ extending. For richer historical narratives, use `docs/_archive/`.
   and event-type filtering.
 - **Event filters**: Event types are stored as canonical uppercase values such
   as `SECURITY_FINDING_HIGH`; empty filters mean all events.
+- **URL policy**: Webhook delivery only accepts `http` and `https`, supports
+  `GET`, `POST`, `PUT`, and `PATCH`, does not follow redirects, and blocks
+  private or reserved targets unless `ALLOW_PRIVATE_WEBHOOK_TARGETS=true`.
 - **Tables**: `webhook_configs`, `notification_events`.
 - **Endpoints**: `/api/webhooks*`, `/api/webhooks/:id/test`.
 - **Key files**: `server/utils/webhook.ts`,
@@ -148,7 +124,7 @@ extending. For richer historical narratives, use `docs/_archive/`.
 - **What**: WeChat push through ServerChan's Markdown HTTP API, with masked
   SendKey storage and event-type opt-in.
 - **Event filters**: Event types are stored as canonical uppercase values such
-  as `BRAND_WATCH_REGISTERED`; empty filters mean all events.
+  as `SECURITY_FINDING_HIGH`; empty filters mean all events.
 - **Tables**: `serverchan_configs`, `notification_events`.
 - **Endpoints**: `/api/serverchan*`, `/api/serverchan/:id/test`.
 - **Key files**: `server/utils/serverchan.ts`,
@@ -188,8 +164,8 @@ extending. For richer historical narratives, use `docs/_archive/`.
 
 - **What**: Search/status/watchKind/priority/group/tags/sslState/expiringDays
   filters, URL-synced criteria, and saved presets. The API is now scoped so
-  domain presets use `domains`, Brand Watch views use `brand-watch-risks`, and
-  Security Findings triage views use `security-findings`.
+  domain presets use `domains` and Security Findings triage views use
+  `security-findings`.
 - **Tables**: `saved_filters`.
 - **Endpoints**: `/api/filters*`, extended query parameters on
   `/api/domains`.
@@ -206,14 +182,14 @@ extending. For richer historical narratives, use `docs/_archive/`.
   `GET|POST /api/settings/preferences`.
 - **Key files**: `server/utils/currency.ts`, `server/utils/settings.ts`,
   `server/api/costs/*.ts`, `server/api/settings/preferences.ts`,
-  `pages/data/costs.vue`, `components/CostModal.vue`.
+  `pages/costs.vue`, `components/CostModal.vue`.
 
 ## CSV Import / Export
 
 - **What**: Round-trip domain list import/export, with tags using `;` and
   optional update-existing behavior on import.
 - **Endpoints**: `POST /api/domains/import`, `GET /api/domains/export`.
-- **Key files**: `pages/data/import.vue`,
+- **Key files**: `pages/import.vue`,
   `server/api/domains/import.post.ts`,
   `server/api/domains/export.get.ts`.
 
@@ -230,5 +206,6 @@ extending. For richer historical narratives, use `docs/_archive/`.
 - Reusable components include `Toast`, `ConfirmDialog`, `LoadingSpinner`,
   `DomainCard`, `BaseModal`, and `*Modal.vue` forms.
 - Toast API lives in `composables/useToast.ts`.
-- Header and navigation live in `components/AppHeader.vue`, including the
-  Brand Watch entry and secondary operations/data links.
+- Header and navigation live in `components/AppHeader.vue`, with primary
+  dashboard/domain/risk/action/SSL links and secondary cost, notification,
+  task, import, and settings links.

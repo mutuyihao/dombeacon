@@ -1,13 +1,7 @@
 import { desc } from "drizzle-orm";
-import {
-  brandWatchCandidates,
-  domains,
-  riskFindings,
-  taskRuns,
-} from "../db/schema";
+import { domains, riskFindings, taskRuns } from "../db/schema";
 import { useDb } from "./db";
 
-const ACTIVE_BRAND_REVIEW_STATUSES = new Set(["OPEN", "WATCHING"]);
 const DNS_DRIFT_TYPES = new Set(["NAMESERVER_DRIFT", "MX_DRIFT"]);
 
 const dateMs = (value: unknown) => {
@@ -39,7 +33,6 @@ const numberValue = (value: unknown) => {
 export const buildRiskMetricsSnapshot = (params: {
   domainRows: Array<typeof domains.$inferSelect>;
   findingRows: Array<typeof riskFindings.$inferSelect>;
-  candidateRows: Array<typeof brandWatchCandidates.$inferSelect>;
   now?: Date;
 }) => {
   const now = params.now ?? new Date();
@@ -51,11 +44,6 @@ export const buildRiskMetricsSnapshot = (params: {
   const openFindings = params.findingRows.filter(
     (row) => row.status === "OPEN" && ownedDomainIds.has(row.domainId),
   );
-  const activeBrandRisks = params.candidateRows.filter(
-    (candidate) =>
-      candidate.status === "REGISTERED" &&
-      ACTIVE_BRAND_REVIEW_STATUSES.has(candidate.reviewStatus || "OPEN"),
-  );
 
   const highOpenFindings = openFindings.filter(
     (row) => row.severity === "HIGH",
@@ -66,9 +54,6 @@ export const buildRiskMetricsSnapshot = (params: {
   const dnsDriftFindings = openFindings.filter((row) =>
     DNS_DRIFT_TYPES.has(row.findingType),
   ).length;
-  const highRegisteredLookalikes = activeBrandRisks.filter(
-    (row) => row.severity === "HIGH",
-  ).length;
 
   return {
     generatedAt: now.toISOString(),
@@ -77,22 +62,13 @@ export const buildRiskMetricsSnapshot = (params: {
     highOpenFindings,
     registrarLockGaps,
     dnsDriftFindings,
-    registeredLookalikes: activeBrandRisks.length,
-    highRegisteredLookalikes,
-    ctRegisteredLookalikes: activeBrandRisks.filter((row) => row.source === "ct")
-      .length,
-    rdapRegisteredLookalikes: activeBrandRisks.filter(
-      (row) => row.source === "rdap",
-    ).length,
-    totalRiskSignals: openFindings.length + activeBrandRisks.length,
-    highRiskSignals: highOpenFindings + highRegisteredLookalikes,
+    totalRiskSignals: openFindings.length,
+    highRiskSignals: highOpenFindings,
     riskPressureScore:
       highOpenFindings * 5 +
       (openFindings.length - highOpenFindings) * 2 +
       registrarLockGaps * 3 +
-      dnsDriftFindings * 2 +
-      highRegisteredLookalikes * 5 +
-      (activeBrandRisks.length - highRegisteredLookalikes) * 2,
+      dnsDriftFindings * 2,
   };
 };
 
@@ -101,16 +77,14 @@ export const getCurrentRiskMetricsSnapshot = async (options?: {
   now?: Date;
 }) => {
   const db = options?.db ?? useDb();
-  const [domainRows, findingRows, candidateRows] = await Promise.all([
+  const [domainRows, findingRows] = await Promise.all([
     db.select().from(domains).all(),
     db.select().from(riskFindings).all(),
-    db.select().from(brandWatchCandidates).all(),
   ]);
 
   return buildRiskMetricsSnapshot({
     domainRows,
     findingRows,
-    candidateRows,
     now: options?.now,
   });
 };
@@ -124,10 +98,6 @@ const normalizeHistoryMetrics = (value: any) => {
     highOpenFindings: numberValue(value.highOpenFindings),
     registrarLockGaps: numberValue(value.registrarLockGaps),
     dnsDriftFindings: numberValue(value.dnsDriftFindings),
-    registeredLookalikes: numberValue(value.registeredLookalikes),
-    highRegisteredLookalikes: numberValue(value.highRegisteredLookalikes),
-    ctRegisteredLookalikes: numberValue(value.ctRegisteredLookalikes),
-    rdapRegisteredLookalikes: numberValue(value.rdapRegisteredLookalikes),
     totalRiskSignals: numberValue(value.totalRiskSignals),
     highRiskSignals: numberValue(value.highRiskSignals),
     riskPressureScore: numberValue(value.riskPressureScore),

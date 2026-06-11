@@ -1,5 +1,5 @@
 <template>
-  <div class="flex min-h-full flex-col gap-6 md:h-full md:min-h-0 md:overflow-hidden">
+  <div class="flex min-h-full flex-col gap-4 md:h-full md:min-h-0 md:overflow-hidden">
 
     <!-- ─── PAGE HEADER ─────────────────────────────────────────────── -->
     <header class="shrink-0">
@@ -13,7 +13,7 @@
           </p>
         </div>
         <div class="flex items-center gap-2">
-          <NuxtLink to="/data/import" class="btn-ghost">
+          <NuxtLink to="/import" class="btn-ghost">
             <UploadCloudIcon class="h-4 w-4" />
             <span class="hidden sm:inline">{{ $t('nav.import') }}</span>
           </NuxtLink>
@@ -27,92 +27,89 @@
     </header>
 
     <!-- ─── TOOLBAR — quick status tabs + search + saved filters ────── -->
-    <div class="flex shrink-0 flex-col gap-5">
-      <nav class="tab-bar overflow-x-auto no-scrollbar">
-        <button
-          v-for="tab in tabs"
-          :key="tab.value"
-          type="button"
-          @click="setQuickStatus(tab.value)"
-          :class="['tab-item', (criteria.status || 'ALL') === tab.value && 'is-active']"
-        >
-          {{ tab.label }}
-        </button>
-      </nav>
-
-      <div class="flex flex-wrap items-center gap-x-6 gap-y-3">
-        <div class="relative flex min-w-0 flex-1 items-center sm:max-w-sm">
-          <SearchIcon class="pointer-events-none absolute left-0 h-4 w-4 text-text-tertiary" />
-          <input
-            v-model="criteria.search"
-            type="text"
-            :placeholder="$t('common.search')"
-            class="input-bare pl-6"
-          />
-        </div>
-
-        <div class="relative">
+    <div class="flex shrink-0 flex-col gap-3">
+      <div class="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+        <nav class="tab-bar min-w-0 overflow-x-auto no-scrollbar xl:flex-1">
           <button
-            @click="savedOpen = !savedOpen"
-            class="btn-ghost"
+            v-for="tab in tabs"
+            :key="tab.value"
+            type="button"
+            @click="setQuickStatus(tab.value)"
+            :class="['tab-item', (criteria.status || 'ALL') === tab.value && 'is-active']"
           >
-            <BookmarkIcon class="h-4 w-4" />
-            <span>{{ $t('filter.savedFilters') }}</span>
-            <ChevronDownIcon class="h-3 w-3" />
+            {{ tab.label }}
           </button>
-          <div
-            v-if="savedOpen"
-            v-on-click-outside="() => savedOpen = false"
-            class="surface absolute right-0 top-full z-30 mt-2 w-72 overflow-hidden p-2"
-          >
-            <div class="px-1 pb-2">
-              <button
-                v-if="isAnyActive"
-                @click="openSaveDialog"
-                class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-accent transition-colors hover:bg-surface-sunken"
-              >
-                <SaveIcon class="h-4 w-4" />
-                {{ $t('filter.saveCurrent') }}
-              </button>
-              <p v-else class="px-3 py-2 text-xs text-text-tertiary">
-                {{ $t('filter.saveCurrentHint') }}
-              </p>
-            </div>
-            <div class="hairline my-1" />
-            <div class="max-h-72 overflow-y-auto pt-1">
-              <div v-if="!savedFilters.length" class="px-3 py-6 text-center text-xs text-text-tertiary">
-                {{ $t('filter.noSaved') }}
-              </div>
-              <div
-                v-for="f in savedFilters"
-                :key="f.id"
-                class="group flex items-center justify-between gap-2 rounded-md px-3 py-2 text-sm transition-colors hover:bg-surface-sunken"
-              >
-                <button class="flex flex-1 items-center gap-2 text-left" @click="loadFilter(f)">
-                  <span class="truncate text-text-main">{{ f.name }}</span>
-                  <span v-if="f.isDefault" class="text-[10px] font-semibold uppercase tracking-[0.14em] text-accent">
-                    {{ $t('filter.default') }}
-                  </span>
-                </button>
-                <span class="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                  <button
-                    @click.stop="setDefault(f)"
-                    :title="$t('filter.setDefault')"
-                    class="p-1 text-text-tertiary transition-colors hover:text-accent"
-                  >
-                    <StarIcon :class="['h-3.5 w-3.5', f.isDefault && 'fill-accent text-accent']" />
-                  </button>
-                  <button
-                    @click.stop="deleteFilter(f)"
-                    :title="$t('common.delete')"
-                    class="p-1 text-text-tertiary transition-colors hover:text-status-dropping"
-                  >
-                    <Trash2Icon class="h-3.5 w-3.5" />
-                  </button>
-                </span>
-              </div>
-            </div>
+        </nav>
+
+        <div class="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2 xl:shrink-0 xl:justify-end">
+          <div class="relative flex min-w-52 flex-1 items-center sm:max-w-sm xl:w-72 xl:flex-none">
+            <SearchIcon class="pointer-events-none absolute left-0 h-4 w-4 text-text-tertiary" />
+            <input
+              v-model="criteria.search"
+              type="text"
+              :placeholder="$t('common.search')"
+              class="input-bare pl-6"
+            />
           </div>
+
+          <Popover class="relative">
+            <PopoverButton class="btn-ghost">
+              <BookmarkIcon class="h-4 w-4" />
+              <span>{{ $t('filter.savedFilters') }}</span>
+              <ChevronDownIcon class="h-3 w-3" />
+            </PopoverButton>
+            <PopoverPanel
+              class="surface absolute right-0 top-full z-30 mt-2 w-72 overflow-hidden p-2"
+            >
+              <div class="px-1 pb-2">
+                <button
+                  v-if="isAnyActive"
+                  @click="openSaveDialog"
+                  class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-accent transition-colors hover:bg-surface-sunken"
+                >
+                  <SaveIcon class="h-4 w-4" />
+                  {{ $t('filter.saveCurrent') }}
+                </button>
+                <p v-else class="px-3 py-2 text-xs text-text-tertiary">
+                  {{ $t('filter.saveCurrentHint') }}
+                </p>
+              </div>
+              <div class="hairline my-1" />
+              <div class="max-h-72 overflow-y-auto pt-1">
+                <div v-if="!savedFilters.length" class="px-3 py-6 text-center text-xs text-text-tertiary">
+                  {{ $t('filter.noSaved') }}
+                </div>
+                <div
+                  v-for="f in savedFilters"
+                  :key="f.id"
+                  class="group flex items-center justify-between gap-2 rounded-md px-3 py-2 text-sm transition-colors hover:bg-surface-sunken"
+                >
+                  <button class="flex flex-1 items-center gap-2 text-left" @click="loadFilter(f)">
+                    <span class="truncate text-text-main">{{ f.name }}</span>
+                    <span v-if="f.isDefault" class="text-[10px] font-semibold uppercase tracking-[0.14em] text-accent">
+                      {{ $t('filter.default') }}
+                    </span>
+                  </button>
+                  <span class="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                    <button
+                      @click.stop="setDefault(f)"
+                      :title="$t('filter.setDefault')"
+                      class="p-1 text-text-tertiary transition-colors hover:text-accent"
+                    >
+                      <StarIcon :class="['h-3.5 w-3.5', f.isDefault && 'fill-accent text-accent']" />
+                    </button>
+                    <button
+                      @click.stop="deleteFilter(f)"
+                      :title="$t('common.delete')"
+                      class="p-1 text-text-tertiary transition-colors hover:text-status-dropping"
+                    >
+                      <Trash2Icon class="h-3.5 w-3.5" />
+                    </button>
+                  </span>
+                </div>
+              </div>
+            </PopoverPanel>
+          </Popover>
         </div>
       </div>
     </div>
@@ -121,16 +118,16 @@
     <FilterPanel class="shrink-0" v-model="criteria" :active-chips="activeChips" @reset="reset" />
 
     <!-- ─── RESULTS ────────────────────────────────────────────────── -->
-    <div class="relative min-h-[26rem] flex-1 overflow-y-auto rounded-[18px] border border-hairline bg-card/45 p-3 pr-4 md:min-h-0 md:p-4 md:pr-5">
+    <div class="relative min-h-[26rem] flex-1 overflow-y-auto rounded-[18px] border border-hairline bg-card/45 p-2 pr-3 md:min-h-0 md:p-3 md:pr-4">
       <div v-if="total > 0 && loading && domains.length" class="absolute right-4 top-3 z-10 text-xs text-text-tertiary">
         {{ $t('common.loading') }}
       </div>
 
-      <div v-if="loading && !domains.length" class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <div v-if="loading && !domains.length" class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
         <div v-for="i in 8" :key="i" class="h-48 animate-pulse rounded-2xl bg-surface-sunken" />
       </div>
 
-      <div v-else-if="domains.length > 0" class="grid auto-rows-fr grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <div v-else-if="domains.length > 0" class="grid auto-rows-fr grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
         <DomainCard
           v-for="domain in domains"
           :key="domain.id"
@@ -250,6 +247,8 @@ import {
   Star as StarIcon,
   Trash2 as Trash2Icon,
 } from 'lucide-vue-next';
+import { Popover, PopoverButton, PopoverPanel } from '@headlessui/vue';
+import { unwrapApiEnvelope } from '~/utils/api-envelope';
 
 const { t } = useI18n();
 const toast = useToast();
@@ -281,7 +280,7 @@ const apiQuery = computed(() => ({
   ...asApiQuery.value,
 }));
 
-const { data, pending: loading, refresh } = await useFetch('/api/domains', {
+const { data, pending: loading, refresh } = useLazyFetch('/api/domains', {
   query: apiQuery,
   watch: [apiQuery],
 });
@@ -321,11 +320,12 @@ const refreshDomain = async (id) => {
   if (isRefreshing(id)) return;
   setPendingId(refreshingIds, id, true);
   try {
-    await $fetch(`/api/domains/${id}/refresh`, { method: 'POST' });
+    const response = await $fetch(`/api/domains/${id}/refresh`, { method: 'POST' });
+    unwrapApiEnvelope(response, t('domain.scanError'));
     toast.success(t('domain.scanSuccess'));
     await refresh();
   } catch (e) {
-    toast.error(t('domain.scanError'));
+    toast.error(e?.message || e?.data?.msg || t('domain.scanError'));
   } finally {
     setPendingId(refreshingIds, id, false);
   }
@@ -341,11 +341,12 @@ const confirmDelete = async () => {
   if (!id || isDeleting(id)) return;
   setPendingId(deletingIds, id, true);
   try {
-    await $fetch(`/api/domains/${id}`, { method: 'DELETE' });
+    const response = await $fetch(`/api/domains/${id}`, { method: 'DELETE' });
+    unwrapApiEnvelope(response, t('domain.deleteError'));
     toast.success(t('domain.deleteSuccess'));
     await refresh();
   } catch (e) {
-    toast.error(t('domain.deleteError'));
+    toast.error(e?.message || e?.data?.msg || t('domain.deleteError'));
   } finally {
     setPendingId(deletingIds, id, false);
   }
@@ -354,7 +355,6 @@ const confirmDelete = async () => {
 // ────────────────────────────────────────────────────────────────────────────
 // Saved filters
 // ────────────────────────────────────────────────────────────────────────────
-const savedOpen = ref(false);
 const savedFilters = ref([]);
 const saveDialogOpen = ref(false);
 const saveDialogName = ref('');
@@ -365,9 +365,10 @@ const fetchSavedFilters = async () => {
     const resp = await $fetch('/api/filters', {
       query: { scope: 'domains' },
     });
-    savedFilters.value = resp.data?.items || [];
+    const data = unwrapApiEnvelope(resp, 'Failed to load saved filters');
+    savedFilters.value = data?.items || [];
   } catch (e) {
-    console.error('Failed to load saved filters:', e);
+    toast.error(e?.message || e?.data?.msg || 'Failed to load saved filters');
   }
 };
 
@@ -383,7 +384,6 @@ const loadFilter = (f) => {
     expiringDays: null,
     ...f.criteria,
   });
-  savedOpen.value = false;
   toast.success(t('filter.loaded', { name: f.name }));
 };
 
@@ -391,14 +391,13 @@ const openSaveDialog = () => {
   saveDialogOpen.value = true;
   saveDialogName.value = '';
   saveDialogDefault.value = false;
-  savedOpen.value = false;
 };
 
 const performSave = async () => {
   const name = saveDialogName.value.trim();
   if (!name) return;
   try {
-    await $fetch('/api/filters', {
+    const response = await $fetch('/api/filters', {
       method: 'POST',
       body: {
         name,
@@ -407,46 +406,37 @@ const performSave = async () => {
         isDefault: saveDialogDefault.value,
       },
     });
+    unwrapApiEnvelope(response, t('filter.saveError'));
     toast.success(t('filter.saveSuccess'));
     saveDialogOpen.value = false;
     fetchSavedFilters();
   } catch (e) {
-    toast.error(e.data?.msg || t('filter.saveError'));
+    toast.error(e?.message || e?.data?.msg || t('filter.saveError'));
   }
 };
 
 const setDefault = async (f) => {
   try {
-    await $fetch(`/api/filters/${f.id}`, {
+    const response = await $fetch(`/api/filters/${f.id}`, {
       method: 'PATCH',
       body: { scope: 'domains', isDefault: !f.isDefault },
     });
+    unwrapApiEnvelope(response, t('filter.updateError'));
     fetchSavedFilters();
   } catch (e) {
-    toast.error(e.data?.msg || t('filter.updateError'));
+    toast.error(e?.message || e?.data?.msg || t('filter.updateError'));
   }
 };
 
 const deleteFilter = async (f) => {
   try {
-    await $fetch(`/api/filters/${f.id}`, { method: 'DELETE' });
+    const response = await $fetch(`/api/filters/${f.id}`, { method: 'DELETE' });
+    unwrapApiEnvelope(response, t('filter.deleteError'));
     toast.success(t('filter.deleteSuccess'));
     fetchSavedFilters();
   } catch (e) {
-    toast.error(e.data?.msg || t('filter.deleteError'));
+    toast.error(e?.message || e?.data?.msg || t('filter.deleteError'));
   }
-};
-
-const vOnClickOutside = {
-  mounted(el, binding) {
-    el._clickOutside = (e) => {
-      if (!el.contains(e.target)) binding.value(e);
-    };
-    setTimeout(() => document.addEventListener('click', el._clickOutside), 0);
-  },
-  unmounted(el) {
-    if (el._clickOutside) document.removeEventListener('click', el._clickOutside);
-  },
 };
 
 const route = useRoute();

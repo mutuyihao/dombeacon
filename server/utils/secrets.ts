@@ -9,12 +9,7 @@ const SECRET_PREFIX = "enc:v1:";
 const SECRET_SALT = "dombeacon-secret-storage-v1";
 
 const getSecretKeyMaterial = () =>
-  (
-    process.env.SECRET_ENCRYPTION_KEY ||
-    process.env.SESSION_SECRET ||
-    process.env.ADMIN_PASSWORD ||
-    ""
-  ).trim();
+  (process.env.SECRET_ENCRYPTION_KEY || "").trim();
 
 const getEncryptionKey = () => {
   const material = getSecretKeyMaterial();
@@ -55,7 +50,7 @@ export const revealSecretText = (value: string | null | undefined) => {
   const key = getEncryptionKey();
   if (!key) {
     throw new Error(
-      "A stable SECRET_ENCRYPTION_KEY, SESSION_SECRET, or ADMIN_PASSWORD is required to decrypt stored secrets",
+      "A stable SECRET_ENCRYPTION_KEY is required to decrypt stored secrets.",
     );
   }
 

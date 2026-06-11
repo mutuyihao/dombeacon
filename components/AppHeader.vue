@@ -1,17 +1,20 @@
 <template>
   <header
     :class="[
-      'sticky top-0 z-50 transition-colors duration-200',
-      scrolled ? 'bg-background/85 backdrop-blur-md' : 'bg-background',
+      'sticky top-0 z-50 transition-all duration-300',
+      scrolled
+        ? 'bg-card/80 backdrop-blur-xl shadow-[0_1px_0_var(--hairline)]'
+        : 'bg-background',
     ]"
   >
-    <div class="mx-auto flex h-14 max-w-310 items-center justify-between px-6 md:px-10 lg:px-14">
+    <div class="mx-auto flex h-16 max-w-310 items-center justify-between px-6 md:px-10 lg:px-14">
+      <!-- Logo -->
       <NuxtLink to="/" class="group flex items-center gap-3">
-        <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-accent text-white">
-          <RadarIcon class="h-4 w-4" />
+        <div class="relative flex h-9 w-9 items-center justify-center rounded-xl bg-accent text-white shadow-[0_2px_8px_-2px_rgba(79,70,229,0.3)] transition-shadow duration-200 group-hover:shadow-[0_4px_16px_-4px_rgba(79,70,229,0.4)]">
+          <RadarIcon class="h-[18px] w-[18px]" />
         </div>
         <div class="flex items-baseline gap-3 leading-none">
-          <p class="font-display text-[1.125rem] font-medium tracking-[-0.025em] text-text-main">
+          <p class="font-sans text-[1.15rem] font-bold tracking-tight text-text-main">
             {{ $t('common.appName') }}
           </p>
           <p v-if="locale === 'en'" class="hidden text-[10px] font-semibold uppercase tracking-[0.22em] text-text-tertiary md:block">
@@ -20,61 +23,57 @@
         </div>
       </NuxtLink>
 
-      <nav class="hidden items-center gap-8 lg:flex">
+      <!-- Desktop nav -->
+      <nav class="hidden items-center gap-1 lg:flex">
         <NuxtLink
           v-for="item in primaryNav"
           :key="item.to"
           :to="item.to"
           :class="[
-            'relative py-2 text-sm font-medium transition-colors',
+            'relative rounded-lg px-3.5 py-2 text-[13px] font-medium transition-all duration-200',
             isNavActive(item)
-              ? 'text-text-main'
-              : 'text-text-secondary hover:text-text-main',
+              ? 'text-accent bg-accent-glow'
+              : 'text-text-secondary hover:text-text-main hover:bg-surface-sunken',
           ]"
         >
           {{ getNavLabel(item) }}
-          <span
-            v-if="isNavActive(item)"
-            class="absolute -bottom-px left-0 right-0 h-0.5 bg-accent"
-          />
         </NuxtLink>
 
         <div ref="moreRoot" class="relative">
           <button
             type="button"
             :class="[
-              'relative py-2 text-sm font-medium transition-colors',
-              isSecondaryActive ? 'text-text-main' : 'text-text-secondary hover:text-text-main',
+              'relative rounded-lg px-3.5 py-2 text-[13px] font-medium transition-all duration-200',
+              isSecondaryActive
+                ? 'text-accent bg-accent-glow'
+                : 'text-text-secondary hover:text-text-main hover:bg-surface-sunken',
             ]"
             @click="moreOpen = !moreOpen"
           >
             {{ $t('nav.more') }}
-            <span
-              v-if="isSecondaryActive"
-              class="absolute -bottom-px left-0 right-0 h-0.5 bg-accent"
-            />
+            <ChevronDownIcon :class="['ml-1 inline-block h-3.5 w-3.5 transition-transform duration-200', moreOpen && 'rotate-180']" />
           </button>
 
           <transition
-            enter-active-class="transition duration-150 ease-out"
-            enter-from-class="-translate-y-1 opacity-0"
-            enter-to-class="translate-y-0 opacity-100"
-            leave-active-class="transition duration-100 ease-in"
-            leave-from-class="translate-y-0 opacity-100"
-            leave-to-class="-translate-y-1 opacity-0"
+            enter-active-class="transition duration-200 ease-out"
+            enter-from-class="-translate-y-2 scale-95 opacity-0"
+            enter-to-class="translate-y-0 scale-100 opacity-100"
+            leave-active-class="transition duration-150 ease-in"
+            leave-from-class="translate-y-0 scale-100 opacity-100"
+            leave-to-class="-translate-y-2 scale-95 opacity-0"
           >
             <div
               v-if="moreOpen"
-              class="surface absolute right-0 top-full mt-3 w-56 p-2"
+              class="surface-elevated absolute right-0 top-full mt-2 w-56 overflow-hidden p-1.5"
             >
               <NuxtLink
                 v-for="item in secondaryNav"
                 :key="item.to"
                 :to="item.to"
                 :class="[
-                  'block rounded-lg px-3 py-2 text-sm transition-colors',
+                  'block rounded-lg px-3 py-2.5 text-[13px] font-medium transition-all duration-150',
                   isNavActive(item)
-                    ? 'text-accent'
+                    ? 'text-accent bg-accent-glow'
                     : 'text-text-secondary hover:bg-surface-sunken hover:text-text-main',
                 ]"
                 @click="moreOpen = false"
@@ -86,11 +85,12 @@
         </div>
       </nav>
 
-      <div class="hidden items-center gap-1 lg:flex">
+      <!-- Actions -->
+      <div class="hidden items-center gap-0.5 lg:flex">
         <button
           type="button"
           @click="toggleTheme"
-          class="flex h-9 w-9 items-center justify-center rounded-full text-text-secondary transition-colors hover:bg-surface-sunken hover:text-text-main"
+          class="flex h-9 w-9 items-center justify-center rounded-lg text-text-secondary transition-all duration-200 hover:bg-surface-sunken hover:text-text-main"
           :title="$t('settings.themeToggle')"
         >
           <MoonIcon v-if="isDark" class="h-4 w-4" />
@@ -99,16 +99,17 @@
         <button
           type="button"
           @click="toggleLocale"
-          class="flex h-9 w-9 items-center justify-center rounded-full text-[11px] font-semibold tracking-wider text-text-secondary transition-colors hover:bg-surface-sunken hover:text-text-main"
+          class="flex h-9 w-9 items-center justify-center rounded-lg text-[11px] font-bold tracking-wider text-text-secondary transition-all duration-200 hover:bg-surface-sunken hover:text-text-main"
           :title="$t('common.switchLanguage')"
         >
           {{ locale === 'zh' ? 'ZH' : 'EN' }}
         </button>
       </div>
 
+      <!-- Mobile toggle -->
       <button
         type="button"
-        class="inline-flex h-9 w-9 items-center justify-center rounded-full text-text-main transition-colors hover:bg-surface-sunken lg:hidden"
+        class="inline-flex h-9 w-9 items-center justify-center rounded-lg text-text-main transition-colors hover:bg-surface-sunken lg:hidden"
         :aria-label="mobileOpen ? $t('common.close') : $t('common.menu')"
         :aria-expanded="mobileOpen ? 'true' : 'false'"
         @click="mobileOpen = !mobileOpen"
@@ -117,32 +118,31 @@
         <MenuIcon v-else class="h-5 w-5" />
       </button>
     </div>
-
-    <div v-if="scrolled" class="hairline" />
   </header>
 
+  <!-- Mobile overlay -->
   <transition
-    enter-active-class="transition duration-150 ease-out"
+    enter-active-class="transition duration-200 ease-out"
     enter-from-class="opacity-0"
     enter-to-class="opacity-100"
-    leave-active-class="transition duration-100 ease-in"
+    leave-active-class="transition duration-150 ease-in"
     leave-from-class="opacity-100"
     leave-to-class="opacity-0"
   >
     <div v-if="mobileOpen" class="fixed inset-0 z-60 lg:hidden">
-      <div class="absolute inset-0 bg-background/85 backdrop-blur-sm" @click="mobileOpen = false" />
+      <div class="absolute inset-0 bg-background/80 backdrop-blur-md" @click="mobileOpen = false" />
 
-      <div class="absolute left-0 right-0 top-14 px-6">
-        <div class="surface mt-3 p-2">
+      <div class="absolute left-0 right-0 top-16 px-4">
+        <div class="surface-elevated p-2">
           <div class="space-y-0.5">
             <NuxtLink
               v-for="item in allNav"
               :key="item.to"
               :to="item.to"
               :class="[
-                'block rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
+                'block rounded-lg px-3.5 py-3 text-sm font-medium transition-all duration-150',
                 isNavActive(item)
-                  ? 'text-accent'
+                  ? 'text-accent bg-accent-glow'
                   : 'text-text-secondary hover:bg-surface-sunken hover:text-text-main',
               ]"
               @click="mobileOpen = false"
@@ -154,7 +154,7 @@
           <div class="flex items-center gap-1 px-1">
             <button
               type="button"
-              class="flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-text-main transition-colors hover:bg-surface-sunken"
+              class="flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-text-main transition-colors hover:bg-surface-sunken"
               @click="toggleTheme"
             >
               <MoonIcon v-if="isDark" class="h-4 w-4" />
@@ -163,7 +163,7 @@
             </button>
             <button
               type="button"
-              class="flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-text-main transition-colors hover:bg-surface-sunken"
+              class="flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-text-main transition-colors hover:bg-surface-sunken"
               @click="toggleLocale"
             >
               <LanguagesIcon class="h-4 w-4" />
@@ -178,6 +178,7 @@
 
 <script setup>
 import {
+  ChevronDown as ChevronDownIcon,
   Languages as LanguagesIcon,
   Menu as MenuIcon,
   Moon as MoonIcon,
@@ -194,17 +195,16 @@ const isDark = computed(() => resolved.value === 'dark');
 const primaryNav = [
   { to: '/', labelKey: 'nav.dashboard' },
   { to: '/domains', labelKey: 'nav.domains' },
-  { to: '/brand-watch', label: 'Brand Watch' },
-  { to: '/ops/security', label: 'Risk' },
-  { to: '/ops/actions', labelKey: 'nav.actions', aliases: ['/actions'] },
+  { to: '/risk', labelKey: 'nav.risk' },
+  { to: '/actions', labelKey: 'nav.actions' },
   { to: '/ssl', labelKey: 'nav.ssl' },
 ];
 
 const secondaryNav = [
-  { to: '/data/costs', labelKey: 'nav.costs', aliases: ['/costs'] },
+  { to: '/costs', labelKey: 'nav.costs' },
   { to: '/notifications', labelKey: 'nav.notifications' },
-  { to: '/ops/tasks', labelKey: 'nav.tasks', aliases: ['/tasks'] },
-  { to: '/data/import', labelKey: 'nav.import', aliases: ['/import'] },
+  { to: '/tasks', labelKey: 'nav.tasks' },
+  { to: '/import', labelKey: 'nav.import' },
   { to: '/settings', labelKey: 'nav.settings' },
 ];
 

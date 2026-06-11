@@ -27,7 +27,7 @@
             <DialogPanel
               :class="['surface-elevated relative flex max-h-[calc(100vh-2rem)] w-full flex-col overflow-hidden text-left', sizeClass]"
             >
-              <div class="shrink-0 px-8 pt-8 pb-2">
+              <div v-if="hasHeader" class="shrink-0 px-8 pt-8 pb-2">
                 <p v-if="eyebrow" class="eyebrow mb-3">{{ eyebrow }}</p>
                 <DialogTitle as="h3" class="headline-display text-2xl">
                   <slot name="title">{{ title }}</slot>
@@ -37,7 +37,7 @@
                 </p>
               </div>
 
-              <div class="hairline mt-6 shrink-0" />
+              <div v-if="hasHeader" class="hairline mt-6 shrink-0" />
 
               <div class="min-h-0 overflow-y-auto px-8 py-6">
                 <slot />
@@ -83,8 +83,19 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['close']);
+const slots = useSlots();
 
 const onClose = () => emit('close');
+
+const hasHeader = computed(() =>
+  Boolean(
+    props.eyebrow ||
+    props.title ||
+    props.description ||
+    slots.title ||
+    slots.description,
+  ),
+);
 
 const sizeClass = computed(() => {
   switch (props.size) {

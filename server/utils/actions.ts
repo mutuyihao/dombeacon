@@ -1,5 +1,5 @@
 import { actions, domains } from "../db/schema";
-import { eq, and, lt, sql, asc, desc } from "drizzle-orm";
+import { eq, and, lt, sql, asc, desc, isNull, isNotNull } from "drizzle-orm";
 import { useDb } from "./db";
 
 export type ActionType =
@@ -37,6 +37,7 @@ export async function createAction(params: CreateActionParams) {
         eq(actions.domainId, params.domainId),
         eq(actions.actionType, params.actionType),
         eq(actions.status, "OPEN"),
+        isNull(actions.archivedAt),
       ),
     )
     .get();
@@ -95,7 +96,11 @@ export async function autoResolveSnoozedActions() {
     .select()
     .from(actions)
     .where(
-      and(eq(actions.status, "SNOOZED"), lt(actions.snoozedUntil, now)),
+      and(
+        eq(actions.status, "SNOOZED"),
+        lt(actions.snoozedUntil, now),
+        isNull(actions.archivedAt),
+      ),
     )
     .all();
 
@@ -117,6 +122,7 @@ export async function getActionsWithDomains(filters?: {
   status?: ActionStatus;
   priority?: string;
   domainId?: number;
+  archived?: boolean;
   limit?: number;
   offset?: number;
 }, options?: { db?: Db }) {
@@ -141,6 +147,9 @@ export async function getActionsWithDomains(filters?: {
   if (filters?.domainId) {
     conditions.push(eq(actions.domainId, filters.domainId));
   }
+  conditions.push(
+    filters?.archived ? isNotNull(actions.archivedAt) : isNull(actions.archivedAt),
+  );
 
   if (conditions.length > 0) {
     query = query.where(and(...conditions)) as any;
@@ -174,6 +183,7 @@ export async function countActions(filters?: {
   status?: ActionStatus;
   priority?: string;
   domainId?: number;
+  archived?: boolean;
 }, options?: { db?: Db }) {
   const db = options?.db ?? useDb();
 
@@ -187,6 +197,9 @@ export async function countActions(filters?: {
   if (filters?.domainId) {
     conditions.push(eq(actions.domainId, filters.domainId));
   }
+  conditions.push(
+    filters?.archived ? isNotNull(actions.archivedAt) : isNull(actions.archivedAt),
+  );
 
   const whereExpr = conditions.length > 0 ? and(...conditions) : undefined;
 

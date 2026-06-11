@@ -1,11 +1,24 @@
 import { serverchanConfigs, notificationEvents } from "../db/schema";
 import { eq } from "drizzle-orm";
-import { revealSecretText } from "./secrets";
+import { parseProtectedJson, revealSecretText } from "./secrets";
 
 export interface ServerchanMessage {
   title: string;
   desp?: string; // Markdown content
   short?: string; // Short message for notification
+  channel?: number; // ServerChan Turbo dynamic channel id
+  noip?: boolean; // Hide caller IP in ServerChan message detail
+  openid?: string; // Optional copy recipients / WeCom UID list
+  tags?: string; // Pipe-separated tags, e.g. "监控|域名"
+}
+
+export interface ServerchanConfigOptions {
+  channel?: number | null;
+  noip?: boolean;
+  openid?: string;
+  tags?: string;
+  titlePrefix?: string;
+  timeoutMs?: number;
 }
 
 export interface ServerchanSendResult {
@@ -18,6 +31,66 @@ export interface ServerchanSendResult {
 }
 
 const SERVERCHAN_API_BASE = "https://sctapi.ftqq.com";
+const DEFAULT_SERVERCHAN_TIMEOUT_MS = 10000;
+const SERVERCHAN_CHANNEL_IDS = new Set([9, 98, 88, 18, 66, 1, 8, 2, 3]);
+const MIN_SERVERCHAN_TIMEOUT_MS = 3000;
+const MAX_SERVERCHAN_TIMEOUT_MS = 30000;
+
+const clampText = (value: unknown, maxLength: number) => {
+  const text = String(value || "").trim();
+  return text ? text.slice(0, maxLength) : "";
+};
+
+export const normalizeServerchanOptions = (
+  value: unknown,
+): ServerchanConfigOptions => {
+  const input =
+    value && typeof value === "object" && !Array.isArray(value)
+      ? (value as Record<string, unknown>)
+      : {};
+  const rawChannel = Number(input.channel);
+  const channel = SERVERCHAN_CHANNEL_IDS.has(rawChannel) ? rawChannel : null;
+  const rawTimeout = Number(input.timeoutMs);
+
+  return {
+    channel,
+    noip: Boolean(input.noip),
+    openid: clampText(input.openid, 500),
+    tags: clampText(input.tags, 200),
+    titlePrefix: clampText(input.titlePrefix, 24),
+    timeoutMs: Number.isFinite(rawTimeout)
+      ? Math.min(
+          MAX_SERVERCHAN_TIMEOUT_MS,
+          Math.max(MIN_SERVERCHAN_TIMEOUT_MS, Math.round(rawTimeout)),
+        )
+      : DEFAULT_SERVERCHAN_TIMEOUT_MS,
+  };
+};
+
+export const parseServerchanOptions = (
+  value: string | null | undefined,
+): ServerchanConfigOptions => normalizeServerchanOptions(
+  parseProtectedJson<Record<string, unknown>>(value, {}),
+);
+
+export const applyServerchanOptions = (
+  message: ServerchanMessage,
+  options?: ServerchanConfigOptions | null,
+): ServerchanMessage => {
+  const normalized = normalizeServerchanOptions(options || {});
+  const title = normalized.titlePrefix
+    ? `${normalized.titlePrefix}${message.title}`
+    : message.title;
+
+  return {
+    ...message,
+    title: title.slice(0, 32),
+    channel: normalized.channel || undefined,
+    noip: normalized.noip || undefined,
+    openid: normalized.openid || undefined,
+    tags: normalized.tags || undefined,
+  };
+};
 
 /**
  * Send Server酱 notification
@@ -26,7 +99,7 @@ const SERVERCHAN_API_BASE = "https://sctapi.ftqq.com";
 export const sendServerchanDetailed = async (
   sendKey: string,
   message: ServerchanMessage,
-  timeout: number = 10000,
+  timeout: number = DEFAULT_SERVERCHAN_TIMEOUT_MS,
 ): Promise<ServerchanSendResult> => {
   const url = `${SERVERCHAN_API_BASE}/${encodeURIComponent(sendKey)}.send`;
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
@@ -36,9 +109,15 @@ export const sendServerchanDetailed = async (
     timeoutId = setTimeout(() => controller.abort(), timeout);
 
     const formData = new URLSearchParams();
-    formData.append("title", message.title);
+    formData.append("title", message.title.slice(0, 32));
     if (message.desp) formData.append("desp", message.desp);
-    if (message.short) formData.append("short", message.short);
+    if (message.short) formData.append("short", message.short.slice(0, 64));
+    if (message.noip) formData.append("noip", "1");
+    if (message.channel && message.channel > 0) {
+      formData.append("channel", String(message.channel));
+    }
+    if (message.openid) formData.append("openid", message.openid);
+    if (message.tags) formData.append("tags", message.tags);
 
     const response = await fetch(url, {
       method: "POST",
@@ -139,6 +218,7 @@ export const getActiveServerchanConfigs = async (eventType: string) => {
   }).map((config) => ({
     ...config,
     sendKey: revealSecretText(config.sendKey),
+    options: parseServerchanOptions(config.optionsJson),
   }));
 };
 
@@ -298,13 +378,18 @@ export const notifyServerchan = async (params: {
     return 0;
   }
 
-  const message = formatServerchanMessage(eventType, eventData);
   const db = useDb();
   let successCount = 0;
 
   for (const config of configs) {
     try {
-      const success = await sendServerchan(config.sendKey, message);
+      const baseMessage = formatServerchanMessage(eventType, eventData);
+      const message = applyServerchanOptions(baseMessage, config.options);
+      const success = await sendServerchan(
+        config.sendKey,
+        message,
+        config.options?.timeoutMs || DEFAULT_SERVERCHAN_TIMEOUT_MS,
+      );
 
       // Record notification event
       await db.insert(notificationEvents).values({
@@ -323,6 +408,11 @@ export const notifyServerchan = async (params: {
           message: {
             title: message.title,
             short: message.short,
+          },
+          options: {
+            channel: message.channel || null,
+            noip: Boolean(message.noip),
+            tags: message.tags || null,
           },
         }),
       });
@@ -379,9 +469,11 @@ export const testServerchan = async (
     desp: `## 测试通知\n\n这是来自 **${config.name}** 的测试消息。\n\n如果您收到此消息，说明 Server酱 配置正常工作！\n\n---\n\n*发送时间: ${new Date().toLocaleString("zh-CN")}*`,
     short: "DomBeacon（域灯）测试通知",
   };
+  const options = parseServerchanOptions(config.optionsJson);
 
   return await sendServerchanDetailed(
     revealSecretText(config.sendKey),
-    testMessage,
+    applyServerchanOptions(testMessage, options),
+    options.timeoutMs || DEFAULT_SERVERCHAN_TIMEOUT_MS,
   );
 };

@@ -1,5 +1,5 @@
 <template>
-  <div class="flex min-h-full flex-col gap-6 md:h-full md:min-h-0 md:overflow-hidden">
+  <div class="flex min-h-full flex-col gap-4 md:h-full md:min-h-0 md:overflow-hidden">
 
     <header class="shrink-0">
       <p class="eyebrow mb-2">Outbound</p>
@@ -15,7 +15,7 @@
       </div>
     </header>
 
-    <section class="relative min-h-[26rem] flex-1 overflow-y-auto rounded-[18px] border border-hairline bg-card/45 p-3 pr-4 md:min-h-0 md:p-4 md:pr-5">
+    <section class="relative min-h-[26rem] flex-1 overflow-y-auto rounded-[18px] border border-hairline bg-card/45 p-2 pr-3 md:min-h-0 md:p-3 md:pr-4">
     <div v-if="loading" class="flex justify-center py-16">
       <LoadingSpinner size="lg" />
     </div>
@@ -28,7 +28,7 @@
       >
         <div class="min-w-0">
           <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <h3 class="font-display text-xl font-medium tracking-[-0.025em] text-text-main">{{ webhook.name }}</h3>
+            <h3 class="font-sans text-xl font-bold tracking-tight text-text-main">{{ webhook.name }}</h3>
             <span :class="['flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.16em]', webhook.enabled ? 'text-status-available' : 'text-status-unknown']">
               <span :class="['h-1.5 w-1.5 rounded-full', webhook.enabled ? 'bg-status-available' : 'bg-status-unknown']" />
               {{ webhook.enabled ? $t('webhook.enabled') : $t('webhook.disabled') }}
@@ -46,7 +46,7 @@
               <BellIcon class="mt-0.5 h-3.5 w-3.5 text-text-tertiary" />
               <div class="flex flex-wrap gap-x-3 gap-y-1 text-xs">
                 <span v-for="event in parseEventTypes(webhook.eventTypes)" :key="event" class="font-mono">
-                  {{ $t(`webhook.events.${event}`) }}
+                  {{ formatWebhookEvent(event) }}
                 </span>
               </div>
             </div>
@@ -111,6 +111,7 @@ import {
   Trash as TrashIcon,
   Webhook as WebhookIcon,
 } from 'lucide-vue-next';
+import { unwrapApiEnvelope } from '~/utils/api-envelope';
 
 const { t } = useI18n();
 const toast = useToast();
@@ -126,10 +127,9 @@ const fetchWebhooks = async () => {
   loading.value = true;
   try {
     const response = await $fetch('/api/webhooks');
-    webhooks.value = response.data || [];
+    webhooks.value = unwrapApiEnvelope(response, t('webhook.addError')) || [];
   } catch (error) {
-    console.error('Failed to fetch webhooks:', error);
-    toast.error(t('webhook.addError'));
+    toast.error(error?.message || error?.data?.msg || t('webhook.addError'));
   } finally {
     loading.value = false;
   }
@@ -138,6 +138,12 @@ const fetchWebhooks = async () => {
 const parseEventTypes = (json) => {
   if (Array.isArray(json)) return json;
   try { return JSON.parse(json || '[]'); } catch { return []; }
+};
+
+const formatWebhookEvent = (event) => {
+  const key = `webhook.events.${String(event).toLowerCase()}`;
+  const value = t(key);
+  return value === key ? event : value;
 };
 
 const openAddModal = () => {
@@ -152,13 +158,13 @@ const closeModal = () => {
 
 const handleSave = async (webhookData) => {
   try {
-    await $fetch('/api/webhooks', { method: 'POST', body: webhookData });
+    const response = await $fetch('/api/webhooks', { method: 'POST', body: webhookData });
+    unwrapApiEnvelope(response, t('webhook.addError'));
     toast.success(t('webhook.addSuccess'));
     closeModal();
     await fetchWebhooks();
   } catch (error) {
-    console.error('Failed to save webhook:', error);
-    toast.error(error?.data?.message || t('webhook.addError'));
+    toast.error(error?.message || error?.data?.message || t('webhook.addError'));
   }
 };
 
@@ -166,11 +172,11 @@ const testWebhook = async (id) => {
   testingId.value = id;
   try {
     const response = await $fetch(`/api/webhooks/${id}/test`, { method: 'POST' });
-    if (response?.code === 0 && response?.data?.ok) toast.success(t('webhook.testSuccess'));
-    else toast.error(response?.data?.error || response?.msg || t('webhook.testFailed'));
+    const result = unwrapApiEnvelope(response, t('webhook.testFailed'));
+    if (result?.ok) toast.success(t('webhook.testSuccess'));
+    else toast.error(result?.error || t('webhook.testFailed'));
   } catch (error) {
-    console.error('Failed to test webhook:', error);
-    toast.error(t('webhook.testFailed'));
+    toast.error(error?.message || error?.data?.msg || t('webhook.testFailed'));
   } finally {
     testingId.value = null;
   }
@@ -187,12 +193,12 @@ const confirmDelete = async () => {
     return;
   }
   try {
-    await $fetch(`/api/webhooks/${id}`, { method: 'DELETE' });
+    const response = await $fetch(`/api/webhooks/${id}`, { method: 'DELETE' });
+    unwrapApiEnvelope(response, t('webhook.deleteError'));
     toast.success(t('webhook.deleteSuccess'));
     await fetchWebhooks();
   } catch (error) {
-    console.error('Failed to delete webhook:', error);
-    toast.error(t('webhook.deleteError'));
+    toast.error(error?.message || error?.data?.msg || t('webhook.deleteError'));
   } finally {
     deleteDialog.value.isOpen = false;
     deleteDialog.value.webhookId = null;

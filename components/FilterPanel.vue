@@ -3,7 +3,7 @@
     <button
       type="button"
       @click="expanded = !expanded"
-      class="flex w-full items-center justify-between gap-3 py-3 text-left transition-colors hover:text-accent"
+      class="flex w-full items-center justify-between gap-3 py-2 text-left transition-colors hover:text-accent"
       :aria-expanded="expanded"
     >
       <div class="flex items-center gap-2 text-sm font-medium text-text-main">
@@ -33,7 +33,7 @@
       </div>
     </button>
 
-    <div v-if="activeChips.length > 0" class="flex flex-wrap gap-2 pb-4">
+    <div v-if="activeChips.length > 0" class="flex flex-wrap gap-2 pb-3">
       <span
         v-for="chip in activeChips"
         :key="chip.key"
@@ -51,7 +51,7 @@
       </span>
     </div>
 
-    <div v-if="expanded" class="grid grid-cols-1 gap-x-8 gap-y-6 border-t border-hairline pt-6 md:grid-cols-2 lg:grid-cols-3">
+    <div v-if="expanded" class="grid grid-cols-1 gap-x-6 gap-y-4 border-t border-hairline pt-4 md:grid-cols-2 lg:grid-cols-3">
       <div>
         <label class="block text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary mb-1">
           {{ $t('domain.watchKind') }}

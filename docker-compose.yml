@@ -16,8 +16,6 @@ services:
       - SCHEDULER_TIMEZONE=Asia/Shanghai
       # Optional: also set container TZ for other libs/logs
       - TZ=Asia/Shanghai
-      # Optional: Set ADMIN_PASSWORD for authentication
-      - ADMIN_PASSWORD=123456
     healthcheck:
       test:
         [

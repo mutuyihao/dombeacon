@@ -1,6 +1,10 @@
 import { webhookConfigs } from "~/server/db/schema";
 import { recordAuditEvent } from "~/server/utils/audit";
 import { stringifyProtectedJson } from "~/server/utils/secrets";
+import {
+  normalizeWebhookMethod,
+  validateWebhookTargetUrl,
+} from "~/server/utils/webhook";
 
 const normalizeEventTypes = (value: unknown) =>
   Array.isArray(value)
@@ -21,19 +25,23 @@ export default defineEventHandler(async (event) => {
       return fail("Name and URL are required", 40000);
     }
 
-    let parsedUrl: URL;
-    try {
-      parsedUrl = new URL(url);
-    } catch {
-      return fail("Invalid URL format", 40000);
+    const normalizedMethod = normalizeWebhookMethod(method);
+    if (!normalizedMethod) {
+      return fail("Webhook method must be GET, POST, PUT, or PATCH", 40000);
     }
+
+    const urlPolicy = await validateWebhookTargetUrl(url);
+    if (!urlPolicy.ok) {
+      return fail(urlPolicy.error, 40000);
+    }
+    const parsedUrl = urlPolicy.url;
 
     const [result] = await db
       .insert(webhookConfigs)
       .values({
         name,
-        url,
-        method,
+        url: parsedUrl.toString(),
+        method: normalizedMethod,
         headersJson: headers ? stringifyProtectedJson(headers) : null,
         eventTypes: normalizedEventTypes.length
           ? JSON.stringify(normalizedEventTypes)

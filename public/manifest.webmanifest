@@ -1,5 +1,5 @@
 {
-  "name": "DomBeacon (域灯)",
+  "name": "DomBeacon",
   "short_name": "DomBeacon",
   "description": "Self-hosted domain ops beacon for tracking opportunities, managing portfolios, and monitoring expiration/SSL risks",
   "start_url": "/",

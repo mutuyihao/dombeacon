@@ -2,8 +2,7 @@
 
 DomBeacon is a self-hosted domain ops beacon for tracking wanted domain
 opportunities, managing owned domain portfolios, monitoring domain/SSL/DNS
-risks, and detecting brand-abuse candidates through RDAP and public
-Certificate Transparency data.
+risks, and turning domain events into actionable alerts.
 
 ## Features
 
@@ -18,13 +17,10 @@ Certificate Transparency data.
 - **DNS/RDAP security findings**: Track DNS posture, nameserver/MX drift,
   SPF/DMARC/CAA/DNSSEC signals, and registrar-lock gaps with bulk triage,
   saved queue views, and keyboard shortcuts.
-- **Brand Watch**: Generate exact, typo, prefix/suffix, and homoglyph
-  lookalikes; check them through RDAP; discover CT-observed domains from
-  crt.sh; and review persisted risks.
 - **Notifications**: Send events through email, webhooks, ServerChan, and Web
   Push, with risk event channel presets, delivery history, and retry support.
-- **Audit logs**: Record admin login, config changes, domain mutations, scans,
-  finding updates, and Brand Watch changes.
+- **Audit logs**: Record config changes, domain mutations, scans, finding
+  updates, and notification changes.
 - **Cost tracking**: Store per-domain costs and choose the display currency in
   settings preferences.
 - **PWA support**: Installable UI with a hand-rolled service worker and Web
@@ -41,11 +37,9 @@ Certificate Transparency data.
    mkdir data
    ```
 
-2. Set required secrets in `.env`.
+2. Set optional runtime secrets in `.env`.
 
    ```env
-   ADMIN_PASSWORD=your-secure-password
-   SESSION_SECRET=your-random-session-secret
    SECRET_ENCRYPTION_KEY=your-random-storage-secret
    ```
 
@@ -57,19 +51,21 @@ Certificate Transparency data.
 
 4. Open `http://localhost:8080`.
 
+## Access Model
+
+DomBeacon currently runs without a built-in login page, session cookie, or
+`/api/auth/*` endpoints. Treat it as a trusted self-hosted/LAN tool. Do not
+expose it directly to the public internet unless you add protection at the
+reverse proxy, VPN, or network boundary.
+
 ## Configuration
-
-### Authentication
-
-`ADMIN_PASSWORD` is required for normal deployments. Authentication is disabled
-only when `AUTH_DISABLED=true` is set explicitly.
 
 Set `TRUST_PROXY_HEADERS=true` only when the app is behind a trusted reverse
 proxy that controls `X-Forwarded-For`.
 
 `SECRET_ENCRYPTION_KEY` is used to encrypt stored SMTP, webhook, ServerChan,
-and push subscription secrets. If omitted, DomBeacon falls back to
-`SESSION_SECRET` or `ADMIN_PASSWORD`.
+and push subscription secrets. It is the only key material used for encrypted
+secret storage.
 
 ### Database
 
@@ -82,7 +78,6 @@ directory, and the parent folder is auto-created on first boot.
 The built-in scheduler is enabled by default. It runs:
 
 - Hourly domain scans.
-- Hourly Brand Watch scans for enabled due terms.
 - Daily summary at 08:00 in the configured scheduler timezone.
 
 Use `ENABLE_SCHEDULER=false` to disable background jobs. Use
@@ -94,6 +89,11 @@ wall-clock scheduling.
 Use the app settings pages to configure SMTP, webhooks, ServerChan, and Web
 Push. VAPID keys are required for Web Push; see
 [docs/pwa-and-push.md](docs/pwa-and-push.md).
+
+Webhook delivery accepts only `http` and `https` targets. Private, loopback,
+reserved, and documentation-network targets are blocked by default; set
+`ALLOW_PRIVATE_WEBHOOK_TARGETS=true` only when you intentionally deliver to
+trusted LAN/private endpoints.
 
 ## Usage
 
@@ -117,15 +117,9 @@ The action queue shows events requiring attention:
 
 Actions can be snoozed, dismissed, or resolved.
 
-### Brand Watch
-
-Go to `/brand-watch` to configure brand, product, or company terms. DomBeacon
-generates local candidates, probes them with RDAP, queries crt.sh for
-CT-observed domains containing the watched term, and persists reviewable risks.
-
 ### Security Findings
 
-Use `/ops/security` for the aggregate risk dashboard and `/ops/findings` for
+Use `/risk` for the aggregate risk dashboard and `/risk/findings` for
 the triage queue. The queue supports URL filters, saved `security-findings`
 views, visible-row bulk lifecycle updates, and keyboard triage shortcuts:
 `J/K` move, `X` select, `R` reopen, `S` snooze, `D` dismiss, and `E` resolve.

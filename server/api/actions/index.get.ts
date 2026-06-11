@@ -12,6 +12,9 @@ export default defineEventHandler(async (event) => {
       status: (query.status as string | undefined) || undefined,
       priority: (query.priority as string | undefined) || undefined,
       domainId: query.domainId ? Number(query.domainId) : undefined,
+      archived: ["1", "true", "archived"].includes(
+        String(query.archived || "").toLowerCase(),
+      ),
       limit,
       offset,
     };

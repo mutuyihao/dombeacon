@@ -4,38 +4,32 @@ import {
   taskRuns,
   domainStatusLatest,
   sslStatusLatest,
-  brandWatchTerms,
 } from "../db/schema";
 import { eq, lt, or, and } from "drizzle-orm";
 import { checkDomain } from "./scanner";
 import { createAction } from "./actions";
-import { sendNotification } from "./mail";
-import { notifyWebhooks } from "./webhook";
-import { notifyServerchan } from "./serverchan";
-import { notifyPush } from "./push";
+import { fanoutNotification } from "./notification-fanout";
 import { scanDomainSSL } from "./ssl";
 import { scanDomainSecurity } from "./security-scan";
-import { scanBrandWatchTerm } from "./brand-watch";
 import { getCurrentRiskMetricsSnapshot } from "./risk-metrics";
 
 const LOCK_TTL_MS = 1000 * 60 * 30; // 30 minutes
 const SCAN_BATCH_SIZE = 5; // Domains processed in parallel per batch
 const SCAN_BATCH_DELAY_MS = 1000; // Delay between batches to spare RDAP/SSL targets
 
+/**
+ * Atomic lock acquisition using a single SQL statement.
+ * Uses INSERT ... ON CONFLICT to atomically take an expired lock,
+ * eliminating the race condition between delete-then-insert.
+ */
 async function acquireLock(taskName: string): Promise<boolean> {
   const db = useDb();
   const now = new Date();
   const expiresAt = new Date(now.getTime() + LOCK_TTL_MS);
   const ownerId = Math.random().toString(36).substring(7);
 
-  // Clean old locks
-  await db
-    .update(taskLocks)
-    .set({ lockedUntil: new Date(0) }) // effectively expire
-    .where(lt(taskLocks.lockedUntil, now));
-
   try {
-    // Try to insert
+    // Try to insert a new lock
     await db.insert(taskLocks).values({
       taskName,
       lockedUntil: expiresAt,
@@ -44,24 +38,18 @@ async function acquireLock(taskName: string): Promise<boolean> {
     return true;
   } catch (e: any) {
     if (e.code === "SQLITE_CONSTRAINT_PRIMARYKEY") {
-      // Exists, check if expired (double check race)
-      const currentHook = await db
-        .select()
-        .from(taskLocks)
-        .where(eq(taskLocks.taskName, taskName))
-        .get();
-      if (
-        currentHook &&
-        currentHook.lockedUntil &&
-        new Date(currentHook.lockedUntil) < now
-      ) {
-        // Expired, take it
-        await db
-          .update(taskLocks)
-          .set({ lockedUntil: expiresAt, ownerId })
-          .where(eq(taskLocks.taskName, taskName));
-        return true;
-      }
+      // Lock row exists — atomically take it over if expired
+      const result = await db
+        .update(taskLocks)
+        .set({ lockedUntil: expiresAt, ownerId })
+        .where(
+          and(
+            eq(taskLocks.taskName, taskName),
+            lt(taskLocks.lockedUntil, now),
+          ),
+        )
+        .returning();
+      return result.length > 0;
     }
     return false;
   }
@@ -82,77 +70,115 @@ const safeRiskMetricsSnapshot = async (db: ReturnType<typeof useDb>) => {
 };
 
 /**
- * Fan out a notification to all configured channels in parallel.
- * Returns the number of channels that succeeded.
+ * Shared SSL alert logic for OWNED domains.
+ * Creates actions and sends notifications when SSL state transitions occur.
  */
-const fanoutNotification = async (params: {
-  domainId?: number;
-  actionId?: number;
-  eventType: string;
-  templateType?: "instant" | "daily" | "dropping_alert" | "action_created";
-  templateData?: any;
-  eventData: any;
-  deduplicateHours?: number;
-  channels?: {
-    email?: boolean;
-    webhook?: boolean;
-    serverchan?: boolean;
-    push?: boolean;
-  };
+const handleSSLAlerts = async (params: {
+  domainId: number;
+  domain: string;
+  watchKind: string;
+  priority: string;
+  sslResult: Awaited<ReturnType<typeof scanDomainSSL>>;
+  prevSSL: typeof sslStatusLatest.$inferSelect | null;
 }) => {
-  const channels = params.channels ?? {
-    email: true,
-    webhook: true,
-    serverchan: true,
-    push: true,
-  };
+  const { domainId, domain, watchKind, priority, sslResult, prevSSL } = params;
+  const actionIds: number[] = [];
 
-  const tasks: Promise<any>[] = [];
+  if (watchKind !== "OWNED") return actionIds;
 
-  if (channels.email && params.templateType) {
-    tasks.push(
-      sendNotification({
-        domainId: params.domainId,
-        actionId: params.actionId,
-        eventType: params.eventType,
-        templateType: params.templateType,
-        templateData: params.templateData,
-        deduplicateHours: params.deduplicateHours,
-      }),
-    );
-  }
-  if (channels.webhook) {
-    tasks.push(
-      notifyWebhooks({
-        domainId: params.domainId,
-        actionId: params.actionId,
-        eventType: params.eventType,
-        eventData: params.eventData,
-      }),
-    );
-  }
-  if (channels.serverchan) {
-    tasks.push(
-      notifyServerchan({
-        domainId: params.domainId,
-        actionId: params.actionId,
-        eventType: params.eventType,
-        eventData: params.eventData,
-      }),
-    );
-  }
-  if (channels.push) {
-    tasks.push(
-      notifyPush({
-        domainId: params.domainId,
-        actionId: params.actionId,
-        eventType: params.eventType,
-        eventData: params.eventData,
-      }),
-    );
+  const isExpiring =
+    sslResult.hasSSL &&
+    sslResult.daysUntilExpiry !== undefined &&
+    sslResult.daysUntilExpiry < 30;
+  const isInvalid = sslResult.hasSSL && !sslResult.isValid;
+
+  const prevDays = prevSSL?.daysUntilExpiry ?? null;
+  const prevIsValid = prevSSL?.isValid ?? null;
+  const prevHasSSL = prevSSL?.hasSSL ?? null;
+
+  const becameExpiring = isExpiring && (prevDays === null || prevDays >= 30);
+  const becameInvalid =
+    isInvalid && (prevHasSSL !== true || prevIsValid !== false);
+
+  if (isExpiring) {
+    const action = await createAction({
+      domainId,
+      actionType: "SSL_EXPIRING",
+      priority,
+      metadata: {
+        daysUntilExpiry: sslResult.daysUntilExpiry,
+        validTo: sslResult.validTo?.toISOString(),
+        issuer: sslResult.issuer,
+        domain,
+      },
+    });
+
+    if (becameExpiring) {
+      actionIds.push(action.id);
+      await fanoutNotification({
+        domainId,
+        actionId: action.id,
+        eventType: "SSL_EXPIRING",
+        templateType: "action_created",
+        templateData: {
+          domain,
+          actionType: "SSL_EXPIRING",
+          priority,
+        },
+        eventData: {
+          domain,
+          watchKind,
+          priority,
+          issuer: sslResult.issuer,
+          validTo: sslResult.validTo?.toISOString(),
+          daysUntilExpiry: sslResult.daysUntilExpiry,
+          actionId: action.id,
+        },
+        dedupeKey: `ssl_expiring:${domainId}`,
+        deduplicateHours: 24,
+      });
+    }
   }
 
-  await Promise.allSettled(tasks);
+  if (isInvalid) {
+    const action = await createAction({
+      domainId,
+      actionType: "SSL_INVALID",
+      priority,
+      metadata: {
+        issuer: sslResult.issuer,
+        validTo: sslResult.validTo?.toISOString(),
+        domain,
+      },
+    });
+
+    if (becameInvalid) {
+      actionIds.push(action.id);
+      await fanoutNotification({
+        domainId,
+        actionId: action.id,
+        eventType: "SSL_INVALID",
+        templateType: "action_created",
+        templateData: {
+          domain,
+          actionType: "SSL_INVALID",
+          priority,
+        },
+        eventData: {
+          domain,
+          watchKind,
+          priority,
+          issuer: sslResult.issuer,
+          validTo: sslResult.validTo?.toISOString(),
+          actionId: action.id,
+        },
+        dedupeKey: `ssl_invalid:${domainId}`,
+        deduplicateHours: 24,
+      });
+    }
+  }
+
+  return actionIds;
 };
 
 /**
@@ -193,99 +219,15 @@ const processDomain = async (
         .get();
 
       const sslResult = await scanDomainSSL(d.id, d.domain);
-
-      if (d.watchKind === "OWNED") {
-        const isExpiring =
-          sslResult.hasSSL &&
-          sslResult.daysUntilExpiry !== undefined &&
-          sslResult.daysUntilExpiry < 30;
-        const isInvalid = sslResult.hasSSL && !sslResult.isValid;
-
-        const prevDays = prevSSL?.daysUntilExpiry ?? null;
-        const prevIsValid = prevSSL?.isValid ?? null;
-        const prevHasSSL = prevSSL?.hasSSL ?? null;
-
-        const becameExpiring =
-          isExpiring && (prevDays === null || prevDays >= 30);
-        const becameInvalid =
-          isInvalid && (prevHasSSL !== true || prevIsValid !== false);
-
-        if (isExpiring) {
-          const action = await createAction({
-            domainId: d.id,
-            actionType: "SSL_EXPIRING",
-            priority: d.priority,
-            metadata: {
-              daysUntilExpiry: sslResult.daysUntilExpiry,
-              validTo: sslResult.validTo?.toISOString(),
-              issuer: sslResult.issuer,
-              domain: d.domain,
-            },
-          });
-
-          if (becameExpiring) {
-            actionIds.push(action.id);
-            await fanoutNotification({
-              domainId: d.id,
-              actionId: action.id,
-              eventType: "SSL_EXPIRING",
-              templateType: "action_created",
-              templateData: {
-                domain: d.domain,
-                actionType: "SSL_EXPIRING",
-                priority: d.priority,
-              },
-              eventData: {
-                domain: d.domain,
-                watchKind: d.watchKind,
-                priority: d.priority,
-                issuer: sslResult.issuer,
-                validTo: sslResult.validTo?.toISOString(),
-                daysUntilExpiry: sslResult.daysUntilExpiry,
-                actionId: action.id,
-              },
-              deduplicateHours: 24,
-            });
-          }
-        }
-
-        if (isInvalid) {
-          const action = await createAction({
-            domainId: d.id,
-            actionType: "SSL_INVALID",
-            priority: d.priority,
-            metadata: {
-              issuer: sslResult.issuer,
-              validTo: sslResult.validTo?.toISOString(),
-              domain: d.domain,
-            },
-          });
-
-          if (becameInvalid) {
-            actionIds.push(action.id);
-            await fanoutNotification({
-              domainId: d.id,
-              actionId: action.id,
-              eventType: "SSL_INVALID",
-              templateType: "action_created",
-              templateData: {
-                domain: d.domain,
-                actionType: "SSL_INVALID",
-                priority: d.priority,
-              },
-              eventData: {
-                domain: d.domain,
-                watchKind: d.watchKind,
-                priority: d.priority,
-                issuer: sslResult.issuer,
-                validTo: sslResult.validTo?.toISOString(),
-                actionId: action.id,
-              },
-              deduplicateHours: 24,
-            });
-          }
-        }
-      }
+      const sslActionIds = await handleSSLAlerts({
+        domainId: d.id,
+        domain: d.domain,
+        watchKind: d.watchKind,
+        priority: d.priority,
+        sslResult,
+        prevSSL,
+      });
+      actionIds.push(...sslActionIds);
     } catch (sslError: any) {
       console.error(`SSL check failed for ${d.domain}:`, sslError.message);
     }
@@ -347,6 +289,7 @@ const processDomain = async (
             newStatus: result.newStatus,
             actionId: action.id,
           },
+          dedupeKey: `wanted_available:${d.id}`,
           deduplicateHours: 24,
         });
       }
@@ -388,6 +331,7 @@ const processDomain = async (
             newStatus: result.newStatus,
             actionId: action.id,
           },
+          dedupeKey: `wanted_dropping:${d.id}`,
           deduplicateHours: 24,
         });
       }
@@ -430,6 +374,7 @@ const processDomain = async (
               expiresAt: statusInfo.expiresAt.toISOString(),
               actionId: action.id,
             },
+            dedupeKey: `owned_expiring:${d.id}`,
             deduplicateHours: 72,
           });
         }
@@ -625,95 +570,6 @@ export const runDailySummary = async () => {
       startedAt: new Date(start),
       finishedAt: new Date(),
       resultJson: JSON.stringify({ success: true, riskMetrics }),
-    });
-  }
-};
-
-export const runBrandWatchScan = async () => {
-  if (!(await acquireLock("brand-watch"))) {
-    console.log("Brand watch scan locked, skipping.");
-    return;
-  }
-
-  const start = Date.now();
-  let termsChecked = 0;
-  let candidatesChecked = 0;
-  let registered = 0;
-  let available = 0;
-  let unknown = 0;
-  let error = 0;
-  let ctDiscovered = 0;
-  let ctError = 0;
-  let notificationsSent = 0;
-  const errors: any[] = [];
-
-  try {
-    const db = useDb();
-    const now = new Date();
-    const enabledTerms = await db
-      .select()
-      .from(brandWatchTerms)
-      .where(eq(brandWatchTerms.enabled, true))
-      .all();
-
-    const dueTerms = enabledTerms.filter((term) => {
-      if (!term.lastScannedAt) return true;
-      const frequencyMs =
-        Math.max(1, term.scanFrequencyHours || 24) * 60 * 60 * 1000;
-      return now.getTime() - new Date(term.lastScannedAt).getTime() >= frequencyMs;
-    });
-
-    for (const term of dueTerms) {
-      try {
-        const result = await scanBrandWatchTerm(term, {
-          db,
-          limit: 100,
-          includeCt: true,
-          ctLimit: 50,
-          notify: true,
-        });
-        termsChecked += 1;
-        candidatesChecked += result.checked;
-        registered += result.registered;
-        available += result.available;
-        unknown += result.unknown;
-        error += result.error;
-        ctDiscovered += result.ctDiscovered;
-        ctError += result.ctError;
-        notificationsSent += result.notificationsSent;
-      } catch (scanError: any) {
-        error += 1;
-        errors.push({
-          termId: term.id,
-          term: term.term,
-          error: scanError?.message || String(scanError),
-        });
-      }
-    }
-  } catch (taskError: any) {
-    errors.push({ general: taskError?.message || String(taskError) });
-  } finally {
-    await releaseLock("brand-watch");
-
-    const db = useDb();
-    const riskMetrics = await safeRiskMetricsSnapshot(db);
-    await db.insert(taskRuns).values({
-      taskName: "brand-watch",
-      startedAt: new Date(start),
-      finishedAt: new Date(),
-      resultJson: JSON.stringify({
-        termsChecked,
-        candidatesChecked,
-        registered,
-        available,
-        unknown,
-        error,
-        ctDiscovered,
-        ctError,
-        notificationsSent,
-        errors: errors.slice(0, 10),
-        riskMetrics,
-      }),
     });
   }
 };

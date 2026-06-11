@@ -1,11 +1,8 @@
 import { eq } from "drizzle-orm";
 import { domains, sslStatusLatest } from "../db/schema";
 import { createAction } from "./actions";
-import { sendNotification } from "./mail";
-import { notifyPush } from "./push";
-import { notifyServerchan } from "./serverchan";
+import { fanoutNotification } from "./notification-fanout";
 import { scanDomainSSL } from "./ssl";
-import { notifyWebhooks } from "./webhook";
 
 export const checkDomainSSLById = async (id: number) => {
   const db = useDb();
@@ -47,45 +44,6 @@ export const checkDomainSSLById = async (id: number) => {
   const becameInvalid =
     isInvalid && (prevHasSSL !== true || prevIsValid !== false);
 
-  const notifyAll = async (params: {
-    actionId: number;
-    eventType: "SSL_EXPIRING" | "SSL_INVALID";
-    eventData: any;
-  }) => {
-    await Promise.allSettled([
-      sendNotification({
-        domainId: id,
-        actionId: params.actionId,
-        eventType: params.eventType,
-        templateType: "action_created",
-        templateData: {
-          domain: domain.domain,
-          actionType: params.eventType,
-          priority: domain.priority,
-        },
-        deduplicateHours: 24,
-      }),
-      notifyWebhooks({
-        domainId: id,
-        actionId: params.actionId,
-        eventType: params.eventType,
-        eventData: params.eventData,
-      }),
-      notifyServerchan({
-        domainId: id,
-        actionId: params.actionId,
-        eventType: params.eventType,
-        eventData: params.eventData,
-      }),
-      notifyPush({
-        domainId: id,
-        actionId: params.actionId,
-        eventType: params.eventType,
-        eventData: params.eventData,
-      }),
-    ]);
-  };
-
   if (isExpiring) {
     const action = await createAction({
       domainId: id,
@@ -100,9 +58,16 @@ export const checkDomainSSLById = async (id: number) => {
     });
 
     if (becameExpiring) {
-      await notifyAll({
+      await fanoutNotification({
+        domainId: id,
         actionId: action.id,
         eventType: "SSL_EXPIRING",
+        templateType: "action_created",
+        templateData: {
+          domain: domain.domain,
+          actionType: "SSL_EXPIRING",
+          priority: domain.priority,
+        },
         eventData: {
           domain: domain.domain,
           watchKind: domain.watchKind,
@@ -112,6 +77,8 @@ export const checkDomainSSLById = async (id: number) => {
           daysUntilExpiry: result.daysUntilExpiry,
           actionId: action.id,
         },
+        dedupeKey: `ssl_expiring:${id}`,
+        deduplicateHours: 24,
       });
     }
   }
@@ -129,9 +96,16 @@ export const checkDomainSSLById = async (id: number) => {
     });
 
     if (becameInvalid) {
-      await notifyAll({
+      await fanoutNotification({
+        domainId: id,
         actionId: action.id,
         eventType: "SSL_INVALID",
+        templateType: "action_created",
+        templateData: {
+          domain: domain.domain,
+          actionType: "SSL_INVALID",
+          priority: domain.priority,
+        },
         eventData: {
           domain: domain.domain,
           watchKind: domain.watchKind,
@@ -140,6 +114,8 @@ export const checkDomainSSLById = async (id: number) => {
           validTo: result.validTo?.toISOString(),
           actionId: action.id,
         },
+        dedupeKey: `ssl_invalid:${id}`,
+        deduplicateHours: 24,
       });
     }
   }

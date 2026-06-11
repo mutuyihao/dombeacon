@@ -1,17 +1,17 @@
 <template>
-  <div class="flex min-h-full flex-col gap-6 md:h-full md:min-h-0 md:overflow-hidden">
+  <div class="flex min-h-full flex-col gap-6">
     <header class="shrink-0">
-      <p class="eyebrow mb-2">Security queue</p>
+      <p class="eyebrow mb-2">{{ t('risk.findings.kicker') }}</p>
       <div class="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 class="headline-display text-3xl md:text-4xl">Security Findings</h1>
+          <h1 class="headline-display text-3xl md:text-4xl">{{ t('risk.findings.title') }}</h1>
           <p class="mt-2 max-w-2xl text-sm leading-6 text-text-secondary">
-            Triage DNS posture and registrar-lock findings across monitored owned domains.
+            {{ t('risk.findings.description') }}
           </p>
         </div>
         <div class="flex items-center gap-2">
-          <NuxtLink to="/ops/security" class="btn-ghost">
-            Dashboard
+          <NuxtLink to="/risk" class="btn-ghost">
+            {{ t('risk.findings.backToOverview') }}
             <ArrowRightIcon class="h-3.5 w-3.5" />
           </NuxtLink>
           <button
@@ -21,50 +21,65 @@
             @click="refreshFindings"
           >
             <RefreshCwIcon :class="['h-4 w-4', (pending || refreshing) && 'animate-spin']" />
-            Refresh
+            {{ t('risk.common.refresh') }}
           </button>
         </div>
       </div>
     </header>
 
     <section class="surface-flat shrink-0 p-4">
+      <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p class="eyebrow mb-2">{{ t('risk.findings.filtersKicker') }}</p>
+          <h2 class="headline-display text-2xl">{{ t('risk.findings.filtersTitle') }}</h2>
+        </div>
+        <button type="button" class="btn-ghost" @click="clearFilters">
+          {{ t('risk.findings.clearFilters') }}
+        </button>
+      </div>
+
       <div class="grid gap-3 md:grid-cols-5">
         <label class="block">
-          <span class="mb-1 block text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">Status</span>
+          <span class="mb-1 block text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">
+            {{ t('risk.findings.status') }}
+          </span>
           <select v-model="filters.status" class="input-bare">
-            <option value="">All statuses</option>
-            <option value="OPEN">OPEN</option>
-            <option value="SNOOZED">SNOOZED</option>
-            <option value="DISMISSED">DISMISSED</option>
-            <option value="RESOLVED">RESOLVED</option>
+            <option v-for="option in statusOptions" :key="option.value || 'all'" :value="option.value">
+              {{ option.label }}
+            </option>
           </select>
         </label>
         <label class="block">
-          <span class="mb-1 block text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">Severity</span>
+          <span class="mb-1 block text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">
+            {{ t('risk.findings.severity') }}
+          </span>
           <select v-model="filters.severity" class="input-bare">
-            <option value="">All severities</option>
-            <option value="HIGH">HIGH</option>
-            <option value="MEDIUM">MEDIUM</option>
-            <option value="LOW">LOW</option>
+            <option v-for="option in severityOptions" :key="option.value || 'all'" :value="option.value">
+              {{ option.label }}
+            </option>
           </select>
         </label>
         <label class="block md:col-span-2">
-          <span class="mb-1 block text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">Finding Type</span>
-          <select v-model="filters.findingType" class="input-bare font-mono">
-            <option value="">All finding types</option>
-            <option value="REGISTRAR_LOCK_MISSING">REGISTRAR_LOCK_MISSING</option>
-            <option value="NAMESERVER_DRIFT,MX_DRIFT">DNS drift</option>
-            <option value="NAMESERVER_DRIFT">NAMESERVER_DRIFT</option>
-            <option value="MX_DRIFT">MX_DRIFT</option>
-            <option value="DMARC_MISSING">DMARC_MISSING</option>
-            <option value="DMARC_WEAK_POLICY">DMARC_WEAK_POLICY</option>
-            <option value="CAA_MISSING">CAA_MISSING</option>
-            <option value="DNSSEC_UNSIGNED">DNSSEC_UNSIGNED</option>
+          <span class="mb-1 block text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">
+            {{ t('risk.findings.findingType') }}
+          </span>
+          <select v-model="filters.findingType" class="input-bare">
+            <option v-for="option in findingTypeOptions" :key="option.value || 'all'" :value="option.value">
+              {{ option.label }}
+            </option>
           </select>
         </label>
         <label class="block">
-          <span class="mb-1 block text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">Domain ID</span>
-          <input v-model.trim="filters.domainId" type="number" min="1" class="input-bare font-mono" placeholder="Any" />
+          <span class="mb-1 block text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">
+            {{ t('risk.findings.domainId') }}
+          </span>
+          <input
+            v-model.trim="filters.domainId"
+            type="number"
+            min="1"
+            class="input-bare font-mono"
+            :placeholder="t('risk.findings.domainPlaceholder')"
+          />
         </label>
       </div>
 
@@ -73,17 +88,19 @@
           <span
             v-for="badge in activeFilterBadges"
             :key="badge"
-            class="rounded-full bg-surface-sunken px-3 py-1 font-mono text-[11px] text-text-secondary"
+            class="rounded-full bg-surface-sunken px-3 py-1 text-[11px] text-text-secondary"
           >
             {{ badge }}
           </span>
-          <span v-if="!activeFilterBadges.length" class="text-xs text-text-tertiary">No filters applied.</span>
+          <span v-if="!activeFilterBadges.length" class="text-xs text-text-tertiary">
+            {{ t('risk.findings.noFilters') }}
+          </span>
         </div>
         <div class="flex gap-2">
           <div class="relative">
             <button type="button" class="btn-ghost" @click="savedViewsOpen = !savedViewsOpen">
               <BookmarkIcon class="h-4 w-4" />
-              <span>Views</span>
+              <span>{{ t('risk.findings.savedViews') }}</span>
               <ChevronDownIcon class="h-3 w-3" />
             </button>
             <div
@@ -99,16 +116,16 @@
                   @click="openSaveFindingViewDialog"
                 >
                   <SaveIcon class="h-4 w-4" />
-                  Save current view
+                  {{ t('risk.findings.saveCurrentView') }}
                 </button>
                 <p v-else class="px-3 py-2 text-xs text-text-tertiary">
-                  Add at least one filter before saving a triage view.
+                  {{ t('risk.findings.saveViewDisabled') }}
                 </p>
               </div>
               <div class="hairline my-1" />
               <div class="max-h-72 overflow-y-auto pt-1">
                 <div v-if="!savedFindingViews.length" class="px-3 py-6 text-center text-xs text-text-tertiary">
-                  No saved triage views yet.
+                  {{ t('risk.findings.noSavedViews') }}
                 </div>
                 <div
                   v-for="view in savedFindingViews"
@@ -118,13 +135,13 @@
                   <button class="min-w-0 flex-1 text-left" type="button" @click="applySavedFindingView(view)">
                     <span class="block truncate text-text-main">{{ view.name }}</span>
                     <span v-if="view.isDefault" class="text-[10px] font-semibold uppercase tracking-[0.14em] text-accent">
-                      Default
+                      {{ t('risk.findings.defaultView') }}
                     </span>
                   </button>
                   <button
                     type="button"
                     class="rounded p-1 text-text-tertiary hover:text-accent"
-                    :title="view.isDefault ? 'Unset default' : 'Set default'"
+                    :title="view.isDefault ? t('risk.findings.unsetDefault') : t('risk.findings.setDefault')"
                     @click.stop="setDefaultFindingView(view)"
                   >
                     <StarIcon class="h-3.5 w-3.5" />
@@ -132,7 +149,7 @@
                   <button
                     type="button"
                     class="rounded p-1 text-text-tertiary hover:text-status-dropping"
-                    title="Delete view"
+                    :title="t('risk.findings.deleteView')"
                     @click.stop="deleteFindingView(view)"
                   >
                     <TrashIcon class="h-3.5 w-3.5" />
@@ -141,19 +158,22 @@
               </div>
             </div>
           </div>
-          <button type="button" class="btn-ghost" @click="clearFilters">Clear</button>
-          <button type="button" class="btn-primary" @click="applyFilters">Apply filters</button>
+          <button type="button" class="btn-primary" @click="applyFilters">
+            {{ t('risk.findings.applyFilters') }}
+          </button>
         </div>
       </div>
     </section>
 
-    <section class="min-h-0 flex-1 overflow-y-auto rounded-[18px] border border-hairline bg-card/45 p-4">
+    <section class="rounded-[18px] border border-hairline bg-card/45 p-4">
       <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p class="eyebrow mb-2">Queue</p>
-          <h2 class="headline-display text-2xl">{{ findings.length }} findings</h2>
+          <p class="eyebrow mb-2">{{ t('risk.findings.queueKicker') }}</p>
+          <h2 class="headline-display text-2xl">
+            {{ t('risk.findings.queueTitle', { count: findings.length }) }}
+          </h2>
           <p v-if="findings.length" class="mt-1 text-xs text-text-tertiary">
-            Shortcuts: J/K move, X select, R reopen, S snooze, D dismiss, E resolve.
+            {{ t('risk.findings.shortcuts') }}
           </p>
         </div>
         <div class="flex flex-wrap items-center justify-end gap-2">
@@ -167,13 +187,13 @@
               :checked="allVisibleSelected"
               @change="toggleVisibleSelection"
             />
-            Select visible
+            {{ t('risk.findings.selectVisible') }}
           </label>
           <span
             v-if="selectedCount"
             class="rounded-full bg-surface-sunken px-3 py-1.5 font-mono text-[11px] text-text-secondary"
           >
-            {{ selectedCount }} selected
+            {{ t('risk.findings.selectedCount', { count: selectedCount }) }}
           </span>
           <button
             v-if="selectedCount"
@@ -182,7 +202,7 @@
             :disabled="bulkUpdating"
             @click="bulkUpdateFindingStatus('OPEN')"
           >
-            Reopen
+            {{ t('risk.findings.actions.reopen') }}
           </button>
           <button
             v-if="selectedCount"
@@ -191,7 +211,7 @@
             :disabled="bulkUpdating"
             @click="bulkSnoozeFindings"
           >
-            Snooze 7d
+            {{ t('risk.findings.actions.snooze7d') }}
           </button>
           <button
             v-if="selectedCount"
@@ -200,7 +220,7 @@
             :disabled="bulkUpdating"
             @click="bulkUpdateFindingStatus('DISMISSED')"
           >
-            Dismiss
+            {{ t('risk.findings.actions.dismiss') }}
           </button>
           <button
             v-if="selectedCount"
@@ -209,7 +229,7 @@
             :disabled="bulkUpdating"
             @click="bulkUpdateFindingStatus('RESOLVED')"
           >
-            {{ bulkUpdating ? 'Updating...' : 'Resolve' }}
+            {{ bulkUpdating ? t('risk.findings.actions.updating') : t('risk.findings.actions.resolve') }}
           </button>
           <button
             v-if="selectedCount"
@@ -218,12 +238,8 @@
             :disabled="bulkUpdating"
             @click="clearSelection"
           >
-            Clear selection
+            {{ t('risk.findings.clearSelection') }}
           </button>
-          <NuxtLink to="/ops/security?focus=findings" class="btn-text text-xs">
-            Back to risk summary
-            <ArrowRightIcon class="h-3.5 w-3.5" />
-          </NuxtLink>
         </div>
       </div>
 
@@ -252,24 +268,25 @@
                   type="checkbox"
                   class="h-4 w-4 accent-accent"
                   :checked="isFindingSelected(finding.id)"
+                  :aria-label="t('risk.findings.selectFinding')"
                   @change="toggleFindingSelection(finding.id)"
                 />
               </label>
               <div class="min-w-0 flex-1">
                 <div class="flex flex-wrap items-center gap-2">
                   <span :class="['rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]', severityBadgeClass(finding.severity)]">
-                    {{ finding.severity }}
+                    {{ severityLabel(finding.severity) }}
                   </span>
-                  <span class="rounded-full bg-surface-sunken px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.12em] text-text-tertiary">
-                    {{ finding.status }}
+                  <span class="rounded-full bg-surface-sunken px-2 py-0.5 text-[10px] tracking-[0.12em] text-text-tertiary">
+                    {{ statusLabel(finding.status) }}
                   </span>
                   <span v-if="finding.snoozedUntil" class="font-mono text-[11px] text-text-tertiary">
-                    snoozed until {{ formatDate(finding.snoozedUntil) }}
+                    {{ t('risk.findings.snoozedUntil', { time: formatDate(finding.snoozedUntil) }) }}
                   </span>
                 </div>
 
                 <div class="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1">
-                  <h3 class="text-sm font-semibold text-text-main">{{ findingTitle(finding.findingType) }}</h3>
+                  <h3 class="text-sm font-semibold text-text-main">{{ findingTypeLabel(finding.findingType) }}</h3>
                   <NuxtLink
                     v-if="finding.domain?.id"
                     :to="`/domains/${finding.domain.id}`"
@@ -279,11 +296,14 @@
                   </NuxtLink>
                 </div>
 
-                <p class="mt-2 break-words font-mono text-xs leading-5 text-text-secondary">
+                <p class="mt-2 break-words text-xs leading-5 text-text-secondary">
                   {{ findingEvidenceText(finding) }}
                 </p>
                 <p class="mt-2 font-mono text-[11px] text-text-tertiary">
-                  First seen {{ formatDate(finding.firstSeenAt) }} - Last seen {{ formatDate(finding.lastSeenAt) }}
+                  {{ t('risk.findings.seenWindow', {
+                    first: formatDate(finding.firstSeenAt),
+                    last: formatDate(finding.lastSeenAt),
+                  }) }}
                 </p>
               </div>
             </div>
@@ -295,7 +315,7 @@
                 class="btn-ghost px-3 py-1.5 text-xs"
                 @click="updateFindingStatus(finding, 'OPEN')"
               >
-                Reopen
+                {{ t('risk.findings.actions.reopen') }}
               </button>
               <button
                 v-if="finding.status === 'OPEN'"
@@ -303,7 +323,7 @@
                 class="btn-ghost px-3 py-1.5 text-xs"
                 @click="snoozeFinding(finding)"
               >
-                Snooze 7d
+                {{ t('risk.findings.actions.snooze7d') }}
               </button>
               <button
                 v-if="finding.status !== 'DISMISSED'"
@@ -311,7 +331,7 @@
                 class="btn-ghost px-3 py-1.5 text-xs"
                 @click="updateFindingStatus(finding, 'DISMISSED')"
               >
-                Dismiss
+                {{ t('risk.findings.actions.dismiss') }}
               </button>
               <button
                 v-if="finding.status !== 'RESOLVED'"
@@ -319,7 +339,7 @@
                 class="btn-primary px-3 py-1.5 text-xs"
                 @click="updateFindingStatus(finding, 'RESOLVED')"
               >
-                Resolve
+                {{ t('risk.findings.actions.resolve') }}
               </button>
             </div>
           </div>
@@ -327,14 +347,14 @@
 
         <div v-if="nextCursor" class="flex justify-center pt-2">
           <button type="button" class="btn-ghost disabled:opacity-50" :disabled="loadingMore" @click="loadMore">
-            {{ loadingMore ? 'Loading...' : 'Load more' }}
+            {{ loadingMore ? t('risk.findings.loadingMore') : t('common.loadMore') }}
           </button>
         </div>
       </div>
 
       <div v-else class="surface-flat p-8 text-center">
         <CheckCircleIcon class="mx-auto mb-3 h-7 w-7 text-status-available" />
-        <p class="text-sm text-text-secondary">No security findings match the current filters.</p>
+        <p class="text-sm text-text-secondary">{{ t('risk.findings.empty') }}</p>
       </div>
     </section>
 
@@ -345,26 +365,26 @@
         @click.self="saveFindingViewDialogOpen = false"
       >
         <div class="surface-elevated w-full max-w-md p-8">
-          <h3 class="headline-display text-2xl">Save Triage View</h3>
+          <h3 class="headline-display text-2xl">{{ t('risk.findings.saveDialogTitle') }}</h3>
           <p class="mt-2 text-sm text-text-secondary">
-            Store the current security findings filters for future queue reviews.
+            {{ t('risk.findings.saveDialogDescription') }}
           </p>
           <div class="mt-6 space-y-5">
             <input
               v-model="saveFindingViewName"
               class="input-bare"
               type="text"
-              placeholder="Open high risks, registrar lock gaps..."
+              :placeholder="t('risk.findings.saveDialogPlaceholder')"
               @keydown.enter="performSaveFindingView"
             />
             <label class="flex items-center gap-2 text-sm text-text-secondary">
               <input v-model="saveFindingViewDefault" type="checkbox" class="h-4 w-4 accent-[var(--color-accent)]" />
-              Mark as default for Security Findings
+              {{ t('risk.findings.markAsDefault') }}
             </label>
           </div>
           <div class="mt-8 flex justify-end gap-3">
             <button type="button" class="btn-ghost" @click="saveFindingViewDialogOpen = false">
-              Cancel
+              {{ t('common.cancel') }}
             </button>
             <button
               type="button"
@@ -372,7 +392,7 @@
               :disabled="!saveFindingViewName.trim()"
               @click="performSaveFindingView"
             >
-              Save
+              {{ t('common.save') }}
             </button>
           </div>
         </div>
@@ -396,6 +416,7 @@ import {
 const route = useRoute();
 const router = useRouter();
 const toast = useToast();
+const { t, locale } = useI18n();
 const FINDING_FILTER_SCOPE = 'security-findings';
 
 const queryText = (value) => {
@@ -409,6 +430,49 @@ const filters = reactive({
   findingType: queryText(route.query.findingType || route.query.findingTypes),
   domainId: queryText(route.query.domainId),
 });
+
+const knownStatuses = ['OPEN', 'SNOOZED', 'DISMISSED', 'RESOLVED'];
+const knownSeverities = ['HIGH', 'MEDIUM', 'LOW'];
+const knownFindingTypes = [
+  'REGISTRAR_LOCK_MISSING',
+  'NAMESERVER_DRIFT,MX_DRIFT',
+  'NAMESERVER_DRIFT',
+  'MX_DRIFT',
+  'DMARC_MISSING',
+  'DMARC_WEAK_POLICY',
+  'CAA_MISSING',
+  'DNSSEC_UNSIGNED',
+];
+
+const fallbackLabel = (value) =>
+  String(value || t('risk.common.unknown')).replaceAll('_', ' ').toLowerCase();
+
+const translatedLabel = (key, fallback) => {
+  const value = t(key);
+  return value === key ? fallback : value;
+};
+
+const statusLabel = (value) => translatedLabel(`risk.status.${value}`, fallbackLabel(value));
+const severityLabel = (value) => translatedLabel(`risk.severity.${value}`, fallbackLabel(value));
+const findingTypeLabel = (value) => {
+  if (value === 'NAMESERVER_DRIFT,MX_DRIFT') return t('risk.findingTypes.DNS_DRIFT');
+  return translatedLabel(`risk.findingTypes.${value}`, fallbackLabel(value));
+};
+
+const statusOptions = computed(() => [
+  { value: '', label: t('risk.findings.allStatuses') },
+  ...knownStatuses.map((value) => ({ value, label: statusLabel(value) })),
+]);
+
+const severityOptions = computed(() => [
+  { value: '', label: t('risk.findings.allSeverities') },
+  ...knownSeverities.map((value) => ({ value, label: severityLabel(value) })),
+]);
+
+const findingTypeOptions = computed(() => [
+  { value: '', label: t('risk.findings.allFindingTypes') },
+  ...knownFindingTypes.map((value) => ({ value, label: findingTypeLabel(value) })),
+]);
 
 const syncFiltersFromRoute = () => {
   filters.status = queryText(route.query.status);
@@ -438,7 +502,7 @@ const apiQuery = computed(() => ({
   }),
 }));
 
-const { data, pending, refresh } = await useFetch('/api/security/findings', {
+const { data, pending, refresh } = useLazyFetch('/api/security/findings', {
   query: apiQuery,
 });
 
@@ -484,8 +548,21 @@ const allVisibleSelected = computed(
     visibleFindingIds.value.every((id) => selectedIds.value.has(id)),
 );
 
+const filterBadgeLabel = (key, value) => {
+  if (key === 'status') return `${t('risk.findings.status')}: ${statusLabel(value)}`;
+  if (key === 'severity') return `${t('risk.findings.severity')}: ${severityLabel(value)}`;
+  if (key === 'findingType') {
+    return `${t('risk.findings.findingType')}: ${String(value)
+      .split(',')
+      .map((item) => findingTypeLabel(item.trim()))
+      .join(' / ')}`;
+  }
+  if (key === 'domainId') return t('risk.findings.domainBadge', { id: value });
+  return `${key}: ${value}`;
+};
+
 const activeFilterBadges = computed(() =>
-  Object.entries(cleanQuery(filters)).map(([key, value]) => `${key}=${value}`),
+  Object.entries(cleanQuery(filters)).map(([key, value]) => filterBadgeLabel(key, value)),
 );
 const hasActiveFilters = computed(() => activeFilterBadges.value.length > 0);
 const currentFindingCriteria = computed(() => cleanQuery(filters));
@@ -561,7 +638,7 @@ const clearSelection = () => {
 
 const applyFilters = async () => {
   await router.push({
-    path: '/ops/findings',
+    path: '/risk/findings',
     query: cleanQuery(filters),
   });
 };
@@ -571,7 +648,7 @@ const clearFilters = async () => {
   filters.severity = '';
   filters.findingType = '';
   filters.domainId = '';
-  await router.push({ path: '/ops/findings', query: {} });
+  await router.push({ path: '/risk/findings', query: {} });
 };
 
 const applyFindingCriteria = (criteria = {}) => {
@@ -586,9 +663,12 @@ const fetchSavedFindingViews = async () => {
     const response = await $fetch('/api/filters', {
       query: { scope: FINDING_FILTER_SCOPE },
     });
+    if (response?.code !== 0) {
+      throw new Error(response?.msg || t('risk.findings.toasts.loadViewsFailed'));
+    }
     savedFindingViews.value = response?.data?.items || [];
   } catch (error) {
-    console.error('Failed to load security findings views:', error);
+    toast.error(error?.message || t('risk.findings.toasts.loadViewsFailed'));
   }
 };
 
@@ -613,13 +693,13 @@ const performSaveFindingView = async () => {
       },
     });
     if (response?.code !== 0) {
-      throw new Error(response?.msg || 'Failed to save triage view');
+      throw new Error(response?.msg || t('risk.findings.toasts.saveViewFailed'));
     }
-    toast.success('Triage view saved');
+    toast.success(t('risk.findings.toasts.viewSaved'));
     saveFindingViewDialogOpen.value = false;
     await fetchSavedFindingViews();
   } catch (error) {
-    toast.error(error?.data?.msg || error?.message || 'Failed to save triage view');
+    toast.error(error?.data?.msg || error?.message || t('risk.findings.toasts.saveViewFailed'));
   }
 };
 
@@ -627,10 +707,10 @@ const applySavedFindingView = async (view, options = {}) => {
   applyFindingCriteria(view.criteria || {});
   savedViewsOpen.value = false;
   await router.push({
-    path: '/ops/findings',
+    path: '/risk/findings',
     query: cleanQuery(filters),
   });
-  if (!options.silent) toast.success(`Loaded ${view.name}`);
+  if (!options.silent) toast.success(t('risk.findings.toasts.viewLoaded', { name: view.name }));
 };
 
 const setDefaultFindingView = async (view) => {
@@ -643,25 +723,25 @@ const setDefaultFindingView = async (view) => {
       },
     });
     if (response?.code !== 0) {
-      throw new Error(response?.msg || 'Failed to update triage view');
+      throw new Error(response?.msg || t('risk.findings.toasts.updateViewFailed'));
     }
     await fetchSavedFindingViews();
   } catch (error) {
-    toast.error(error?.data?.msg || error?.message || 'Failed to update triage view');
+    toast.error(error?.data?.msg || error?.message || t('risk.findings.toasts.updateViewFailed'));
   }
 };
 
 const deleteFindingView = async (view) => {
-  if (!window.confirm(`Delete triage view "${view.name}"?`)) return;
+  if (import.meta.client && !window.confirm(t('risk.findings.confirmDeleteView', { name: view.name }))) return;
   try {
     const response = await $fetch(`/api/filters/${view.id}`, { method: 'DELETE' });
     if (response?.code !== 0) {
-      throw new Error(response?.msg || 'Failed to delete triage view');
+      throw new Error(response?.msg || t('risk.findings.toasts.deleteViewFailed'));
     }
-    toast.success('Triage view deleted');
+    toast.success(t('risk.findings.toasts.viewDeleted'));
     await fetchSavedFindingViews();
   } catch (error) {
-    toast.error(error?.data?.msg || error?.message || 'Failed to delete triage view');
+    toast.error(error?.data?.msg || error?.message || t('risk.findings.toasts.deleteViewFailed'));
   }
 };
 
@@ -686,12 +766,12 @@ const loadMore = async () => {
       },
     });
     if (response?.code !== 0) {
-      throw new Error(response?.msg || 'Failed to load findings');
+      throw new Error(response?.msg || t('risk.findings.toasts.loadMoreFailed'));
     }
     extraItems.value = [...extraItems.value, ...(response?.data?.items || [])];
     nextCursor.value = response?.data?.nextCursor || null;
   } catch (error) {
-    toast.error(error?.message || 'Failed to load findings');
+    toast.error(error?.message || t('risk.findings.toasts.loadMoreFailed'));
   } finally {
     loadingMore.value = false;
   }
@@ -710,39 +790,41 @@ const severityBadgeClass = (severity) => {
   }
 };
 
-const findingTitle = (type) => {
-  const titles = {
-    DMARC_MISSING: 'DMARC record is missing',
-    DMARC_WEAK_POLICY: 'DMARC policy is weak',
-    CAA_MISSING: 'CAA record is missing',
-    DNSSEC_UNSIGNED: 'DNSSEC is not signed',
-    NAMESERVER_DRIFT: 'Nameserver drift detected',
-    MX_DRIFT: 'Mail exchanger drift detected',
-    REGISTRAR_LOCK_MISSING: 'Registrar transfer lock is missing',
-  };
-  return titles[type] || type;
+const formatDate = (value) => {
+  if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '-';
+  return date.toLocaleString(locale.value);
+};
+
+const formatEvidenceValue = (value) => {
+  if (Array.isArray(value)) return value.length ? value.join(', ') : t('risk.common.none');
+  if (value === undefined || value === null || value === '') return t('risk.common.unknown');
+  return String(value);
 };
 
 const findingEvidenceText = (finding) => {
   const evidence = finding?.evidence || {};
   if (finding?.findingType === 'DMARC_WEAK_POLICY') {
-    return `policy=${evidence.policy || 'unknown'}, pct=${evidence.pct ?? 'unknown'}`;
+    return t('risk.evidence.dmarcPolicy', {
+      policy: formatEvidenceValue(evidence.policy),
+      pct: formatEvidenceValue(evidence.pct),
+    });
   }
   if (finding?.findingType === 'NAMESERVER_DRIFT' || finding?.findingType === 'MX_DRIFT') {
-    return `previous=${JSON.stringify(evidence.previous || [])}; current=${JSON.stringify(evidence.current || [])}`;
+    return t('risk.evidence.drift', {
+      previous: formatEvidenceValue(evidence.previous),
+      current: formatEvidenceValue(evidence.current),
+    });
   }
   if (finding?.findingType === 'REGISTRAR_LOCK_MISSING') {
-    return `lockStatus=${evidence.lockStatus || 'unknown'}; statuses=${JSON.stringify(evidence.statuses || [])}`;
+    return t('risk.evidence.registrarLock', {
+      lockStatus: formatEvidenceValue(evidence.lockStatus),
+      statuses: formatEvidenceValue(evidence.statuses),
+    });
   }
-  if (evidence.checkedRecord) return `checked=${evidence.checkedRecord}`;
-  return JSON.stringify(evidence).slice(0, 220);
-};
-
-const formatDate = (value) => {
-  if (!value) return '-';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '-';
-  return date.toLocaleString();
+  if (evidence.checkedRecord) return t('risk.evidence.checkedRecord', { record: evidence.checkedRecord });
+  return t('risk.evidence.raw', { value: JSON.stringify(evidence).slice(0, 220) });
 };
 
 const removeSelectedId = (id) => {
@@ -758,13 +840,13 @@ const updateFindingStatus = async (finding, status, extraBody = {}) => {
       body: { status, ...extraBody },
     });
     if (response?.code !== 0) {
-      throw new Error(response?.msg || 'Failed to update finding');
+      throw new Error(response?.msg || t('risk.findings.toasts.updateFailed'));
     }
-    toast.success(`Finding ${status.toLowerCase()}`);
+    toast.success(t('risk.findings.toasts.statusUpdated', { status: statusLabel(status) }));
     removeSelectedId(finding.id);
     await refresh();
   } catch (error) {
-    toast.error(error?.message || 'Failed to update finding');
+    toast.error(error?.message || t('risk.findings.toasts.updateFailed'));
   }
 };
 
@@ -799,14 +881,17 @@ const bulkUpdateFindingStatus = async (status, extraBody = {}) => {
       body: { ids, status, ...extraBody },
     });
     if (response?.code !== 0) {
-      throw new Error(response?.msg || 'Failed to update findings');
+      throw new Error(response?.msg || t('risk.findings.toasts.bulkUpdateFailed'));
     }
     const updatedCount = response?.data?.updatedCount || 0;
-    toast.success(`${updatedCount} findings ${status.toLowerCase()}`);
+    toast.success(t('risk.findings.toasts.bulkStatusUpdated', {
+      count: updatedCount,
+      status: statusLabel(status),
+    }));
     clearSelection();
     await refresh();
   } catch (error) {
-    toast.error(error?.message || 'Failed to update findings');
+    toast.error(error?.message || t('risk.findings.toasts.bulkUpdateFailed'));
   } finally {
     bulkUpdating.value = false;
   }

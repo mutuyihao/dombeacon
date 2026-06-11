@@ -2,7 +2,7 @@
   <BaseModal
     :is-open="isOpen"
     :title="$t('notification.detailTitle')"
-    eyebrow="Notification"
+    :eyebrow="$t('notification.deliveryEyebrow')"
     size="lg"
     @close="$emit('close')"
   >
@@ -10,12 +10,12 @@
       <div class="flex flex-wrap items-center gap-4 text-[11px] font-semibold uppercase tracking-[0.16em]">
         <span :class="statusToneClass(event.status)" class="flex items-center gap-1.5">
           <span :class="['h-1.5 w-1.5 rounded-full', statusDotClass(event.status)]" />
-          {{ $t(`notification.statuses.${event.status.toLowerCase()}`) }}
+          {{ formatStatus(event.status) }}
         </span>
         <span class="text-text-tertiary">·</span>
-        <span class="text-text-main">{{ event.channel }}</span>
+        <span class="text-text-main">{{ formatChannel(event.channel) }}</span>
         <span class="text-text-tertiary">·</span>
-        <span class="text-text-secondary">{{ event.eventType }}</span>
+        <span class="text-text-secondary">{{ formatEventType(event.eventType) }}</span>
       </div>
 
       <dl class="text-sm">
@@ -71,7 +71,7 @@
         {{ $t('common.close') }}
       </button>
       <button
-        v-if="event && event.status === 'FAILED'"
+        v-if="event && event.status === 'FAILED' && !event.archivedAt"
         @click="$emit('retry', event)"
         class="btn-primary"
       >
@@ -89,6 +89,8 @@ const props = defineProps({
 
 defineEmits(['close', 'retry']);
 
+const { t } = useI18n();
+
 const formattedMetadata = computed(() => {
   if (!props.event?.metadata) return '';
   try {
@@ -103,6 +105,30 @@ const formatTime = (ts) => {
   const date = new Date(ts);
   if (Number.isNaN(date.getTime())) return '-';
   return date.toLocaleString();
+};
+
+const formatStatus = (status) => {
+  if (!status) return '-';
+  const key = `notification.statuses.${String(status).toLowerCase()}`;
+  const value = t(key);
+  return value === key ? status : value;
+};
+
+const formatEventType = (eventType) => {
+  if (!eventType) return '-';
+  const key = `notification.events.${String(eventType).toLowerCase()}`;
+  const value = t(key);
+  return value === key ? eventType : value;
+};
+
+const formatChannel = (channel) => {
+  switch (channel) {
+    case 'EMAIL': return t('notification.channels.email');
+    case 'WEBHOOK': return t('notification.channels.webhook');
+    case 'SERVERCHAN': return t('notification.channels.serverchan');
+    case 'PUSH': return t('notification.channels.push');
+    default: return channel || '-';
+  }
 };
 
 const statusToneClass = (status) => {

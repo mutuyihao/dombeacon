@@ -17,7 +17,6 @@ export default defineEventHandler(async (event) => {
 
     const search = query.search as string;
     const status = query.status as string; // AVAILABLE, REGISTERED, etc.
-    const tag = query.tag as string;
     const tags = query.tags as string; // comma-separated
     const groupId = query.group as string;
     const watchKind = query.watchKind as string; // OWNED, WANTED
@@ -57,12 +56,7 @@ export default defineEventHandler(async (event) => {
         where json_each.value = ${value}
       )`;
 
-    // Tags: support both legacy single `tag` and new multi `tags` (comma-separated, AND-match).
     // Match exact JSON array elements instead of fuzzy substrings.
-    const singleTag = tag?.trim();
-    if (singleTag) {
-      conditions.push(tagContains(singleTag));
-    }
     if (tags) {
       const tagList = tags
         .split(",")

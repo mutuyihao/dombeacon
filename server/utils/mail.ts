@@ -3,6 +3,19 @@ import { notificationRules, notificationEvents } from "../db/schema";
 import { eq, and, gte } from "drizzle-orm";
 import { revealSecretText } from "./secrets";
 
+/** Escape HTML special characters to prevent injection in email templates. */
+const escapeHtml = (str: string): string =>
+  str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+
+/** Escape and safely stringify any value for HTML output. */
+const safeHtml = (value: unknown): string =>
+  escapeHtml(typeof value === "string" ? value : JSON.stringify(value ?? ""));
+
 export interface MailTemplate {
   subject: string;
   html: string;
@@ -32,6 +45,16 @@ export const getSmtpConfig = async () => {
   } catch {
     return null;
   }
+};
+
+const isMailTemplateEnabled = (
+  config: Awaited<ReturnType<typeof getSmtpConfig>>,
+  templateType: MailTemplateType,
+) => {
+  if (!config) return false;
+  return templateType === "daily"
+    ? Boolean(config.daily)
+    : Boolean(config.instant);
 };
 
 /**
@@ -98,8 +121,9 @@ export const sendMail = async (
   subject: string,
   html: string,
   text?: string,
+  smtpConfig?: Awaited<ReturnType<typeof getSmtpConfig>>,
 ) => {
-  const config = await getSmtpConfig();
+  const config = smtpConfig === undefined ? await getSmtpConfig() : smtpConfig;
   if (!config) {
     console.warn("SMTP config not found, skipping email.");
     return false;
@@ -150,6 +174,18 @@ export const sendNotification = async (params: {
     deduplicateHours = 24,
   } = params;
 
+  const config = await getSmtpConfig();
+  if (!config) {
+    console.warn("SMTP config not found, skipping notification email.");
+    return false;
+  }
+  if (!isMailTemplateEnabled(config, templateType)) {
+    console.info(
+      `Skipping ${templateType} email notification because it is disabled.`,
+    );
+    return false;
+  }
+
   // Check deduplication
   if (domainId && deduplicateHours > 0) {
     const wasSent = await wasRecentlySent(domainId, eventType, deduplicateHours);
@@ -165,7 +201,12 @@ export const sendNotification = async (params: {
   const template = getTemplate(templateType, templateData);
 
   // Send email
-  const success = await sendMail(template.subject, template.html, template.text);
+  const success = await sendMail(
+    template.subject,
+    template.html,
+    template.text,
+    config,
+  );
 
   // Record event
   await recordNotificationEvent({
@@ -222,12 +263,12 @@ export const getTemplate = (
             <h2 style="margin: 0 0 24px 0; color: #4B5B6B; font-size: 20px; font-weight: 600;">🔔 Status Change Detected</h2>
 
             <div style="background: white; border: 1px solid #E7E2DA; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
-                <h3 style="margin: 0 0 16px 0; font-size: 18px; color: #2B2B2B; word-break: break-all;">${domain}</h3>
+                <h3 style="margin: 0 0 16px 0; font-size: 18px; color: #2B2B2B; word-break: break-all;">${safeHtml(domain)}</h3>
 
                 <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
-                    <span style="color: #6B6B6B; font-size: 14px;">${oldStatus}</span>
+                    <span style="color: #6B6B6B; font-size: 14px;">${safeHtml(oldStatus)}</span>
                     <span style="color: #9A9A9A;">→</span>
-                    <span style="color: ${color}; font-weight: 600; font-size: 14px;">${newStatus}</span>
+                    <span style="color: ${color}; font-weight: 600; font-size: 14px;">${safeHtml(newStatus)}</span>
                 </div>
 
                 <p style="margin: 0; color: #6B6B6B; font-size: 14px; line-height: 1.6;">
@@ -277,14 +318,14 @@ export const getTemplate = (
 <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #F4F2EE;">
     <div style="max-width: 600px; margin: 40px auto; padding: 0 20px;">
         <div style="background: #FAF8F4; border: 1px solid #E7E2DA; border-left: 4px solid ${priorityColors[priority] || "#8A8780"}; border-radius: 16px; padding: 32px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
-            <h2 style="margin: 0 0 24px 0; color: #4B5B6B; font-size: 20px; font-weight: 600;">${actionTypeLabels[actionType] || "Action Required"}</h2>
+            <h2 style="margin: 0 0 24px 0; color: #4B5B6B; font-size: 20px; font-weight: 600;">${safeHtml(actionTypeLabels[actionType] || "Action Required")}</h2>
 
             <div style="background: white; border: 1px solid #E7E2DA; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
-                <h3 style="margin: 0 0 16px 0; font-size: 18px; color: #2B2B2B; word-break: break-all;">${domain}</h3>
+                <h3 style="margin: 0 0 16px 0; font-size: 18px; color: #2B2B2B; word-break: break-all;">${safeHtml(domain)}</h3>
 
                 <div style="margin-bottom: 16px;">
                     <span style="display: inline-block; padding: 4px 12px; background: ${priorityColors[priority]}20; color: ${priorityColors[priority]}; border-radius: 6px; font-size: 12px; font-weight: 600;">
-                        ${priority} PRIORITY
+                        ${safeHtml(priority)} PRIORITY
                     </span>
                 </div>
 
@@ -325,8 +366,8 @@ export const getTemplate = (
       .map(
         ([key, value]) => `
         <tr>
-          <td style="padding: 8px 12px; border-bottom: 1px solid #E7E2DA; color: #6B6B6B; font-size: 12px;">${key}</td>
-          <td style="padding: 8px 12px; border-bottom: 1px solid #E7E2DA; color: #2B2B2B; font-size: 12px; word-break: break-all;">${typeof value === "string" ? value : JSON.stringify(value)}</td>
+          <td style="padding: 8px 12px; border-bottom: 1px solid #E7E2DA; color: #6B6B6B; font-size: 12px;">${safeHtml(key)}</td>
+          <td style="padding: 8px 12px; border-bottom: 1px solid #E7E2DA; color: #2B2B2B; font-size: 12px; word-break: break-all;">${safeHtml(value)}</td>
         </tr>`,
       )
       .join("");
@@ -343,15 +384,15 @@ export const getTemplate = (
 <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #F4F2EE;">
     <div style="max-width: 600px; margin: 40px auto; padding: 0 20px;">
         <div style="background: #FAF8F4; border: 1px solid #E7E2DA; border-left: 4px solid ${priorityColors[severity] || "#8A8780"}; border-radius: 16px; padding: 32px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
-            <h2 style="margin: 0 0 24px 0; color: #4B5B6B; font-size: 20px; font-weight: 600;">${title}</h2>
+            <h2 style="margin: 0 0 24px 0; color: #4B5B6B; font-size: 20px; font-weight: 600;">${safeHtml(title)}</h2>
 
             <div style="background: white; border: 1px solid #E7E2DA; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
-                <h3 style="margin: 0 0 16px 0; font-size: 18px; color: #2B2B2B; word-break: break-all;">${targetName}</h3>
+                <h3 style="margin: 0 0 16px 0; font-size: 18px; color: #2B2B2B; word-break: break-all;">${safeHtml(targetName)}</h3>
                 <span style="display: inline-block; margin-bottom: 16px; padding: 4px 12px; background: ${priorityColors[severity] || "#8A8780"}20; color: ${priorityColors[severity] || "#8A8780"}; border-radius: 6px; font-size: 12px; font-weight: 600;">
-                    ${severity} SEVERITY
+                    ${safeHtml(severity)} SEVERITY
                 </span>
                 <p style="margin: 0 0 16px 0; color: #6B6B6B; font-size: 14px; line-height: 1.6;">
-                    ${description}
+                    ${safeHtml(description)}
                 </p>
                 ${detailRows ? `<table style="width: 100%; border-collapse: collapse;">${detailRows}</table>` : ""}
             </div>
@@ -377,13 +418,13 @@ export const getTemplate = (
         (d: any) => `
         <tr>
             <td style="padding: 12px; border-bottom: 1px solid #E7E2DA;">
-                <strong style="color: #2B2B2B; font-size: 14px;">${d.domain}</strong>
+                <strong style="color: #2B2B2B; font-size: 14px;">${safeHtml(d.domain)}</strong>
             </td>
             <td style="padding: 12px; border-bottom: 1px solid #E7E2DA;">
-                <span style="color: ${getStatusColor(d.status)}; font-size: 13px; font-weight: 500;">${d.status}</span>
+                <span style="color: ${getStatusColor(d.status)}; font-size: 13px; font-weight: 500;">${safeHtml(d.status)}</span>
             </td>
             <td style="padding: 12px; border-bottom: 1px solid #E7E2DA; color: #6B6B6B; font-size: 13px;">
-                ${d.expiresAt ? new Date(d.expiresAt).toLocaleDateString() : "-"}
+                ${d.expiresAt ? safeHtml(new Date(d.expiresAt).toLocaleDateString()) : "-"}
             </td>
         </tr>
         `,

@@ -23,9 +23,9 @@ describe("stored secret helpers", () => {
     expect(revealSecretText(protectedValue)).toBe("secret-token");
   });
 
-  it("keeps legacy plaintext readable when no key is configured", () => {
-    expect(protectSecretText("legacy-token")).toBe("legacy-token");
-    expect(revealSecretText("legacy-token")).toBe("legacy-token");
+  it("keeps plaintext readable when no key is configured", () => {
+    expect(protectSecretText("plain-token")).toBe("plain-token");
+    expect(revealSecretText("plain-token")).toBe("plain-token");
   });
 
   it("masks encrypted values after decrypting them", () => {

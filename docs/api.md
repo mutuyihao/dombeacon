@@ -24,18 +24,6 @@ generally still 200 so clients can read the body uniformly. See
 |---|---|---|
 | `GET` | `/api/health` | Readiness check. Returns `{ ok, now }` only; it does not expose `DATABASE_PATH`. |
 
-## Authentication
-
-`ADMIN_PASSWORD` is required for normal deployments. `/api/auth/login` issues
-an HttpOnly session cookie. Auth is disabled only when `AUTH_DISABLED=true` is
-set explicitly.
-
-| Method | Path | Notes |
-|---|---|---|
-| `POST` | `/api/auth/login` | Body `{ password }`. |
-| `POST` | `/api/auth/logout` | Clears the session cookie. |
-| `GET` | `/api/auth/status` | Returns `{ authRequired, authenticated }`. |
-
 ## Audit Logs
 
 | Method | Path | Notes |
@@ -46,7 +34,7 @@ set explicitly.
 
 | Method | Path | Notes |
 |---|---|---|
-| `GET` | `/api/domains` | List + filter. Query `page, limit, search, status, watchKind, priority, group, tag, tags, sslState, expiringDays`. Items include risk summary fields. |
+| `GET` | `/api/domains` | List + filter. Query `page, limit, search, status, watchKind, priority, group, tags, sslState, expiringDays`. Items include risk summary fields. |
 | `POST` | `/api/domains` | Create a domain and run initial security checks for owned domains. |
 | `GET` | `/api/domains/:id` | Detail with latest status, SSL status, security findings, risk summary, and first page of history. |
 | `PUT` | `/api/domains/:id` | Update domain metadata, watch kind, priority, tags, group, and active flag. |
@@ -60,41 +48,27 @@ set explicitly.
 
 | Method | Path | Notes |
 |---|---|---|
-| `GET` | `/api/actions` | Action queue with embedded domain info. |
+| `GET` | `/api/actions` | Action queue with embedded domain info. Query `page, limit, status, priority, domainId, archived`; active records are returned by default, and `archived=1` shows archived records. |
 | `POST` | `/api/actions` | Manual action create. |
+| `POST` | `/api/actions/archive` | Archive active actions by explicit `ids` or by filters `{ status?, priority?, domainId? }`; returns `{ archived }`. |
 | `PATCH` | `/api/actions/:id` | Update action status, including snooze, dismiss, and resolve. |
 
 ## Security Findings
 
 | Method | Path | Notes |
 |---|---|---|
-| `GET` | `/api/security/summary` | Aggregated risk dashboard. Query `windowDays?, limit?`; returns owned-domain open findings, registrar-lock gaps, DNS drift, active registered Brand Watch lookalikes, trend counts, normalized `riskMetrics`, `riskMetricHistory` from task runs, top risky domains, and recent risk rows. |
+| `GET` | `/api/security/summary` | Aggregated risk dashboard. Query `windowDays?, limit?`; returns owned-domain open findings, registrar-lock gaps, DNS drift, trend counts, normalized `riskMetrics`, `riskMetricHistory` from task runs, top risky domains, and recent risk rows. |
 | `GET` | `/api/security/findings` | Cursor-paginated DNS/RDAP findings. Query `limit, cursor, status, severity, findingType, domainId`; `findingType` can be a comma-separated list such as `NAMESERVER_DRIFT,MX_DRIFT`. |
 | `PATCH` | `/api/security/findings/:id` | Body `{ status, snoozedUntil? }`. Status is `OPEN`, `SNOOZED`, `DISMISSED`, or `RESOLVED`; `SNOOZED` requires `snoozedUntil`. |
 | `PATCH` | `/api/security/findings/bulk` | Body `{ ids, status, snoozedUntil? }`. Updates up to 200 findings with the same lifecycle rules as the single-finding endpoint and writes one audit event. |
-
-## Brand Watch
-
-| Method | Path | Notes |
-|---|---|---|
-| `GET` | `/api/brand-watch/terms` | List configured brand/product/company terms. Query `enabled=true|false`. |
-| `POST` | `/api/brand-watch/terms` | Create a term. Body `{ term, termType?, matchStrategy?, tlds?, severity?, enabled?, scanFrequencyHours? }`. |
-| `PATCH` | `/api/brand-watch/terms/:id` | Update a term using the same fields as create. |
-| `DELETE` | `/api/brand-watch/terms/:id` | Delete a term and cascaded candidates. |
-| `POST` | `/api/brand-watch/candidates` | Generate local exact, typo, prefix/suffix, and homoglyph candidates from `{ term, ... }` or `{ termId }`; no public zone-file or paid NRD feed is required. |
-| `POST` | `/api/brand-watch/terms/:id/scan` | Generate candidates for one enabled term, RDAP-check them, optionally discover CT-observed domains, and persist results. Body `{ limit?, includeCt?, ctLimit? }`; `includeCt` defaults to true. Returns scan counts plus `notificationsSent` for newly registered candidates. |
-| `GET` | `/api/brand-watch/risks` | Cursor-paginated persisted candidate results. Query `limit, cursor, termId, status, severity, reviewStatus, source, mutationType, firstSeenFrom, firstSeenTo, lastSeenFrom, lastSeenTo`. Items include `term`, `source`, parsed `evidence`, and review fields. |
-| `PATCH` | `/api/brand-watch/risks/:id` | Update manual triage state. Body `{ reviewStatus, reviewNote? }`, where `reviewStatus` is `OPEN`, `WATCHING`, `DISMISSED`, or `RESOLVED`; writes an audit event. |
-| `GET` | `/api/brand-watch/summary` | Aggregate term and candidate counts for the Brand Watch UI, including registered, available, unknown, error, severity counts, and review-state counts. |
 
 ## Notifications
 
 Risk events are emitted through the same email, webhook, ServerChan, and Web
 Push channels as domain events. `SECURITY_FINDING_HIGH` is sent for newly
-created high-severity owned-domain findings. `BRAND_WATCH_REGISTERED` is sent
-when a Brand Watch candidate is first observed as registered or transitions from
-non-registered to registered. Both use metadata `dedupeKey` values so repeated
-scans do not fan out the same finding/candidate within the dedupe window.
+created high-severity owned-domain findings. It uses metadata `dedupeKey`
+values so repeated scans do not fan out the same finding within the dedupe
+window.
 Risk event presets can disable `email`, `webhook`, `serverchan`, or `push`
 before channel-specific filters run. `riskDeliverySummary` includes per-event
 channel diagnostics with `presetEnabled`, `configured`, `destinationCount`,
@@ -112,8 +86,10 @@ matching destination is configured.
 
 | Method | Path | Notes |
 |---|---|---|
-| `GET` | `/api/notifications` | Paginated event log. Query `page, limit, channel, status, eventType, domainId, from, to`. |
+| `GET` | `/api/notifications` | Paginated event log. Query `page, limit, channel, status, eventType, domainId, from, to, archived`; active records are returned by default, `archived=1` shows archived records, and `archived=all` includes both. |
 | `GET` | `/api/notifications/:id` | Single event detail. |
+| `POST` | `/api/notifications/archive` | Archive active notification events by explicit `ids` or by filters `{ status?, channel?, eventType?, domainId?, from?, to? }`; default status filter is `FAILED`. Returns `{ archived }`. |
+| `POST` | `/api/notifications/clear` | Delete notification events by explicit `ids` or by the same filters as archive. Defaults to active failed records; pass `archived=true` to clear archived records. Returns `{ cleared }`. |
 | `POST` | `/api/notifications/:id/retry` | Re-send a failed event through the same channel; writes a new row with `retryOf`. |
 
 ## Webhooks
@@ -121,16 +97,17 @@ matching destination is configured.
 | Method | Path | Notes |
 |---|---|---|
 | `GET` | `/api/webhooks` | List webhook configs with sensitive headers masked. |
-| `POST` | `/api/webhooks` | Create a webhook config. Body `eventTypes` is normalized to canonical uppercase event names; an empty list means all events. |
+| `POST` | `/api/webhooks` | Create a webhook config. Body `method` must be `GET`, `POST`, `PUT`, or `PATCH`; `url` must use `http` or `https`; private/reserved targets are blocked unless `ALLOW_PRIVATE_WEBHOOK_TARGETS=true`; `eventTypes` is normalized to canonical uppercase event names; an empty list means all events. |
 | `DELETE` | `/api/webhooks/:id` | Delete a webhook config. |
-| `POST` | `/api/webhooks/:id/test` | Send a test webhook. |
+| `POST` | `/api/webhooks/:id/test` | Send a test webhook. Redirects are not followed, and the same URL policy applies. |
 
 ## ServerChan
 
 | Method | Path | Notes |
 |---|---|---|
-| `GET` | `/api/serverchan` | List ServerChan configs with SendKey masked. |
-| `POST` | `/api/serverchan` | Create a ServerChan config. Body `eventTypes` is normalized to canonical uppercase event names; an empty list means all events. |
+| `GET` | `/api/serverchan` | List ServerChan configs with SendKey masked and delivery `options` (`channel`, `noip`, `openid`, `tags`, `titlePrefix`, `timeoutMs`). |
+| `POST` | `/api/serverchan` | Create a ServerChan config. Body `eventTypes` is normalized to canonical uppercase event names; an empty list means all events. Optional `options` maps to ServerChan Turbo send fields. |
+| `PATCH` | `/api/serverchan/:id` | Update name, enabled state, event filters, SendKey (when supplied), and delivery options. |
 | `DELETE` | `/api/serverchan/:id` | Delete a ServerChan config. |
 | `POST` | `/api/serverchan/:id/test` | Send a test ServerChan message. |
 
@@ -146,7 +123,7 @@ matching destination is configured.
 
 | Method | Path | Notes |
 |---|---|---|
-| `GET` | `/api/filters` | List saved filter presets, default first. Optional query `scope`; missing legacy scope is treated as `domains`. Current scopes include `domains`, `brand-watch-risks`, and `security-findings`. |
+| `GET` | `/api/filters` | List saved filter presets, default first. Query `scope` defaults to `domains`. Current scopes include `domains` and `security-findings`. |
 | `POST` | `/api/filters` | Body `{ name, criteria, scope?, isDefault? }`; `scope` is stored in `criteria_json._scope`; `isDefault=true` demotes other defaults in the same scope. |
 | `PATCH` | `/api/filters/:id` | Update name, criteria, scope, or default flag. Default demotion is scoped. |
 | `DELETE` | `/api/filters/:id` | Delete a saved filter. |
@@ -180,4 +157,4 @@ matching destination is configured.
 | Method | Path | Notes |
 |---|---|---|
 | `GET` | `/api/tasks/runs` | Recent `task_runs` rows plus currently held task locks. Query `limit, cursor`. |
-| `POST` | `/api/tasks/trigger` | Body `{ task: 'hourly-scan' | 'daily-summary' | 'brand-watch' }`; queues the task in the background and writes an audit event. |
+| `POST` | `/api/tasks/trigger` | Body `{ task: 'hourly-scan' | 'daily-summary' }`; queues the task in the background and writes an audit event. |

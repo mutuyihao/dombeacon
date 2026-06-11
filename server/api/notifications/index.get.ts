@@ -1,5 +1,9 @@
-import { eq, desc, and, gte, lte, sql } from "drizzle-orm";
+import { eq, desc, and, sql } from "drizzle-orm";
 import { notificationEvents, domains } from "../../db/schema";
+import {
+  buildNotificationEventConditions,
+  getNotificationArchiveMode,
+} from "../../utils/notification-records";
 
 /**
  * List notification events with filtering and pagination.
@@ -12,6 +16,7 @@ import { notificationEvents, domains } from "../../db/schema";
  *  - domainId: number
  *  - from: ISO timestamp
  *  - to: ISO timestamp
+ *  - archived: 1 | true | archived to show archived records; all to include both
  */
 export default defineEventHandler(async (event) => {
   const query = getQuery(event);
@@ -22,38 +27,9 @@ export default defineEventHandler(async (event) => {
     const limit = Math.min(200, Math.max(1, Number(query.limit) || 50));
     const offset = (page - 1) * limit;
 
-    const conditions: any[] = [];
-
-    if (query.channel) {
-      conditions.push(eq(notificationEvents.channel, String(query.channel)));
-    }
-    if (query.status) {
-      conditions.push(eq(notificationEvents.status, String(query.status)));
-    }
-    if (query.eventType) {
-      conditions.push(
-        eq(notificationEvents.eventType, String(query.eventType)),
-      );
-    }
-    if (query.domainId) {
-      const domainId = Number(query.domainId);
-      if (!Number.isFinite(domainId) || domainId <= 0) {
-        return fail("Invalid domainId", 40000);
-      }
-      conditions.push(eq(notificationEvents.domainId, domainId));
-    }
-    if (query.from) {
-      const fromDate = new Date(String(query.from));
-      if (!isNaN(fromDate.getTime())) {
-        conditions.push(gte(notificationEvents.createdAt, fromDate));
-      }
-    }
-    if (query.to) {
-      const toDate = new Date(String(query.to));
-      if (!isNaN(toDate.getTime())) {
-        conditions.push(lte(notificationEvents.createdAt, toDate));
-      }
-    }
+    const conditions = buildNotificationEventConditions(query, {
+      archivedMode: getNotificationArchiveMode(query.archived, "active"),
+    });
 
     const whereExpr = conditions.length > 0 ? and(...conditions) : undefined;
 
@@ -70,6 +46,7 @@ export default defineEventHandler(async (event) => {
         errorMessage: notificationEvents.errorMessage,
         metadata: notificationEvents.metadata,
         retryOf: notificationEvents.retryOf,
+        archivedAt: notificationEvents.archivedAt,
         createdAt: notificationEvents.createdAt,
         domain: domains.domain,
       })
@@ -95,6 +72,9 @@ export default defineEventHandler(async (event) => {
     return success({ items, total, page, limit });
   } catch (e: any) {
     console.error("Failed to list notification events:", e);
-    return fail(e.message || "Failed to list notifications", 50000);
+    return fail(
+      e.message || "Failed to list notifications",
+      e.apiCode || (e.statusCode === 400 ? 40000 : 50000),
+    );
   }
 });

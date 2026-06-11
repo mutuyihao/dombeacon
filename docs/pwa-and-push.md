@@ -1,18 +1,18 @@
 # PWA & Web Push
 
 The app ships as an installable PWA with optional Web Push notifications.
-This is a hand-rolled implementation (no `@vite-pwa/nuxt`) because Nuxt 4.2
-has known compatibility issues with the module on Windows native builds.
+This is a hand-rolled implementation (no `@vite-pwa/nuxt`) so the service
+worker behavior stays explicit and easy to audit.
 
 ## What you get
 
-- **Installable** — Chrome / Edge / Android Chrome show an install prompt
+- **Installable** - Chrome / Edge / Android Chrome show an install prompt
   via `beforeinstallprompt`; the header's "Install" button surfaces only
   when the prompt is available.
-- **Offline shell** — read-only API GETs are cached network-first with a
-  3s timeout; navigations fall back to `/offline` when offline.
-- **Web Push** — VAPID-authenticated push delivered to subscribed
-  browsers, with deep-link to `/actions` on click.
+- **Offline shell** - navigations fall back to `/offline` when offline; API
+  requests are never cached.
+- **Web Push** - VAPID-authenticated push delivered to subscribed browsers,
+  with deep-link to `/actions` on click.
 
 ## Files
 
@@ -29,23 +29,22 @@ has known compatibility issues with the module on Windows native builds.
 | `server/api/push/subscribe.delete.ts` | Unsubscribe by endpoint |
 | `server/utils/push.ts` | `notifyPush`, `formatPushPayload`, `sendWebPush` |
 
-## Service worker behavior (`public/sw.js`)
+## Service Worker Behavior (`public/sw.js`)
 
 | Request type | Strategy |
 |---|---|
 | Pre-cached shell (`/`, `/offline`, `/manifest.webmanifest`, icons) | cache-first via install-time `cache.addAll` |
-| Whitelisted read-only API GETs (`/api/domains`, `/api/actions`, `/api/notifications`, `/api/ssl`, `/api/costs`, `/api/webhooks`, `/api/serverchan`, `/api/tasks`) | network-first, 3s timeout, fall back to runtime cache |
-| `/api/auth/*` and any non-GET | network-only (never cached) |
+| Any `/api/*` request, including GET | network-only (never cached) |
 | Static assets | stale-while-revalidate |
 | Navigations | network-first, fall back to cached HTML or `/offline` |
 
-The auth route middleware (`middleware/auth.global.ts`) bypasses both
-`/login` and `/offline` so the offline page is reachable without a
-session.
+The offline page is always reachable because the app has no login session.
+Keeping every API request network-only avoids caching domain, notification, or
+mutation data in the no-login deployment model.
 
-## Setup — Web Push
+## Setup - Web Push
 
-### 1. Generate VAPID keys
+### 1. Generate VAPID Keys
 
 ```bash
 npx web-push generate-vapid-keys --json
@@ -59,19 +58,19 @@ VAPID_PRIVATE_KEY=xxx...
 VAPID_SUBJECT=mailto:you@example.com
 ```
 
-These are read at runtime via `nuxt.config.ts`'s `runtimeConfig`. The
-public key is exposed via `/api/push/vapid-public`; the private key never
-leaves the server.
+These are read at runtime via `nuxt.config.ts`'s `runtimeConfig`. The public
+key is exposed via `/api/push/vapid-public`; the private key never leaves the
+server.
 
-### 2. Subscribe in the UI
+### 2. Subscribe In The UI
 
-Open `/settings`, scroll to **Push Notifications**, and click **Enable
-push**. The composable handles:
+Open `/settings`, scroll to **Push Notifications**, and click **Enable push**.
+The composable handles:
 
-1. Fetches VAPID public key
-2. Calls `Notification.requestPermission()`
-3. `pushManager.subscribe({ userVisibleOnly: true, applicationServerKey })`
-4. POSTs the subscription JSON to `/api/push/subscribe`
+1. Fetches VAPID public key.
+2. Calls `Notification.requestPermission()`.
+3. Calls `pushManager.subscribe({ userVisibleOnly: true, applicationServerKey })`.
+4. POSTs the subscription JSON to `/api/push/subscribe`.
 
 The settings card surfaces these states explicitly:
 
@@ -83,41 +82,42 @@ The settings card surfaces these states explicitly:
 | `subscribing` | Mid-flow |
 | `subscribed` | Active |
 | `denied` | User declined the permission prompt |
-| `error` | Subscribe call threw — see the inline error message |
+| `error` | Subscribe call threw; see the inline error message |
 
-### 3. Fan-out integration
+### 3. Fan-out Integration
 
-`server/utils/tasks.ts` calls `notifyPush()` alongside email / webhook /
-Server酱 inside `Promise.allSettled`, so each channel is independent. Push
-events are recorded into `notificationEvents` with `channel='PUSH'` so
-they show up in the Notification History page like every other channel.
+`server/utils/tasks.ts` calls `notifyPush()` alongside email, webhook, and
+ServerChan inside `Promise.allSettled`, so each channel is independent. Push
+events are recorded into `notificationEvents` with `channel='PUSH'` so they
+show up in the Notification History page like every other channel.
 
-If the push service returns 410 Gone, the subscription is auto-disabled
-in `push_subscriptions.enabled` to prevent retries.
+If the push service returns 410 Gone, the subscription is auto-disabled in
+`push_subscriptions.enabled` to prevent retries.
 
-## Browser support
+## Browser Support
 
-- **Chrome / Edge / Android** — full support (install + push).
-- **Firefox desktop** — full support.
-- **Safari macOS 16+** — full support.
-- **Safari iOS 16.4+** — push only works after the user adds the site to
-  the Home Screen ("Add to Home Screen"). The settings card shows the
-  `unsupported` message on iOS Safari prior to that, since the Push API
-  isn't available in the regular tab context.
+- **Chrome / Edge / Android** - full support (install + push).
+- **Firefox desktop** - full support.
+- **Safari macOS 16+** - full support.
+- **Safari iOS 16.4+** - push only works after the user adds the site to the
+  Home Screen ("Add to Home Screen"). The settings card shows the
+  `unsupported` message on iOS Safari prior to that, since the Push API is not
+  available in the regular tab context.
 
-## Testing locally
+## Testing Locally
 
 Service workers require either `https://` or `http://localhost`. Run
-`npm run dev` (which binds `0.0.0.0:3000`) and open
-`http://localhost:3000` — that domain qualifies as a secure context.
+`pnpm dev` (which binds `0.0.0.0:3000`) and open `http://localhost:3000`;
+that domain qualifies as a secure context.
 
 Verifications worth doing before deploying:
 
-- DevTools → Application → Manifest: every icon resolves, `start_url`
-  is `/`, `display` is `standalone`.
-- DevTools → Application → Service Workers: status `activated and
-  running`, scope `/`.
-- DevTools → Network: throttle to "Offline" then refresh `/domains` —
-  you should see cached data or land on `/offline`.
-- DevTools → Application → Push: trigger a test push to confirm the
-  service worker click handler navigates to `/actions`.
+- DevTools > Application > Manifest: every icon resolves, `start_url` is `/`,
+  and `display` is `standalone`.
+- DevTools > Application > Service Workers: status is `activated and running`,
+  scope `/`.
+- DevTools > Network: throttle to "Offline" then refresh `/domains`; you
+  should land on the cached shell or `/offline`, while `/api/*` calls remain
+  network-only.
+- DevTools > Application > Push: trigger a test push to confirm the service
+  worker click handler navigates to `/actions`.

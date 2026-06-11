@@ -33,10 +33,7 @@ export default defineEventHandler(async (event) => {
 
     const currentCriteria = parseSavedFilterCriteria(current.criteriaJson);
     const scope = normalizeSavedFilterScope(
-      body?.scope ||
-        body?.criteria?._scope ||
-        body?.criteria?.scope ||
-        getSavedFilterScope(currentCriteria),
+      body?.scope || getSavedFilterScope(currentCriteria),
     );
 
     const updates: Record<string, any> = {};

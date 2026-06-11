@@ -1,6 +1,6 @@
 import { auditLogs } from "../db/schema";
-import { getLoginClientKey } from "./auth";
 import { useDb } from "./db";
+import { getRequestClientKey } from "./request";
 
 const REDACTED = "[redacted]";
 const CIRCULAR = "[circular]";
@@ -15,11 +15,13 @@ const sensitiveMetadataKeys = new Set([
   "endpoint",
   "headers",
   "headersjson",
+  "openid",
   "pass",
   "password",
   "p256dh",
   "secret",
   "sendkey",
+  "optionsjson",
   "smtpconfig",
   "smtpconfigjson",
   "token",
@@ -61,7 +63,7 @@ const readHeader = (event: any, name: string) => {
 };
 
 export const getAuditClient = (event: any) => ({
-  ipAddress: getLoginClientKey(event),
+  ipAddress: getRequestClientKey(event),
   userAgent: truncateAuditText(readHeader(event, "user-agent")),
 });
 

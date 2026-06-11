@@ -2,7 +2,6 @@ import { eq } from "drizzle-orm";
 import { savedFilters } from "../db/schema";
 
 export const DEFAULT_FILTER_SCOPE = "domains";
-export const BRAND_WATCH_RISK_FILTER_SCOPE = "brand-watch-risks";
 export const SECURITY_FINDING_FILTER_SCOPE = "security-findings";
 
 const META_SCOPE_KEY = "_scope";
@@ -26,7 +25,7 @@ export const normalizeSavedFilterScope = (value: unknown) => {
 };
 
 export const getSavedFilterScope = (criteria: Record<string, any>) =>
-  normalizeSavedFilterScope(criteria[META_SCOPE_KEY] || criteria.scope);
+  normalizeSavedFilterScope(criteria[META_SCOPE_KEY]);
 
 export const stripSavedFilterScope = (criteria: Record<string, any>) => {
   const { [META_SCOPE_KEY]: _scope, scope, ...rest } = criteria;

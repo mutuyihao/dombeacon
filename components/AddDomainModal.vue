@@ -81,6 +81,7 @@
 <script setup>
 import { ref, reactive, computed, watch } from 'vue';
 import { Loader2 as Loader2Icon } from 'lucide-vue-next';
+import { unwrapApiEnvelope } from '~/utils/api-envelope';
 import { isValidDomainName, normalizeDomainInput } from '~/utils/domain';
 
 const props = defineProps({
@@ -163,16 +164,17 @@ const submit = async () => {
       ...form,
       tags: tagsInput.value.split(',').map((t) => t.trim()).filter(Boolean),
     };
-    await $fetch(isEdit.value ? `/api/domains/${props.domain.id}` : '/api/domains', {
+    const response = await $fetch(isEdit.value ? `/api/domains/${props.domain.id}` : '/api/domains', {
       method: isEdit.value ? 'PUT' : 'POST',
       body: payload,
     });
+    unwrapApiEnvelope(response, t('domain.addError'));
     resetForm();
     toast.success(isEdit.value ? t('domain.updateSuccess') : t('domain.addSuccess'));
     emit('saved');
     closeModal();
   } catch (e) {
-    toast.error(e?.data?.msg || t('domain.addError') || 'Failed to add domain');
+    toast.error(e?.message || e?.data?.msg || t('domain.addError') || 'Failed to add domain');
   } finally {
     loading.value = false;
   }

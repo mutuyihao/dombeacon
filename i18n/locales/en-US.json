@@ -33,6 +33,9 @@
   "nav": {
     "dashboard": "Overview",
     "domains": "Domains",
+    "risk": "Risk",
+    "riskOverview": "Overview",
+    "findings": "Findings",
     "actions": "Actions",
     "tasks": "Tasks",
     "ssl": "SSL Certificates",
@@ -85,15 +88,171 @@
       "notificationsHint": "Notifications to review"
     }
   },
-  "auth": {
-    "login": "Login",
-    "logout": "Logout",
-    "password": "Password",
-    "enterPassword": "Enter password",
-    "loginRequired": "Login Required",
-    "invalidPassword": "Invalid password",
-    "loginSuccess": "Login successful",
-    "loggingIn": "Signing in..."
+  "risk": {
+    "common": {
+      "refresh": "Refresh",
+      "unknown": "unknown",
+      "none": "none",
+      "days": "{count} days",
+      "ownedDomains": "{count} owned domains"
+    },
+    "overview": {
+      "kicker": "Security posture",
+      "title": "Risk overview",
+      "description": "Use this page to understand whether owned domains need security attention before opening the triage queue.",
+      "viewFindings": "Open findings",
+      "briefKicker": "Decision brief",
+      "scope": "Scope",
+      "window": "Trend window",
+      "updated": "Updated"
+    },
+    "posture": {
+      "clear": {
+        "title": "No open risk requiring immediate action",
+        "description": "Owned-domain scans do not show open DNS, registrar-lock, or mail-policy findings."
+      },
+      "watch": {
+        "title": "{open} open findings need review",
+        "description": "Start with registrar-lock gaps and DNS drift, then resolve or dismiss findings that are expected changes."
+      },
+      "critical": {
+        "title": "{high} high-severity findings need action",
+        "description": "Prioritize high-severity findings first. They usually affect mail policy, domain control, or attack-surface exposure."
+      }
+    },
+    "metrics": {
+      "openFindings": "Open findings",
+      "openFindingsHint": "{count} high severity",
+      "lockGaps": "Registrar lock gaps",
+      "lockGapsHint": "{count} new in {days} days",
+      "dnsDrift": "DNS drift",
+      "dnsDriftHint": "{count} new nameserver or MX changes",
+      "ownedDomains": "Owned domains",
+      "ownedDomainsHint": "Active assets included in risk checks"
+    },
+    "priorities": {
+      "kicker": "Next action",
+      "title": "Triage priority",
+      "description": "This list turns the metrics into the next queue to open. If it is empty, the risk module has nothing urgent.",
+      "highTitle": "Handle high-severity findings",
+      "highDescription": "Review items that can directly weaken domain control, mail trust, or public-facing security posture.",
+      "lockTitle": "Close registrar-lock gaps",
+      "lockDescription": "Missing transfer locks can increase account-takeover impact. Confirm registrar state or enable locks.",
+      "driftTitle": "Review DNS drift",
+      "driftDescription": "Nameserver and MX changes should be intentional. Confirm the baseline or investigate unexpected movement.",
+      "empty": "No open risk priority right now."
+    },
+    "mix": {
+      "kicker": "Risk composition",
+      "title": "Open finding mix",
+      "description": "Shows which control area contributes to the current open risk count.",
+      "empty": "No open security findings."
+    },
+    "domains": {
+      "kicker": "Affected assets",
+      "title": "Domains to review first",
+      "findingSummary": "{count} open findings: {types}",
+      "empty": "No owned domains currently need risk triage."
+    },
+    "stream": {
+      "kicker": "Recent signal",
+      "title": "Latest open findings",
+      "lastSeen": "Last seen {time}",
+      "empty": "No recent open findings."
+    },
+    "findings": {
+      "kicker": "Triage queue",
+      "title": "Security findings",
+      "description": "Use this queue to decide whether each finding is still a risk, expected drift, or already resolved.",
+      "backToOverview": "Risk overview",
+      "filtersKicker": "Focus",
+      "filtersTitle": "Filter the queue",
+      "status": "Status",
+      "severity": "Severity",
+      "findingType": "Finding type",
+      "domainId": "Domain ID",
+      "domainPlaceholder": "Any",
+      "allStatuses": "All statuses",
+      "allSeverities": "All severities",
+      "allFindingTypes": "All finding types",
+      "domainBadge": "Domain ID: {id}",
+      "noFilters": "No filters applied.",
+      "clearFilters": "Clear",
+      "applyFilters": "Apply filters",
+      "savedViews": "Views",
+      "saveCurrentView": "Save current view",
+      "saveViewDisabled": "Add at least one filter before saving a triage view.",
+      "noSavedViews": "No saved triage views yet.",
+      "defaultView": "Default",
+      "setDefault": "Set default",
+      "unsetDefault": "Unset default",
+      "deleteView": "Delete view",
+      "queueKicker": "Queue",
+      "queueTitle": "{count} findings",
+      "shortcuts": "Shortcuts: J/K move, X select, R reopen, S snooze, D dismiss, E resolve.",
+      "selectVisible": "Select visible",
+      "selectedCount": "{count} selected",
+      "clearSelection": "Clear selection",
+      "selectFinding": "Select finding",
+      "snoozedUntil": "Snoozed until {time}",
+      "seenWindow": "First seen {first} - Last seen {last}",
+      "loadingMore": "Loading...",
+      "empty": "No security findings match the current filters.",
+      "saveDialogTitle": "Save triage view",
+      "saveDialogDescription": "Store the current filters for recurring security finding reviews.",
+      "saveDialogPlaceholder": "Open high risks, registrar lock gaps...",
+      "markAsDefault": "Use as the default view for security findings",
+      "confirmDeleteView": "Delete triage view \"{name}\"?",
+      "actions": {
+        "reopen": "Reopen",
+        "snooze7d": "Snooze 7d",
+        "dismiss": "Dismiss",
+        "resolve": "Resolve",
+        "updating": "Updating..."
+      },
+      "toasts": {
+        "loadViewsFailed": "Failed to load triage views",
+        "saveViewFailed": "Failed to save triage view",
+        "viewSaved": "Triage view saved",
+        "viewLoaded": "Loaded {name}",
+        "updateViewFailed": "Failed to update triage view",
+        "deleteViewFailed": "Failed to delete triage view",
+        "viewDeleted": "Triage view deleted",
+        "loadMoreFailed": "Failed to load findings",
+        "updateFailed": "Failed to update finding",
+        "statusUpdated": "Finding marked as {status}",
+        "bulkUpdateFailed": "Failed to update findings",
+        "bulkStatusUpdated": "{count} findings marked as {status}"
+      }
+    },
+    "status": {
+      "OPEN": "Open",
+      "SNOOZED": "Snoozed",
+      "DISMISSED": "Dismissed",
+      "RESOLVED": "Resolved"
+    },
+    "severity": {
+      "HIGH": "High",
+      "MEDIUM": "Medium",
+      "LOW": "Low"
+    },
+    "findingTypes": {
+      "DNS_DRIFT": "DNS drift",
+      "REGISTRAR_LOCK_MISSING": "Registrar transfer lock missing",
+      "NAMESERVER_DRIFT": "Nameserver drift",
+      "MX_DRIFT": "MX drift",
+      "DMARC_MISSING": "DMARC record missing",
+      "DMARC_WEAK_POLICY": "Weak DMARC policy",
+      "CAA_MISSING": "CAA record missing",
+      "DNSSEC_UNSIGNED": "DNSSEC unsigned"
+    },
+    "evidence": {
+      "registrarLock": "Registrar lock: {lockStatus}; statuses: {statuses}",
+      "drift": "Previous: {previous}; current: {current}",
+      "dmarcPolicy": "DMARC policy: {policy}; pct: {pct}",
+      "checkedRecord": "Checked record: {record}",
+      "raw": "Evidence: {value}"
+    }
   },
   "domain": {
     "portfolio": "Portfolio",
@@ -151,6 +310,69 @@
     "noSnapshot": "No snapshot data",
     "loadError": "Failed to load domain",
     "checking": "Checking...",
+    "detail": {
+      "attention": "Attention",
+      "attentionHint": "Prioritize signals that affect acquisition, renewal, certificate health, or security posture.",
+      "brief": "Decision brief",
+      "operationalContext": "Operational context",
+      "statusSignal": "Status",
+      "expirySignal": "Domain expiry",
+      "sslSignal": "Certificate",
+      "riskSignal": "Risk",
+      "notChecked": "Not checked",
+      "source": "Source",
+      "daysLeft": "{days}d",
+      "daysOverdue": "{days}d overdue",
+      "openFindings": "{count} open findings",
+      "stableTitle": "No immediate action needed",
+      "stableText": "Status, certificate, and security scan signals do not show high-priority issues.",
+      "scanFailedTitle": "Latest scan failed",
+      "scanFailedText": "Check network reachability, RDAP availability, or parser logs, then run a fresh scan.",
+      "wantedAvailableTitle": "Wanted domain is available",
+      "wantedAvailableText": "If this is a target domain, register it or move it into a backorder workflow quickly.",
+      "ownedExpiringTitle": "Owned domain is in an expiry state",
+      "ownedExpiringText": "Confirm renewal status and auto-renew configuration before it enters redemption or deletion.",
+      "domainExpiryTitle": "Domain expiry window is close",
+      "domainExpiryText": "Expires in {days} days. Confirm renewal and payment state.",
+      "sslInvalidTitle": "SSL certificate is invalid",
+      "sslInvalidText": "A certificate exists but validation failed. Check the chain, SAN coverage, and issuer state.",
+      "sslExpiringTitle": "SSL certificate expires soon",
+      "sslExpiringText": "Expires in {days} days. Schedule renewal before user-facing failures occur.",
+      "securityFindingsTitle": "Open security findings",
+      "securityFindingsText": "{count} open items exist. Start with high severity, mail policy, and certificate controls.",
+      "securityKicker": "Security",
+      "securityPosture": "Security posture",
+      "lastScan": "Last scan: {time}",
+      "findings": "Findings",
+      "findingsTotal": "{count} total",
+      "lastSeen": "Last seen: {time}",
+      "noSecurityFindings": "No security findings from the latest scan.",
+      "riskScore": "Risk score",
+      "dnssecHint": "DS record posture",
+      "dmarcHint": "Mail spoofing policy",
+      "caaSet": "Set",
+      "caaMissing": "Missing",
+      "caaHint": "Certificate issuer control",
+      "registrarLock": "Registrar lock",
+      "registrarLockHint": "Transfer lock",
+      "dnssecStatuses": {
+        "SIGNED": "Signed",
+        "UNSIGNED": "Unsigned",
+        "UNKNOWN": "Unknown"
+      },
+      "dmarcPolicies": {
+        "reject": "Reject",
+        "quarantine": "Quarantine",
+        "none": "None",
+        "missing": "Missing",
+        "unknown": "Unknown"
+      },
+      "registrarLockStatuses": {
+        "LOCKED": "Locked",
+        "UNLOCKED": "Unlocked",
+        "UNKNOWN": "Unknown"
+      }
+    },
     "rdap": {
       "title": "Registry / RDAP",
       "handle": "Handle",
@@ -177,6 +399,7 @@
   "action": {
     "title": "Action Queue",
     "description": "Availability, expiry, SSL, and scan events create actions here.",
+    "queueEyebrow": "Action Handling",
     "actionType": "Action Type",
     "types": {
       "wanted_available": "Wanted Domain Available",
@@ -198,7 +421,16 @@
     "snoozedUntil": "Snoozed Until",
     "triggeredAt": "Triggered At",
     "resolvedAt": "Resolved At",
+    "archivedAt": "Archived At",
     "noActions": "No actions",
+    "noArchivedActions": "No archived actions",
+    "archiveRecords": "Archive current records",
+    "archiveRecordsConfirm": "Archive the action records matching the current filters? Archived records are hidden from the default list.",
+    "archiveSuccess": "Action records archived",
+    "archiveError": "Failed to archive action records",
+    "viewArchived": "View archive",
+    "viewActive": "Back to current",
+    "archivedRecords": "Archived Records",
     "snoozeSuccess": "Snoozed",
     "dismissSuccess": "Dismissed",
     "resolveSuccess": "Resolved",
@@ -333,10 +565,14 @@
       "status_change": "Status Change",
       "expiring_soon": "Expiring Soon",
       "dropping_alert": "Dropping Alert",
-      "daily_summary": "Daily Summary"
+      "daily_summary": "Daily Summary",
+      "security_finding_high": "High Security Finding"
     },
     "allEvents": "All Events",
-    "selectEvents": "Select Event Types"
+    "selectEvents": "Select Event Types",
+    "allEventsHint": "Selecting no events means all events. Select events to limit this destination.",
+    "selectAllEvents": "Select all",
+    "clearEvents": "Clear"
   },
   "serverchan": {
     "title": "Server酱 Configuration",
@@ -356,7 +592,9 @@
     "testSuccess": "Test successful",
     "testFailed": "Test failed",
     "addSuccess": "Server酱 added successfully",
+    "updateSuccess": "Server酱 updated successfully",
     "addError": "Failed to add Server酱",
+    "saveError": "Failed to save Server酱 config",
     "deleteSuccess": "Server酱 deleted successfully",
     "deleteError": "Failed to delete Server酱",
     "noServerchan": "No Server酱 configured",
@@ -373,12 +611,80 @@
       "status_change": "Status Change",
       "expiring_soon": "Expiring Soon",
       "dropping_alert": "Dropping Alert",
-      "daily_summary": "Daily Summary"
+      "daily_summary": "Daily Summary",
+      "WANTED_AVAILABLE": "Wanted domain available",
+      "WANTED_DROPPING": "Wanted domain dropping",
+      "OWNED_EXPIRING": "Owned domain expiring",
+      "SSL_EXPIRING": "SSL expiring soon",
+      "SSL_INVALID": "SSL invalid",
+      "STATUS_CHANGE": "Status change",
+      "DROPPING_ALERT": "Dropping alert",
+      "DAILY_SUMMARY": "Daily summary",
+      "SECURITY_FINDING_HIGH": "High security finding"
     },
     "allEvents": "All Events",
     "selectEvents": "Select Event Types",
     "howToGetSendKey": "How to get SendKey?",
-    "sendKeyGuide": "1. Visit https://sct.ftqq.com\n2. Login with WeChat\n3. Get your SendKey from the SendKey page"
+    "sendKeyGuide": "1. Visit https://sct.ftqq.com\n2. Login with WeChat\n3. Get your SendKey from the SendKey page",
+    "basicConfig": "Basic config",
+    "deliveryOptions": "Delivery options",
+    "deliveryOptionsDescription": "These options are submitted as ServerChan Turbo API form fields on every send.",
+    "channel": "Message channel",
+    "timeoutMs": "Request timeout",
+    "timeoutHint": "3000 to 30000 ms. Default is 10000.",
+    "openid": "OpenID / UID copy",
+    "openidPlaceholder": "openid1,openid2 or WeCom UID",
+    "openidHint": "Only supported by test account and WeCom app-message channels. Use commas for multiple values.",
+    "tags": "Tags",
+    "tagsPlaceholder": "server-alert|domain-monitor",
+    "tagsHint": "Classify ServerChan messages. Separate multiple tags with |.",
+    "titlePrefix": "Title prefix",
+    "titlePrefixPlaceholder": "[DomBeacon] ",
+    "titlePrefixHint": "Prepended to every title. ServerChan titles are limited to 32 characters.",
+    "hideIp": "Hide caller IP",
+    "hideIpHint": "Sends noip=1 so the message detail does not show caller IP.",
+    "allEventsHint": "Selecting no events means all events. Select events to limit this destination.",
+    "selectAllEvents": "Select all",
+    "clearEvents": "Clear",
+    "apiGuideTitle": "Official parameter quick guide",
+    "apiGuide": {
+      "title": "title: required message title, max length 32.",
+      "desp": "desp: optional Markdown content, max 32KB; message cards show the first 30 chars.",
+      "short": "short: optional card content, max length 64; generated from desp when omitted.",
+      "noip": "noip: optional, set to 1 to hide caller IP.",
+      "channel": "channel: optional, dynamically choose the channel for this push.",
+      "openid": "openid: optional copy recipients; supported by test account and WeCom app-message channels.",
+      "tags": "tags: optional labels separated with |, for example server-alert|report."
+    },
+    "channels": {
+      "default": "Default channel",
+      "serviceAccount": "Fangtang service account",
+      "android": "Android client",
+      "webhook": "Custom Web hook",
+      "pushdeer": "PushDeer",
+      "wecomApp": "WeCom app message",
+      "wecomBot": "WeCom group bot",
+      "bark": "Bark iOS",
+      "dingtalk": "DingTalk group bot",
+      "feishu": "Feishu group bot"
+    },
+    "channelHints": {
+      "default": "Use the default routing configured in ServerChan.",
+      "serviceAccount": "Send through the Fangtang service account channel.",
+      "android": "Send to the official ServerChan Android client.",
+      "webhook": "Send through the ServerChan custom Web hook channel.",
+      "pushdeer": "Send through PushDeer.",
+      "wecomApp": "Send through WeCom app messages; can use OpenID/UID.",
+      "wecomBot": "Send to a WeCom group bot.",
+      "bark": "Send to Bark iOS.",
+      "dingtalk": "Send to a DingTalk group bot.",
+      "feishu": "Send to a Feishu group bot."
+    },
+    "ipHidden": "IP hidden",
+    "openidConfigured": "OpenID/UID configured",
+    "tagsSummary": "Tags: {tags}",
+    "titlePrefixSummary": "Prefix: {prefix}",
+    "timeoutSummary": "Timeout: {timeout}ms"
   },
   "ssl": {
     "title": "SSL Certificates",
@@ -501,6 +807,10 @@
   "notification": {
     "title": "Notifications",
     "description": "Check delivery results and retry failures. Webhook and ServerChan are configured here.",
+    "deliveryEyebrow": "Delivery Control",
+    "attentionQueue": "Attention Queue",
+    "attentionHint": "Failed notifications are shown by default; sent events remain in all history.",
+    "allHistory": "All History",
     "refresh": "Refresh",
     "channel": "Channel",
     "status": "Status",
@@ -520,6 +830,8 @@
     "totalCount": "{count} record(s)",
     "clearFilters": "Clear filters",
     "noEvents": "No notification events yet",
+    "noFailedEvents": "No failed notifications right now",
+    "noMatchingEvents": "No matching notification events",
     "loadMore": "Load more",
     "retry": "Retry",
     "retrySuccess": "Retry succeeded",
@@ -528,6 +840,26 @@
     "retryOfLabel": "Retry of",
     "fetchError": "Failed to fetch notifications",
     "detailTitle": "Notification Details",
+    "archiveFailed": "Archive failed records",
+    "archiveFailedConfirm": "Archive failed notifications matching the current filters? Archived records are hidden from the default list.",
+    "archiveSuccess": "Notification records archived",
+    "archiveError": "Failed to archive notification records",
+    "clearFailed": "Clear failed records",
+    "clearFailedConfirm": "Permanently clear failed notifications matching the current filters? This cannot be undone.",
+    "clearArchived": "Clear archived records",
+    "clearArchivedConfirm": "Permanently clear archived notifications matching the current filters? This cannot be undone.",
+    "clearSuccess": "Notification records cleared",
+    "clearError": "Failed to clear notification records",
+    "viewArchived": "View archive",
+    "viewActive": "Back to current",
+    "archivedRecords": "Archived Records",
+    "noArchivedEvents": "No archived notifications",
+    "channels": {
+      "email": "Email",
+      "webhook": "Webhook",
+      "serverchan": "ServerChan",
+      "push": "Web Push"
+    },
     "statuses": {
       "sent": "Sent",
       "failed": "Failed",
@@ -543,7 +875,8 @@
       "expiring_soon": "Expiring Soon",
       "scan_failed": "Scan Failed",
       "daily_summary": "Daily Summary",
-      "dropping_alert": "Dropping Alert"
+      "dropping_alert": "Dropping Alert",
+      "security_finding_high": "High Security Finding"
     }
   },
   "offline": {

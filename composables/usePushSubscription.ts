@@ -7,6 +7,8 @@
  * Server side it stays a no-op so the composable is SSR-safe.
  */
 
+import { unwrapApiEnvelope } from "~/utils/api-envelope";
+
 type PushState =
   | "idle"
   | "unsupported"
@@ -75,8 +77,9 @@ export const usePushSubscription = () => {
         msg: string;
         data: { publicKey: string; configured: boolean };
       }>("/api/push/vapid-public");
-      const publicKey = vapidResp.data?.publicKey || "";
-      if (!vapidResp.data?.configured || !publicKey) {
+      const vapidData = unwrapApiEnvelope(vapidResp, "Failed to load VAPID key");
+      const publicKey = vapidData?.publicKey || "";
+      if (!vapidData?.configured || !publicKey) {
         state.value = "not-configured";
         errorMessage.value = "VAPID keys not configured on server";
         return false;
@@ -98,7 +101,7 @@ export const usePushSubscription = () => {
       }
 
       const json = sub.toJSON();
-      await $fetch("/api/push/subscribe", {
+      const response = await $fetch("/api/push/subscribe", {
         method: "POST",
         body: {
           endpoint: json.endpoint,
@@ -106,11 +109,11 @@ export const usePushSubscription = () => {
           userAgent: navigator.userAgent,
         },
       });
+      unwrapApiEnvelope(response, "Push subscribe failed");
 
       state.value = "subscribed";
       return true;
     } catch (e: any) {
-      console.error("Push subscribe failed:", e);
       state.value = "error";
       errorMessage.value = e.message || String(e);
       return false;
@@ -125,15 +128,15 @@ export const usePushSubscription = () => {
       if (sub) {
         const endpoint = sub.endpoint;
         await sub.unsubscribe();
-        await $fetch("/api/push/subscribe", {
+        const response = await $fetch("/api/push/subscribe", {
           method: "DELETE",
           body: { endpoint },
         });
+        unwrapApiEnvelope(response, "Push unsubscribe failed");
       }
       state.value = "idle";
       return true;
     } catch (e: any) {
-      console.error("Push unsubscribe failed:", e);
       state.value = "error";
       errorMessage.value = e.message || String(e);
       return false;

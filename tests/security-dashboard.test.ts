@@ -5,7 +5,7 @@ import * as schema from "../server/db/schema";
 import { getSecurityDashboardSummary } from "../server/utils/security-dashboard";
 
 describe("security dashboard summary", () => {
-  it("aggregates owned-domain findings and active Brand Watch registrations", async () => {
+  it("aggregates owned-domain findings", async () => {
     const sqlite = new Database(":memory:");
     sqlite.exec(`
       CREATE TABLE domains (
@@ -32,44 +32,6 @@ describe("security dashboard summary", () => {
         last_seen_at INTEGER,
         snoozed_until INTEGER,
         resolved_at INTEGER
-      );
-
-      CREATE TABLE brand_watch_terms (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        term TEXT NOT NULL,
-        normalized_term TEXT NOT NULL,
-        term_type TEXT NOT NULL DEFAULT 'BRAND',
-        match_strategy TEXT NOT NULL DEFAULT 'STANDARD',
-        tlds_json TEXT NOT NULL DEFAULT '["com","net","org"]',
-        severity TEXT NOT NULL DEFAULT 'MEDIUM',
-        enabled INTEGER DEFAULT 1,
-        scan_frequency_hours INTEGER DEFAULT 24,
-        last_scanned_at INTEGER,
-        created_at INTEGER,
-        updated_at INTEGER
-      );
-
-      CREATE TABLE brand_watch_candidates (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        term_id INTEGER NOT NULL,
-        domain TEXT NOT NULL,
-        label TEXT NOT NULL,
-        tld TEXT NOT NULL,
-        mutation_type TEXT NOT NULL,
-        status TEXT NOT NULL DEFAULT 'UNKNOWN',
-        severity TEXT NOT NULL DEFAULT 'MEDIUM',
-        source TEXT NOT NULL DEFAULT 'rdap',
-        evidence_json TEXT,
-        review_status TEXT NOT NULL DEFAULT 'OPEN',
-        review_note TEXT,
-        reviewed_at INTEGER,
-        reviewed_by TEXT,
-        first_seen_at INTEGER,
-        last_seen_at INTEGER,
-        checked_at INTEGER,
-        last_error TEXT,
-        created_at INTEGER,
-        updated_at INTEGER
       );
 
       CREATE TABLE task_runs (
@@ -148,57 +110,6 @@ describe("security dashboard summary", () => {
       },
     ]);
 
-    const [term] = await db
-      .insert(schema.brandWatchTerms)
-      .values({
-        term: "Example",
-        normalizedTerm: "example",
-        tldsJson: JSON.stringify(["com"]),
-      })
-      .returning();
-
-    await db.insert(schema.brandWatchCandidates).values([
-      {
-        termId: term.id,
-        domain: "example-login.com",
-        label: "example-login",
-        tld: "com",
-        mutationType: "suffix",
-        status: "REGISTERED",
-        severity: "HIGH",
-        source: "ct",
-        reviewStatus: "OPEN",
-        firstSeenAt: recent,
-        lastSeenAt: recent,
-      },
-      {
-        termId: term.id,
-        domain: "example-secure.com",
-        label: "example-secure",
-        tld: "com",
-        mutationType: "suffix",
-        status: "REGISTERED",
-        severity: "HIGH",
-        source: "rdap",
-        reviewStatus: "DISMISSED",
-        firstSeenAt: recent,
-        lastSeenAt: recent,
-      },
-      {
-        termId: term.id,
-        domain: "example-free.com",
-        label: "example-free",
-        tld: "com",
-        mutationType: "suffix",
-        status: "AVAILABLE",
-        severity: "LOW",
-        source: "rdap",
-        reviewStatus: "OPEN",
-        firstSeenAt: recent,
-        lastSeenAt: recent,
-      },
-    ]);
-
     await db.insert(schema.taskRuns).values([
       {
         taskName: "hourly-scan",
@@ -212,8 +123,6 @@ describe("security dashboard summary", () => {
             highOpenFindings: 2,
             registrarLockGaps: 2,
             dnsDriftFindings: 1,
-            registeredLookalikes: 0,
-            highRegisteredLookalikes: 0,
             totalRiskSignals: 5,
             highRiskSignals: 2,
             riskPressureScore: 25,
@@ -221,7 +130,7 @@ describe("security dashboard summary", () => {
         }),
       },
       {
-        taskName: "brand-watch",
+        taskName: "daily-summary",
         startedAt: recent,
         finishedAt: recent,
         resultJson: JSON.stringify({
@@ -232,13 +141,9 @@ describe("security dashboard summary", () => {
             highOpenFindings: 1,
             registrarLockGaps: 1,
             dnsDriftFindings: 1,
-            registeredLookalikes: 1,
-            highRegisteredLookalikes: 1,
-            ctRegisteredLookalikes: 1,
-            rdapRegisteredLookalikes: 0,
-            totalRiskSignals: 3,
-            highRiskSignals: 2,
-            riskPressureScore: 17,
+            totalRiskSignals: 2,
+            highRiskSignals: 1,
+            riskPressureScore: 12,
           },
         }),
       },
@@ -257,30 +162,25 @@ describe("security dashboard summary", () => {
       highOpenFindings: 1,
       registrarLockGaps: 1,
       dnsDriftFindings: 1,
-      registeredLookalikes: 1,
-      highRegisteredLookalikes: 1,
-      ctRegisteredLookalikes: 1,
-      rdapRegisteredLookalikes: 0,
     });
     expect(summary.riskMetrics).toMatchObject({
-      totalRiskSignals: 3,
-      highRiskSignals: 2,
-      riskPressureScore: 17,
+      totalRiskSignals: 2,
+      highRiskSignals: 1,
+      riskPressureScore: 12,
     });
     expect(summary.riskMetricHistory).toHaveLength(2);
     expect(summary.riskMetricHistory.map((row) => row.taskName)).toEqual([
       "hourly-scan",
-      "brand-watch",
+      "daily-summary",
     ]);
     expect(summary.riskMetricHistory[1].metrics).toMatchObject({
-      riskPressureScore: 17,
-      totalRiskSignals: 3,
+      riskPressureScore: 12,
+      totalRiskSignals: 2,
     });
     expect(summary.trends).toMatchObject({
       openFindings: 1,
       registrarLockGaps: 1,
       dnsDriftFindings: 0,
-      registeredLookalikes: 1,
     });
     expect(summary.findingTypeCounts).toMatchObject({
       REGISTRAR_LOCK_MISSING: 1,
@@ -292,11 +192,6 @@ describe("security dashboard summary", () => {
       riskScore: 60,
       openFindingsCount: 2,
       highestSeverity: "HIGH",
-    });
-    expect(summary.recentBrandRisks[0]).toMatchObject({
-      domain: "example-login.com",
-      term: "Example",
-      source: "ct",
     });
 
     sqlite.close();

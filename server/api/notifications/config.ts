@@ -7,8 +7,11 @@ import {
 } from "../../utils/secrets";
 import { recordAuditEvent } from "../../utils/audit";
 import {
+  getNotificationChannelDiagnostics,
+  getNotificationChannelSettings,
   getNotificationEventChannelPresets,
   getRiskNotificationDeliverySummary,
+  setNotificationChannelSettings,
   setNotificationEventChannelPresets,
 } from "../../utils/notification-preferences";
 
@@ -61,9 +64,16 @@ const protectExistingPass = (pass: string | null | undefined) => {
 export const getRules = async () => {
   const db = useDb();
   const rules = await db.select().from(notificationRules).limit(1).get();
-  const [eventChannelPresets, riskDeliverySummary] = await Promise.all([
+  const [
+    eventChannelPresets,
+    riskDeliverySummary,
+    channelSettings,
+    channelDiagnostics,
+  ] = await Promise.all([
     getNotificationEventChannelPresets({ db }),
     getRiskNotificationDeliverySummary({ db }),
+    getNotificationChannelSettings({ db }),
+    getNotificationChannelDiagnostics({ db }),
   ]);
   if (!rules)
     return {
@@ -71,6 +81,8 @@ export const getRules = async () => {
       instantEnabled: false,
       targetEmail: "",
       smtpConfig: { pass: "", passConfigured: false },
+      channelSettings,
+      channelDiagnostics,
       eventChannelPresets,
       riskDeliverySummary,
     };
@@ -82,6 +94,8 @@ export const getRules = async () => {
     instantEnabled: Boolean(rules.instantEnabled),
     targetEmail: rules.targetEmail || "",
     smtpConfig: sanitizeSmtpConfig(smtpConfig),
+    channelSettings,
+    channelDiagnostics,
     eventChannelPresets,
     riskDeliverySummary,
   };
@@ -128,6 +142,15 @@ export default defineEventHandler(async (event) => {
           db,
         })
       : undefined;
+    const hasChannelSettings = Object.prototype.hasOwnProperty.call(
+      body || {},
+      "channelSettings",
+    );
+    const channelSettings = hasChannelSettings
+      ? await setNotificationChannelSettings(body.channelSettings, {
+          db,
+        })
+      : undefined;
 
     if (existing) {
       await db
@@ -150,10 +173,12 @@ export default defineEventHandler(async (event) => {
         smtpUserConfigured: Boolean(nextSmtpConfig.user),
         smtpPassChanged: Boolean(incomingPass),
         smtpPassConfigured: Boolean(nextSmtpConfig.pass),
+        notificationChannelSettingsChanged: hasChannelSettings,
+        notificationChannelSettings: channelSettings,
         riskEventChannelPresetsChanged: hasEventChannelPresets,
         riskEventChannelPresets: eventChannelPresets,
       },
     });
-    return success({ saved: true, eventChannelPresets });
+    return success({ saved: true, channelSettings, eventChannelPresets });
   }
 });

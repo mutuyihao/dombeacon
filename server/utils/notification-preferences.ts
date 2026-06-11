@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import {
   appSettings,
   notificationEvents,
@@ -9,11 +9,11 @@ import {
 } from "../db/schema";
 
 const EVENT_CHANNEL_PRESETS_KEY = "notifications.eventChannelPresets";
+const CHANNEL_SETTINGS_KEY = "notifications.channelSettings";
 const DEDUPE_WINDOW_HOURS = 24;
 
 export const RISK_NOTIFICATION_EVENT_TYPES = [
   "SECURITY_FINDING_HIGH",
-  "BRAND_WATCH_REGISTERED",
 ] as const;
 
 export const NOTIFICATION_CHANNEL_KEYS = [
@@ -25,8 +25,8 @@ export const NOTIFICATION_CHANNEL_KEYS = [
 
 const CHANNEL_NAMES = ["EMAIL", "WEBHOOK", "SERVERCHAN", "PUSH"] as const;
 
-type ChannelKey = (typeof NOTIFICATION_CHANNEL_KEYS)[number];
-type NotificationChannelPreset = Record<ChannelKey, boolean>;
+export type ChannelKey = (typeof NOTIFICATION_CHANNEL_KEYS)[number];
+export type NotificationChannelPreset = Record<ChannelKey, boolean>;
 type ChannelName = (typeof CHANNEL_NAMES)[number];
 
 const CHANNEL_KEY_BY_NAME: Record<ChannelName, ChannelKey> = {
@@ -36,11 +36,25 @@ const CHANNEL_KEY_BY_NAME: Record<ChannelName, ChannelKey> = {
   PUSH: "push",
 };
 
+const CHANNEL_NAME_BY_KEY: Record<ChannelKey, ChannelName> = {
+  email: "EMAIL",
+  webhook: "WEBHOOK",
+  serverchan: "SERVERCHAN",
+  push: "PUSH",
+};
+
 const allChannelsEnabled = (): NotificationChannelPreset => ({
   email: true,
   webhook: true,
   serverchan: true,
   push: true,
+});
+
+const allChannelsDisabled = (): NotificationChannelPreset => ({
+  email: false,
+  webhook: false,
+  serverchan: false,
+  push: false,
 });
 
 const parseJson = <T>(value: string | null | undefined, fallback: T): T => {
@@ -66,12 +80,13 @@ const toIso = (value: unknown) => {
 
 const hasText = (value: unknown) => Boolean(String(value || "").trim());
 
-const formatMissing = (items: string[]) =>
-  items.length === 1
-    ? `Missing ${items[0]}.`
-    : `Missing ${items.slice(0, -1).join(", ")} and ${
-        items[items.length - 1]
-      }.`;
+const formatMissing = (items: string[]) => {
+  if (items.length === 0) return "Configuration is complete.";
+  if (items.length === 1) return `Missing ${items[0]}.`;
+  return `Missing ${items.slice(0, -1).join(", ")} and ${
+    items[items.length - 1]
+  }.`;
+};
 
 const matchesEventTypes = (
   value: string | null | undefined,
@@ -112,6 +127,18 @@ export const normalizeNotificationEventChannelPresets = (value: unknown) => {
     );
     return acc;
   }, {});
+};
+
+export const normalizeNotificationChannelSettings = (value: unknown) => {
+  const input = value && typeof value === "object" ? (value as any) : {};
+  return NOTIFICATION_CHANNEL_KEYS.reduce<NotificationChannelPreset>(
+    (channels, channel) => {
+      channels[channel] =
+        typeof input[channel] === "boolean" ? input[channel] : false;
+      return channels;
+    },
+    allChannelsDisabled(),
+  );
 };
 
 export const getNotificationEventChannelPresets = async (options?: {
@@ -163,6 +190,53 @@ export const setNotificationEventChannelPresets = async (
   return presets;
 };
 
+export const getNotificationChannelSettings = async (options?: {
+  db?: ReturnType<typeof useDb>;
+}) => {
+  const db = options?.db ?? useDb();
+  const row = await db
+    .select()
+    .from(appSettings)
+    .where(eq(appSettings.key, CHANNEL_SETTINGS_KEY))
+    .limit(1)
+    .get();
+
+  return normalizeNotificationChannelSettings(parseJson(row?.value, {}));
+};
+
+export const setNotificationChannelSettings = async (
+  value: unknown,
+  options?: { db?: ReturnType<typeof useDb> },
+) => {
+  const db = options?.db ?? useDb();
+  const settings = normalizeNotificationChannelSettings(value);
+  const existing = await db
+    .select()
+    .from(appSettings)
+    .where(eq(appSettings.key, CHANNEL_SETTINGS_KEY))
+    .limit(1)
+    .get();
+
+  const values = {
+    value: JSON.stringify(settings),
+    updatedAt: new Date(),
+  };
+
+  if (existing) {
+    await db
+      .update(appSettings)
+      .set(values)
+      .where(eq(appSettings.key, CHANNEL_SETTINGS_KEY));
+  } else {
+    await db.insert(appSettings).values({
+      key: CHANNEL_SETTINGS_KEY,
+      ...values,
+    });
+  }
+
+  return settings;
+};
+
 export const getNotificationEventChannels = async (
   eventType: string,
   options?: { db?: ReturnType<typeof useDb> },
@@ -188,12 +262,19 @@ export const applyNotificationChannelPreset = (
     allChannelsEnabled(),
   );
 
-const getRiskNotificationChannelDiagnostics = async (options?: {
+export const getNotificationChannelDiagnostics = async (options?: {
   db?: ReturnType<typeof useDb>;
+  eventType?: string;
+  settings?: NotificationChannelPreset;
 }) => {
   const db = options?.db ?? useDb();
-  const [presets, rule, webhooks, serverchans, pushSubs] = await Promise.all([
-    getNotificationEventChannelPresets({ db }),
+  const eventType = options?.eventType
+    ? String(options.eventType).toUpperCase()
+    : "";
+  const [settings, rule, webhooks, serverchans, pushSubs] = await Promise.all([
+    options?.settings
+      ? Promise.resolve(options.settings)
+      : getNotificationChannelSettings({ db }),
     db.select().from(notificationRules).limit(1).get(),
     db.select().from(webhookConfigs).all(),
     db.select().from(serverchanConfigs).all(),
@@ -208,87 +289,181 @@ const getRiskNotificationChannelDiagnostics = async (options?: {
   const emailMissing = [
     !hasText(rule?.targetEmail) ? "target email" : "",
     !hasText(smtpConfig.host) ? "SMTP host" : "",
+    !hasText(smtpConfig.from) ? "from email" : "",
+    !Boolean(rule?.instantEnabled || rule?.dailyEnabled)
+      ? "email notification type"
+      : "",
   ].filter(Boolean);
   const emailConfigured = emailMissing.length === 0;
+  const matchingWebhooks = webhooks.filter(
+    (config) =>
+      Boolean(config.enabled) &&
+      (!eventType ||
+        matchesEventTypes(config.eventTypes, eventType, { wildcard: true })),
+  );
+  const matchingServerchans = serverchans.filter(
+    (config) =>
+      Boolean(config.enabled) &&
+      (!eventType ||
+        matchesEventTypes(config.eventTypes, eventType, { wildcard: true })),
+  );
   const vapidConfigured = Boolean(
     process.env.VAPID_PUBLIC_KEY &&
       process.env.VAPID_PRIVATE_KEY &&
       process.env.VAPID_SUBJECT,
   );
 
-  return RISK_NOTIFICATION_EVENT_TYPES.reduce<Record<string, any>>(
-    (events, eventType) => {
-      const matchingWebhooks = webhooks.filter(
-        (config) =>
-          Boolean(config.enabled) &&
-          matchesEventTypes(config.eventTypes, eventType, { wildcard: true }),
-      );
-      const matchingServerchans = serverchans.filter(
-        (config) =>
-          Boolean(config.enabled) &&
-          matchesEventTypes(config.eventTypes, eventType),
-      );
+  const base: Record<
+    ChannelName,
+    { configured: boolean; destinationCount: number; message: string }
+  > = {
+    EMAIL: {
+      configured: emailConfigured,
+      destinationCount: emailConfigured ? 1 : 0,
+      message: emailConfigured
+        ? "SMTP target is configured."
+        : formatMissing(emailMissing),
+    },
+    WEBHOOK: {
+      configured: matchingWebhooks.length > 0,
+      destinationCount: matchingWebhooks.length,
+      message:
+        matchingWebhooks.length > 0
+          ? `${matchingWebhooks.length} matching webhook destination(s).`
+          : eventType
+            ? `No enabled webhook matches ${eventType}.`
+            : "No enabled webhook destination.",
+    },
+    SERVERCHAN: {
+      configured: matchingServerchans.length > 0,
+      destinationCount: matchingServerchans.length,
+      message:
+        matchingServerchans.length > 0
+          ? `${matchingServerchans.length} matching ServerChan destination(s).`
+          : eventType
+            ? `No enabled ServerChan config matches ${eventType}.`
+            : "No enabled ServerChan config.",
+    },
+    PUSH: {
+      configured: vapidConfigured && pushSubs.length > 0,
+      destinationCount: pushSubs.length,
+      message: !vapidConfigured
+        ? "VAPID keys are not configured."
+        : pushSubs.length > 0
+          ? `${pushSubs.length} enabled push subscription(s).`
+          : "No enabled push subscriptions.",
+    },
+  };
 
-      const base: Record<ChannelName, any> = {
-        EMAIL: {
-          configured: emailConfigured,
-          destinationCount: emailConfigured ? 1 : 0,
-          message: emailConfigured
-            ? "SMTP target is configured."
-            : formatMissing(emailMissing),
-        },
-        WEBHOOK: {
-          configured: matchingWebhooks.length > 0,
-          destinationCount: matchingWebhooks.length,
-          message:
-            matchingWebhooks.length > 0
-              ? `${matchingWebhooks.length} matching webhook destination(s).`
-              : `No enabled webhook matches ${eventType}.`,
-        },
-        SERVERCHAN: {
-          configured: matchingServerchans.length > 0,
-          destinationCount: matchingServerchans.length,
-          message:
-            matchingServerchans.length > 0
-              ? `${matchingServerchans.length} matching ServerChan destination(s).`
-              : `No enabled ServerChan config matches ${eventType}.`,
-        },
-        PUSH: {
-          configured: vapidConfigured && pushSubs.length > 0,
-          destinationCount: pushSubs.length,
-          message: !vapidConfigured
-            ? "VAPID keys are not configured."
-            : pushSubs.length > 0
-              ? `${pushSubs.length} enabled push subscription(s).`
-              : "No enabled push subscriptions.",
-        },
-      };
+  return CHANNEL_NAMES.reduce<Record<string, any>>((acc, channelName) => {
+    const channelKey = CHANNEL_KEY_BY_NAME[channelName];
+    const enabled = Boolean(settings[channelKey]);
+    const diagnostic = base[channelName];
+    acc[channelName] = {
+      key: channelKey,
+      label: channelName,
+      enabled,
+      configured: diagnostic.configured,
+      destinationCount: diagnostic.destinationCount,
+      severity: !enabled
+        ? "disabled"
+        : diagnostic.configured
+          ? "ok"
+          : "warning",
+      message: enabled
+        ? diagnostic.message
+        : "Channel is disabled and will not send notifications.",
+    };
+    return acc;
+  }, {});
+};
 
-      events[eventType] = CHANNEL_NAMES.reduce<Record<string, any>>(
-        (channels, channelName) => {
-          const presetEnabled =
-            presets[eventType]?.[CHANNEL_KEY_BY_NAME[channelName]] ?? true;
-          const diagnostic = base[channelName];
-          channels[channelName] = {
+export const getEffectiveNotificationChannels = async (
+  eventType: string,
+  requested?: Partial<NotificationChannelPreset>,
+  options?: { db?: ReturnType<typeof useDb> },
+) => {
+  const db = options?.db ?? useDb();
+  const [eventPreset, channelSettings] = await Promise.all([
+    getNotificationEventChannels(eventType, { db }),
+    getNotificationChannelSettings({ db }),
+  ]);
+  const requestedChannels = applyNotificationChannelPreset(
+    requested,
+    eventPreset,
+  );
+  const diagnostics = await getNotificationChannelDiagnostics({
+    db,
+    eventType,
+    settings: channelSettings,
+  });
+  const channels = NOTIFICATION_CHANNEL_KEYS.reduce<NotificationChannelPreset>(
+    (acc, channel) => {
+      const channelName = CHANNEL_NAME_BY_KEY[channel];
+      acc[channel] = Boolean(
+        requestedChannels[channel] &&
+          channelSettings[channel] &&
+          diagnostics[channelName]?.configured,
+      );
+      return acc;
+    },
+    allChannelsDisabled(),
+  );
+
+  return {
+    channels,
+    requestedChannels,
+    eventPreset,
+    channelSettings,
+    diagnostics,
+  };
+};
+
+const getRiskNotificationChannelDiagnostics = async (options?: {
+  db?: ReturnType<typeof useDb>;
+}) => {
+  const db = options?.db ?? useDb();
+  const [presets, channelSettings] = await Promise.all([
+    getNotificationEventChannelPresets({ db }),
+    getNotificationChannelSettings({ db }),
+  ]);
+  const entries = await Promise.all(
+    RISK_NOTIFICATION_EVENT_TYPES.map(async (eventType) => {
+      const diagnostics = await getNotificationChannelDiagnostics({
+        db,
+        eventType,
+        settings: channelSettings,
+      });
+      const channels = CHANNEL_NAMES.reduce<Record<string, any>>(
+        (acc, channelName) => {
+          const channelKey = CHANNEL_KEY_BY_NAME[channelName];
+          const presetEnabled = presets[eventType]?.[channelKey] ?? true;
+          const diagnostic = diagnostics[channelName] || {};
+          const enabled = Boolean(diagnostic.enabled && presetEnabled);
+          acc[channelName] = {
             ...diagnostic,
+            enabled,
             presetEnabled,
             severity: !presetEnabled
               ? "disabled"
-              : diagnostic.configured
-                ? "ok"
-                : "warning",
+              : !diagnostic.enabled
+                ? "disabled"
+                : diagnostic.configured
+                  ? "ok"
+                  : "warning",
             message: !presetEnabled
               ? "Preset disabled for this risk event."
               : diagnostic.message,
           };
-          return channels;
+          return acc;
         },
         {},
       );
-      return events;
-    },
-    {},
+      return [eventType, channels] as const;
+    }),
   );
+
+  return Object.fromEntries(entries);
 };
 
 export const getRiskNotificationDeliverySummary = async (options?: {
@@ -303,13 +478,16 @@ export const getRiskNotificationDeliverySummary = async (options?: {
     Math.floor(options?.dedupeWindowHours || DEDUPE_WINDOW_HOURS),
   );
   const cutoff = now.getTime() - dedupeWindowHours * 60 * 60 * 1000;
-  const riskEventSet = new Set<string>(RISK_NOTIFICATION_EVENT_TYPES);
   const channelDiagnostics = await getRiskNotificationChannelDiagnostics({
     db,
   });
-  const rows = (await db.select().from(notificationEvents).all()).filter((row) =>
-    riskEventSet.has(row.eventType),
-  );
+  const rows = await db
+    .select()
+    .from(notificationEvents)
+    .where(
+      inArray(notificationEvents.eventType, [...RISK_NOTIFICATION_EVENT_TYPES]),
+    )
+    .all();
 
   const events = RISK_NOTIFICATION_EVENT_TYPES.reduce<Record<string, any>>(
     (acc, eventType) => {
@@ -347,6 +525,12 @@ export const getRiskNotificationDeliverySummary = async (options?: {
     Record<string, Set<string>>
   >((acc, eventType) => {
     acc[eventType] = new Set<string>();
+    return acc;
+  }, {});
+  const lastDedupeRankByEvent = RISK_NOTIFICATION_EVENT_TYPES.reduce<
+    Record<string, { at: number; id: number }>
+  >((acc, eventType) => {
+    acc[eventType] = { at: 0, id: 0 };
     return acc;
   }, {});
 
@@ -409,9 +593,18 @@ export const getRiskNotificationDeliverySummary = async (options?: {
     const dedupeAt = dateMs(row.sentAt || row.createdAt);
     if (dedupeKey && dedupeAt >= cutoff) {
       dedupeKeysByEvent[row.eventType]?.add(String(dedupeKey));
-      if (dedupeAt > dateMs(eventSummary.lastDedupeAt)) {
+      const currentRank = lastDedupeRankByEvent[row.eventType] || {
+        at: 0,
+        id: 0,
+      };
+      const rowId = Number(row.id || 0);
+      if (
+        dedupeAt > currentRank.at ||
+        (dedupeAt === currentRank.at && rowId > currentRank.id)
+      ) {
         eventSummary.lastDedupeKey = String(dedupeKey);
         eventSummary.lastDedupeAt = new Date(dedupeAt).toISOString();
+        lastDedupeRankByEvent[row.eventType] = { at: dedupeAt, id: rowId };
       }
     }
   });

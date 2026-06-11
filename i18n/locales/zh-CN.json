@@ -33,6 +33,9 @@
   "nav": {
     "dashboard": "总览",
     "domains": "域名",
+    "risk": "风险",
+    "riskOverview": "概览",
+    "findings": "安全发现",
     "actions": "待办",
     "tasks": "任务",
     "ssl": "SSL 证书",
@@ -85,15 +88,171 @@
       "notificationsHint": "需要排查的通知"
     }
   },
-  "auth": {
-    "login": "登录",
-    "logout": "退出",
-    "password": "密码",
-    "enterPassword": "请输入密码",
-    "loginRequired": "需要登录",
-    "invalidPassword": "密码错误",
-    "loginSuccess": "登录成功",
-    "loggingIn": "登录中..."
+  "risk": {
+    "common": {
+      "refresh": "刷新",
+      "unknown": "未知",
+      "none": "无",
+      "days": "{count} 天",
+      "ownedDomains": "{count} 个已拥有域名"
+    },
+    "overview": {
+      "kicker": "安全态势",
+      "title": "风险概览",
+      "description": "这个页面用于先判断已拥有域名是否需要安全处理，再进入发现队列做处置。",
+      "viewFindings": "打开发现队列",
+      "briefKicker": "决策摘要",
+      "scope": "范围",
+      "window": "趋势窗口",
+      "updated": "更新时间"
+    },
+    "posture": {
+      "clear": {
+        "title": "当前没有需要立即处理的开放风险",
+        "description": "已拥有域名的 DNS、注册商锁和邮件策略扫描没有显示开放发现。"
+      },
+      "watch": {
+        "title": "有 {open} 个开放发现需要复核",
+        "description": "先看注册商锁缺口和 DNS 漂移，再把预期内变化标记为已解决或忽略。"
+      },
+      "critical": {
+        "title": "有 {high} 个高危发现需要处理",
+        "description": "优先处理高危项。它们通常影响邮件可信度、域名控制权或公网攻击面。"
+      }
+    },
+    "metrics": {
+      "openFindings": "开放发现",
+      "openFindingsHint": "{count} 个高危",
+      "lockGaps": "注册商锁缺口",
+      "lockGapsHint": "近 {days} 天新增 {count} 个",
+      "dnsDrift": "DNS 漂移",
+      "dnsDriftHint": "{count} 个新的 NS 或 MX 变化",
+      "ownedDomains": "已拥有域名",
+      "ownedDomainsHint": "纳入风险检查的活跃资产"
+    },
+    "priorities": {
+      "kicker": "下一步",
+      "title": "处置优先级",
+      "description": "这里把指标转成应该打开的队列。如果这里为空，风险模块当前没有紧急项。",
+      "highTitle": "处理高危发现",
+      "highDescription": "先复核会直接削弱域名控制、邮件可信度或公网安全态势的发现。",
+      "lockTitle": "关闭注册商锁缺口",
+      "lockDescription": "缺少转移锁会放大账号被接管后的影响。确认注册商状态或启用锁定。",
+      "driftTitle": "复核 DNS 漂移",
+      "driftDescription": "NS 和 MX 变化应该是有意为之。确认基线，或排查非预期变动。",
+      "empty": "当前没有开放风险优先级。"
+    },
+    "mix": {
+      "kicker": "风险构成",
+      "title": "开放发现类型",
+      "description": "显示当前开放风险主要来自哪些控制项。",
+      "empty": "没有开放安全发现。"
+    },
+    "domains": {
+      "kicker": "受影响资产",
+      "title": "优先复核的域名",
+      "findingSummary": "{count} 个开放发现：{types}",
+      "empty": "当前没有需要风险处置的已拥有域名。"
+    },
+    "stream": {
+      "kicker": "最新信号",
+      "title": "最近开放发现",
+      "lastSeen": "最后出现于 {time}",
+      "empty": "没有最近开放发现。"
+    },
+    "findings": {
+      "kicker": "处置队列",
+      "title": "安全发现",
+      "description": "在这个队列里判断每个发现仍然是风险、属于预期变化，还是已经修复。",
+      "backToOverview": "风险概览",
+      "filtersKicker": "聚焦",
+      "filtersTitle": "筛选队列",
+      "status": "状态",
+      "severity": "严重度",
+      "findingType": "发现类型",
+      "domainId": "域名 ID",
+      "domainPlaceholder": "任意",
+      "allStatuses": "全部状态",
+      "allSeverities": "全部严重度",
+      "allFindingTypes": "全部发现类型",
+      "domainBadge": "域名 ID：{id}",
+      "noFilters": "未应用筛选。",
+      "clearFilters": "清空",
+      "applyFilters": "应用筛选",
+      "savedViews": "视图",
+      "saveCurrentView": "保存当前视图",
+      "saveViewDisabled": "至少添加一个筛选条件后才能保存处置视图。",
+      "noSavedViews": "还没有保存的处置视图。",
+      "defaultView": "默认",
+      "setDefault": "设为默认",
+      "unsetDefault": "取消默认",
+      "deleteView": "删除视图",
+      "queueKicker": "队列",
+      "queueTitle": "{count} 个发现",
+      "shortcuts": "快捷键：J/K 移动，X 选择，R 重新打开，S 暂缓，D 忽略，E 解决。",
+      "selectVisible": "选择当前可见",
+      "selectedCount": "已选择 {count} 个",
+      "clearSelection": "清空选择",
+      "selectFinding": "选择发现",
+      "snoozedUntil": "暂缓至 {time}",
+      "seenWindow": "首次出现 {first} - 最后出现 {last}",
+      "loadingMore": "加载中...",
+      "empty": "没有匹配当前筛选条件的安全发现。",
+      "saveDialogTitle": "保存处置视图",
+      "saveDialogDescription": "保存当前筛选条件，用于后续重复复核安全发现。",
+      "saveDialogPlaceholder": "开放高危、注册商锁缺口...",
+      "markAsDefault": "作为安全发现的默认视图",
+      "confirmDeleteView": "删除处置视图“{name}”？",
+      "actions": {
+        "reopen": "重新打开",
+        "snooze7d": "暂缓 7 天",
+        "dismiss": "忽略",
+        "resolve": "解决",
+        "updating": "更新中..."
+      },
+      "toasts": {
+        "loadViewsFailed": "加载处置视图失败",
+        "saveViewFailed": "保存处置视图失败",
+        "viewSaved": "处置视图已保存",
+        "viewLoaded": "已加载 {name}",
+        "updateViewFailed": "更新处置视图失败",
+        "deleteViewFailed": "删除处置视图失败",
+        "viewDeleted": "处置视图已删除",
+        "loadMoreFailed": "加载发现失败",
+        "updateFailed": "更新发现失败",
+        "statusUpdated": "发现已标记为{status}",
+        "bulkUpdateFailed": "批量更新发现失败",
+        "bulkStatusUpdated": "已将 {count} 个发现标记为{status}"
+      }
+    },
+    "status": {
+      "OPEN": "开放",
+      "SNOOZED": "已暂缓",
+      "DISMISSED": "已忽略",
+      "RESOLVED": "已解决"
+    },
+    "severity": {
+      "HIGH": "高危",
+      "MEDIUM": "中危",
+      "LOW": "低危"
+    },
+    "findingTypes": {
+      "DNS_DRIFT": "DNS 漂移",
+      "REGISTRAR_LOCK_MISSING": "缺少注册商转移锁",
+      "NAMESERVER_DRIFT": "域名服务器漂移",
+      "MX_DRIFT": "MX 记录漂移",
+      "DMARC_MISSING": "缺少 DMARC 记录",
+      "DMARC_WEAK_POLICY": "DMARC 策略偏弱",
+      "CAA_MISSING": "缺少 CAA 记录",
+      "DNSSEC_UNSIGNED": "DNSSEC 未签名"
+    },
+    "evidence": {
+      "registrarLock": "注册商锁：{lockStatus}；状态集合：{statuses}",
+      "drift": "之前：{previous}；当前：{current}",
+      "dmarcPolicy": "DMARC 策略：{policy}；pct：{pct}",
+      "checkedRecord": "检查记录：{record}",
+      "raw": "证据：{value}"
+    }
   },
   "domain": {
     "portfolio": "组合",
@@ -151,6 +310,69 @@
     "noSnapshot": "无快照数据",
     "loadError": "加载域名信息失败",
     "checking": "检查中...",
+    "detail": {
+      "attention": "需要关注",
+      "attentionHint": "优先看会影响购买、续费、证书健康和安全态势的信号。",
+      "brief": "决策摘要",
+      "operationalContext": "运营上下文",
+      "statusSignal": "状态",
+      "expirySignal": "注册到期",
+      "sslSignal": "证书",
+      "riskSignal": "风险",
+      "notChecked": "未检查",
+      "source": "来源",
+      "daysLeft": "{days} 天",
+      "daysOverdue": "已过期 {days} 天",
+      "openFindings": "{count} 个开放项",
+      "stableTitle": "当前没有需要立即处理的事项",
+      "stableText": "状态、证书和安全扫描信号未显示高优先级异常。",
+      "scanFailedTitle": "最近扫描失败",
+      "scanFailedText": "先检查网络连通性、RDAP 可用性或解析器日志，然后重新扫描。",
+      "wantedAvailableTitle": "想要的域名可注册",
+      "wantedAvailableText": "如果这是目标域名，应尽快完成注册或进入抢注流程。",
+      "ownedExpiringTitle": "拥有域名处于到期状态",
+      "ownedExpiringText": "确认续费状态和自动续费配置，避免进入赎回或删除流程。",
+      "domainExpiryTitle": "注册到期窗口很近",
+      "domainExpiryText": "{days} 天后到期，请确认续费和付款状态。",
+      "sslInvalidTitle": "SSL 证书无效",
+      "sslInvalidText": "证书存在但校验失败，建议检查证书链、覆盖域名和签发状态。",
+      "sslExpiringTitle": "SSL 证书即将过期",
+      "sslExpiringText": "{days} 天后到期，请在出现访问故障前安排续签。",
+      "securityFindingsTitle": "存在开放安全发现",
+      "securityFindingsText": "当前有 {count} 个开放项，优先处理高危、邮件策略和证书控制问题。",
+      "securityKicker": "安全",
+      "securityPosture": "安全态势",
+      "lastScan": "上次扫描：{time}",
+      "findings": "发现",
+      "findingsTotal": "共 {count} 个",
+      "lastSeen": "最后出现于 {time}",
+      "noSecurityFindings": "最近扫描没有安全发现。",
+      "riskScore": "风险分",
+      "dnssecHint": "DS 记录态势",
+      "dmarcHint": "邮件仿冒策略",
+      "caaSet": "已设置",
+      "caaMissing": "缺失",
+      "caaHint": "证书签发方控制",
+      "registrarLock": "注册商锁",
+      "registrarLockHint": "转移锁",
+      "dnssecStatuses": {
+        "SIGNED": "已签名",
+        "UNSIGNED": "未签名",
+        "UNKNOWN": "未知"
+      },
+      "dmarcPolicies": {
+        "reject": "拒绝",
+        "quarantine": "隔离",
+        "none": "无",
+        "missing": "缺失",
+        "unknown": "未知"
+      },
+      "registrarLockStatuses": {
+        "LOCKED": "已锁定",
+        "UNLOCKED": "未锁定",
+        "UNKNOWN": "未知"
+      }
+    },
     "rdap": {
       "title": "注册局 / RDAP",
       "handle": "Handle / ROID",
@@ -177,6 +399,7 @@
   "action": {
     "title": "待办队列",
     "description": "域名可注册、即将到期、SSL 异常等事件会生成待办。",
+    "queueEyebrow": "待办处理",
     "actionType": "行动类型",
     "types": {
       "wanted_available": "想要的域名可注册",
@@ -198,7 +421,16 @@
     "snoozedUntil": "暂缓至",
     "triggeredAt": "触发时间",
     "resolvedAt": "解决时间",
+    "archivedAt": "归档时间",
     "noActions": "暂无行动项",
+    "noArchivedActions": "暂无归档待办",
+    "archiveRecords": "归档当前记录",
+    "archiveRecordsConfirm": "确认归档当前筛选下的待办记录？归档后默认列表不再显示。",
+    "archiveSuccess": "待办记录已归档",
+    "archiveError": "归档待办记录失败",
+    "viewArchived": "查看归档",
+    "viewActive": "返回当前",
+    "archivedRecords": "归档记录",
     "snoozeSuccess": "已暂缓",
     "dismissSuccess": "已忽略",
     "resolveSuccess": "已解决",
@@ -333,10 +565,14 @@
       "status_change": "状态变更",
       "expiring_soon": "即将过期",
       "dropping_alert": "待删除警报",
-      "daily_summary": "每日摘要"
+      "daily_summary": "每日摘要",
+      "security_finding_high": "高风险安全发现"
     },
     "allEvents": "所有事件",
-    "selectEvents": "选择事件类型"
+    "selectEvents": "选择事件类型",
+    "allEventsHint": "不选择任何事件表示发送所有事件；选择后只发送勾选事件。",
+    "selectAllEvents": "全选",
+    "clearEvents": "清空"
   },
   "serverchan": {
     "title": "Server酱配置",
@@ -356,7 +592,9 @@
     "testSuccess": "测试成功",
     "testFailed": "测试失败",
     "addSuccess": "Server酱添加成功",
+    "updateSuccess": "Server酱配置已更新",
     "addError": "Server酱添加失败",
+    "saveError": "Server酱配置保存失败",
     "deleteSuccess": "Server酱删除成功",
     "deleteError": "Server酱删除失败",
     "noServerchan": "暂无 Server酱配置",
@@ -373,12 +611,80 @@
       "status_change": "状态变更",
       "expiring_soon": "即将过期",
       "dropping_alert": "待删除警报",
-      "daily_summary": "每日摘要"
+      "daily_summary": "每日摘要",
+      "WANTED_AVAILABLE": "想要的域名可注册",
+      "WANTED_DROPPING": "想要的域名待删除",
+      "OWNED_EXPIRING": "拥有域名即将过期",
+      "SSL_EXPIRING": "SSL 证书即将过期",
+      "SSL_INVALID": "SSL 证书无效",
+      "STATUS_CHANGE": "状态变更",
+      "DROPPING_ALERT": "待删除警报",
+      "DAILY_SUMMARY": "每日摘要",
+      "SECURITY_FINDING_HIGH": "高危安全发现"
     },
     "allEvents": "所有事件",
     "selectEvents": "选择事件类型",
     "howToGetSendKey": "如何获取 SendKey？",
-    "sendKeyGuide": "1. 访问 https://sct.ftqq.com\n2. 使用微信扫码登录\n3. 在「SendKey」页面获取您的 SendKey"
+    "sendKeyGuide": "1. 访问 https://sct.ftqq.com\n2. 使用微信扫码登录\n3. 在「SendKey」页面获取您的 SendKey",
+    "basicConfig": "基础配置",
+    "deliveryOptions": "投递参数",
+    "deliveryOptionsDescription": "这些参数会作为 Server酱 Turbo API 的表单字段随每次发送一起提交。",
+    "channel": "消息通道",
+    "timeoutMs": "请求超时",
+    "timeoutHint": "3000 到 30000 毫秒。默认 10000。",
+    "openid": "OpenID / UID 抄送",
+    "openidPlaceholder": "openid1,openid2 或企业微信 UID",
+    "openidHint": "仅适用于测试号和企业微信应用消息通道；多个值用英文逗号分隔。",
+    "tags": "标签",
+    "tagsPlaceholder": "服务器报警|域名监控",
+    "tagsHint": "用于 Server酱消息分类；多个标签用 | 分隔。",
+    "titlePrefix": "标题前缀",
+    "titlePrefixPlaceholder": "[域灯] ",
+    "titlePrefixHint": "会追加到通知标题前；Server酱标题总长度限制为 32。",
+    "hideIp": "隐藏调用 IP",
+    "hideIpHint": "发送 noip=1，避免在消息详情里展示调用方 IP。",
+    "allEventsHint": "不选择任何事件表示发送所有事件；选择后只发送勾选事件。",
+    "selectAllEvents": "全选",
+    "clearEvents": "清空",
+    "apiGuideTitle": "官方参数速览",
+    "apiGuide": {
+      "title": "title：必填，消息标题，最大长度 32。",
+      "desp": "desp：可选，Markdown 内容，最大 32KB；消息卡片会截取前 30 字展示。",
+      "short": "short：可选，消息卡片内容，最大长度 64；不填时从 desp 自动截取。",
+      "noip": "noip：可选，设置为 1 时隐藏调用 IP。",
+      "channel": "channel：可选，动态指定本次推送使用的通道。",
+      "openid": "openid：可选，消息抄送对象；测试号和企业微信应用消息支持。",
+      "tags": "tags：可选，用 | 分隔多个标签，例如 服务器报警|报告。"
+    },
+    "channels": {
+      "default": "默认通道",
+      "serviceAccount": "方糖服务号",
+      "android": "Android 客户端",
+      "webhook": "自定义 Web hook",
+      "pushdeer": "PushDeer",
+      "wecomApp": "企业微信应用消息",
+      "wecomBot": "企业微信群机器人",
+      "bark": "Bark iOS",
+      "dingtalk": "钉钉群机器人",
+      "feishu": "飞书群机器人"
+    },
+    "channelHints": {
+      "default": "使用 Server酱后台配置的默认分发规则。",
+      "serviceAccount": "发送到方糖服务号通道。",
+      "android": "发送到 Server酱官方 Android 客户端。",
+      "webhook": "发送到 Server酱自定义 Web hook 通道。",
+      "pushdeer": "发送到 PushDeer 通道。",
+      "wecomApp": "发送到企业微信应用消息；可配合 OpenID/UID。",
+      "wecomBot": "发送到企业微信群机器人。",
+      "bark": "发送到 Bark iOS。",
+      "dingtalk": "发送到钉钉群机器人。",
+      "feishu": "发送到飞书群机器人。"
+    },
+    "ipHidden": "隐藏 IP",
+    "openidConfigured": "已配置 OpenID/UID",
+    "tagsSummary": "标签：{tags}",
+    "titlePrefixSummary": "前缀：{prefix}",
+    "timeoutSummary": "超时：{timeout}ms"
   },
   "ssl": {
     "title": "SSL 证书",
@@ -501,6 +807,10 @@
   "notification": {
     "title": "通知",
     "description": "查看通知是否送达，失败后可重试。Webhook 和 Server酱在这里配置。",
+    "deliveryEyebrow": "通知投递",
+    "attentionQueue": "治理队列",
+    "attentionHint": "默认只显示失败通知；已发送记录保留在全部历史中。",
+    "allHistory": "全部历史",
     "refresh": "刷新",
     "channel": "通道",
     "status": "状态",
@@ -520,6 +830,8 @@
     "totalCount": "共 {count} 条记录",
     "clearFilters": "清除筛选",
     "noEvents": "暂无通知记录",
+    "noFailedEvents": "当前没有失败通知",
+    "noMatchingEvents": "没有符合条件的通知记录",
     "loadMore": "加载更多",
     "retry": "重试",
     "retrySuccess": "重试发送成功",
@@ -528,6 +840,26 @@
     "retryOfLabel": "重试自",
     "fetchError": "获取通知失败",
     "detailTitle": "通知详情",
+    "archiveFailed": "归档失败记录",
+    "archiveFailedConfirm": "确认归档当前筛选下的失败通知？归档后默认列表不再显示。",
+    "archiveSuccess": "通知记录已归档",
+    "archiveError": "归档通知记录失败",
+    "clearFailed": "清除失败记录",
+    "clearFailedConfirm": "确认永久清除当前筛选下的失败通知？此操作不可恢复。",
+    "clearArchived": "清除归档记录",
+    "clearArchivedConfirm": "确认永久清除当前筛选下的归档通知？此操作不可恢复。",
+    "clearSuccess": "通知记录已清除",
+    "clearError": "清除通知记录失败",
+    "viewArchived": "查看归档",
+    "viewActive": "返回当前",
+    "archivedRecords": "归档记录",
+    "noArchivedEvents": "暂无归档通知",
+    "channels": {
+      "email": "邮件",
+      "webhook": "Webhook",
+      "serverchan": "Server酱",
+      "push": "Web Push"
+    },
     "statuses": {
       "sent": "已发送",
       "failed": "失败",
@@ -543,7 +875,8 @@
       "expiring_soon": "即将过期",
       "scan_failed": "扫描失败",
       "daily_summary": "每日摘要",
-      "dropping_alert": "待删除警报"
+      "dropping_alert": "待删除警报",
+      "security_finding_high": "高风险安全发现"
     }
   },
   "offline": {

@@ -1,6 +1,11 @@
 import { serverchanConfigs } from "~/server/db/schema";
 import { recordAuditEvent } from "~/server/utils/audit";
-import { maskSecretText, protectSecretText } from "~/server/utils/secrets";
+import {
+  maskSecretText,
+  protectSecretText,
+  stringifyProtectedJson,
+} from "~/server/utils/secrets";
+import { normalizeServerchanOptions } from "~/server/utils/serverchan";
 
 const normalizeEventTypes = (value: unknown) =>
   Array.isArray(value)
@@ -14,8 +19,9 @@ export default defineEventHandler(async (event) => {
     const body = await readBody(event);
     const db = useDb();
 
-    const { name, sendKey, eventTypes, enabled = true } = body;
+    const { name, sendKey, eventTypes, enabled = true, options } = body;
     const normalizedEventTypes = normalizeEventTypes(eventTypes);
+    const normalizedOptions = normalizeServerchanOptions(options);
 
     if (!name || !sendKey) {
       return fail("Name and SendKey are required", 40000);
@@ -33,6 +39,7 @@ export default defineEventHandler(async (event) => {
         eventTypes: normalizedEventTypes.length
           ? JSON.stringify(normalizedEventTypes)
           : null,
+        optionsJson: stringifyProtectedJson(normalizedOptions),
         enabled,
         createdAt: new Date(),
       })
@@ -48,6 +55,14 @@ export default defineEventHandler(async (event) => {
         name: result.name,
         enabled: Boolean(result.enabled),
         eventTypes: normalizedEventTypes,
+        options: {
+          channel: normalizedOptions.channel,
+          noip: normalizedOptions.noip,
+          hasOpenid: Boolean(normalizedOptions.openid),
+          hasTags: Boolean(normalizedOptions.tags),
+          hasTitlePrefix: Boolean(normalizedOptions.titlePrefix),
+          timeoutMs: normalizedOptions.timeoutMs,
+        },
       },
     });
 
@@ -56,6 +71,7 @@ export default defineEventHandler(async (event) => {
       name: result.name,
       sendKeyMasked: maskSecretText(result.sendKey),
       eventTypes: normalizedEventTypes,
+      options: normalizedOptions,
       enabled: Boolean(result.enabled),
       createdAt: result.createdAt,
     });

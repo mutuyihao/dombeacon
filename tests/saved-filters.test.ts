@@ -4,30 +4,30 @@ import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import * as schema from "../server/db/schema";
 import {
-  BRAND_WATCH_RISK_FILTER_SCOPE,
-  DEFAULT_FILTER_SCOPE,
   SECURITY_FINDING_FILTER_SCOPE,
   demoteDefaultSavedFilters,
   serializeSavedFilter,
   withSavedFilterScope,
 } from "../server/utils/saved-filters";
 
+const CUSTOM_FILTER_SCOPE = "custom-queue";
+
 describe("saved filter scopes", () => {
   it("stores scope metadata without returning it as criteria", () => {
     const criteria = withSavedFilterScope(
-      { reviewStatus: "OPEN", source: "ct" },
-      BRAND_WATCH_RISK_FILTER_SCOPE,
+      { status: "OPEN", source: "external" },
+      CUSTOM_FILTER_SCOPE,
     );
 
     expect(criteria).toMatchObject({
-      _scope: BRAND_WATCH_RISK_FILTER_SCOPE,
-      reviewStatus: "OPEN",
-      source: "ct",
+      _scope: CUSTOM_FILTER_SCOPE,
+      status: "OPEN",
+      source: "external",
     });
 
     const row = serializeSavedFilter({
       id: 1,
-      name: "CT queue",
+      name: "Custom queue",
       criteriaJson: JSON.stringify(criteria),
       isDefault: true,
       createdAt: new Date("2026-01-01T00:00:00Z"),
@@ -35,12 +35,12 @@ describe("saved filter scopes", () => {
 
     expect(row).toMatchObject({
       id: 1,
-      name: "CT queue",
-      scope: BRAND_WATCH_RISK_FILTER_SCOPE,
+      name: "Custom queue",
+      scope: CUSTOM_FILTER_SCOPE,
       isDefault: true,
       criteria: {
-        reviewStatus: "OPEN",
-        source: "ct",
+        status: "OPEN",
+        source: "external",
       },
     });
     expect(row.criteria).not.toHaveProperty("_scope");
@@ -76,7 +76,7 @@ describe("saved filter scopes", () => {
     expect(row.criteria).not.toHaveProperty("_scope");
   });
 
-  it("treats legacy filters as domain-scoped and demotes defaults by scope", async () => {
+  it("demotes defaults only within the current filter scope", async () => {
     const sqlite = new Database(":memory:");
     sqlite.exec(`
       CREATE TABLE saved_filters (
@@ -92,21 +92,23 @@ describe("saved filter scopes", () => {
     const domain = await db
       .insert(schema.savedFilters)
       .values({
-        name: "Legacy domain default",
-        criteriaJson: JSON.stringify({ status: "REGISTERED" }),
+        name: "Domain default",
+        criteriaJson: JSON.stringify(
+          withSavedFilterScope({ status: "REGISTERED" }, "domains"),
+        ),
         isDefault: true,
       })
       .returning()
       .get();
 
-    const brand = await db
+    const custom = await db
       .insert(schema.savedFilters)
       .values({
-        name: "Brand default",
+        name: "Custom default",
         criteriaJson: JSON.stringify(
           withSavedFilterScope(
-            { reviewStatus: "OPEN" },
-            BRAND_WATCH_RISK_FILTER_SCOPE,
+            { status: "OPEN" },
+            CUSTOM_FILTER_SCOPE,
           ),
         ),
         isDefault: true,
@@ -114,23 +116,23 @@ describe("saved filter scopes", () => {
       .returning()
       .get();
 
-    expect(serializeSavedFilter(domain).scope).toBe(DEFAULT_FILTER_SCOPE);
+    expect(serializeSavedFilter(domain).scope).toBe("domains");
 
-    await demoteDefaultSavedFilters(db, BRAND_WATCH_RISK_FILTER_SCOPE);
+    await demoteDefaultSavedFilters(db, CUSTOM_FILTER_SCOPE);
 
     const freshDomain = await db
       .select()
       .from(schema.savedFilters)
       .where(eq(schema.savedFilters.id, domain.id))
       .get();
-    const freshBrand = await db
+    const freshCustom = await db
       .select()
       .from(schema.savedFilters)
-      .where(eq(schema.savedFilters.id, brand.id))
+      .where(eq(schema.savedFilters.id, custom.id))
       .get();
 
     expect(freshDomain?.isDefault).toBe(true);
-    expect(freshBrand?.isDefault).toBe(false);
+    expect(freshCustom?.isDefault).toBe(false);
 
     sqlite.close();
   });

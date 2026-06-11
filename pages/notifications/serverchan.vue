@@ -1,5 +1,5 @@
 <template>
-  <div class="flex min-h-full flex-col gap-6 md:h-full md:min-h-0 md:overflow-hidden">
+  <div class="flex min-h-full flex-col gap-4 md:h-full md:min-h-0 md:overflow-hidden">
 
     <header class="shrink-0">
       <p class="eyebrow mb-3">Server酱</p>
@@ -15,7 +15,7 @@
       </div>
     </header>
 
-    <section class="relative min-h-[26rem] flex-1 overflow-y-auto rounded-[18px] border border-hairline bg-card/45 p-3 pr-4 md:min-h-0 md:p-4 md:pr-5">
+    <section class="relative min-h-[26rem] flex-1 overflow-y-auto rounded-[18px] border border-hairline bg-card/45 p-2 pr-3 md:min-h-0 md:p-3 md:pr-4">
     <div v-if="loading" class="flex justify-center py-16">
       <LoadingSpinner size="lg" />
     </div>
@@ -28,7 +28,7 @@
       >
         <div class="min-w-0">
           <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <h3 class="font-display text-xl font-medium tracking-[-0.025em] text-text-main">{{ config.name }}</h3>
+            <h3 class="font-sans text-xl font-bold tracking-tight text-text-main">{{ config.name }}</h3>
             <span :class="['flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.16em]', config.enabled ? 'text-status-available' : 'text-status-unknown']">
               <span :class="['h-1.5 w-1.5 rounded-full', config.enabled ? 'bg-status-available' : 'bg-status-unknown']" />
               {{ config.enabled ? $t('serverchan.enabled') : $t('serverchan.disabled') }}
@@ -41,7 +41,7 @@
               <span class="font-mono text-xs">{{ config.sendKeyMasked || '****' }}</span>
             </div>
 
-            <div v-if="config.eventTypes" class="flex items-start gap-2 text-text-secondary">
+            <div v-if="parseEventTypes(config.eventTypes).length" class="flex items-start gap-2 text-text-secondary">
               <BellIcon class="mt-0.5 h-3.5 w-3.5 text-text-tertiary" />
               <div class="flex flex-wrap gap-x-3 gap-y-1 text-xs">
                 <span v-for="event in parseEventTypes(config.eventTypes)" :key="event" class="font-mono">
@@ -49,10 +49,30 @@
                 </span>
               </div>
             </div>
+
+            <div class="flex items-start gap-2 text-text-secondary">
+              <CodeIcon class="mt-0.5 h-3.5 w-3.5 text-text-tertiary" />
+              <div class="flex flex-wrap gap-x-3 gap-y-1 text-xs">
+                <span
+                  v-for="item in serverchanOptionSummary(config.options)"
+                  :key="item"
+                  class="font-mono"
+                >
+                  {{ item }}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
 
         <div class="flex items-center gap-1">
+          <button
+            @click="openEditModal(config)"
+            class="rounded-full p-2 text-text-tertiary transition-colors hover:bg-card hover:text-accent"
+            :title="$t('serverchan.editServerchan')"
+          >
+            <PencilIcon class="h-4 w-4" />
+          </button>
           <button
             @click="testServerchan(config.id)"
             :disabled="testingId === config.id"
@@ -100,10 +120,13 @@ import {
   Plus as PlusIcon,
   Key as KeyIcon,
   Bell as BellIcon,
+  Code as CodeIcon,
+  Pencil as PencilIcon,
   Play as PlayIcon,
   Trash as TrashIcon,
   MessageSquare as MessageSquareIcon,
 } from 'lucide-vue-next';
+import { unwrapApiEnvelope } from '~/utils/api-envelope';
 
 const { t } = useI18n();
 const toast = useToast();
@@ -119,10 +142,9 @@ const fetchServerchan = async () => {
   loading.value = true;
   try {
     const response = await $fetch('/api/serverchan');
-    serverchanList.value = response.data || [];
+    serverchanList.value = unwrapApiEnvelope(response, t('serverchan.addError')) || [];
   } catch (error) {
-    console.error('Failed to fetch Server酱 configs:', error);
-    toast.error(t('serverchan.addError'));
+    toast.error(error?.message || error?.data?.msg || t('serverchan.addError'));
   } finally {
     loading.value = false;
   }
@@ -134,8 +156,41 @@ const parseEventTypes = (json) => {
   try { return JSON.parse(json); } catch { return []; }
 };
 
+const serverchanChannelLabel = (channel) => {
+  const keyByChannel = {
+    9: 'serviceAccount',
+    98: 'android',
+    88: 'webhook',
+    18: 'pushdeer',
+    66: 'wecomApp',
+    1: 'wecomBot',
+    8: 'bark',
+    2: 'dingtalk',
+    3: 'feishu',
+  };
+  const key = keyByChannel[Number(channel)] || 'default';
+  return t(`serverchan.channels.${key}`);
+};
+
+const serverchanOptionSummary = (options = {}) => {
+  const items = [serverchanChannelLabel(options.channel)];
+  if (options.noip) items.push(t('serverchan.ipHidden'));
+  if (options.openid) items.push(t('serverchan.openidConfigured'));
+  if (options.tags) items.push(t('serverchan.tagsSummary', { tags: options.tags }));
+  if (options.titlePrefix) items.push(t('serverchan.titlePrefixSummary', { prefix: options.titlePrefix }));
+  if (options.timeoutMs && options.timeoutMs !== 10000) {
+    items.push(t('serverchan.timeoutSummary', { timeout: options.timeoutMs }));
+  }
+  return items;
+};
+
 const openAddModal = () => {
   editingConfig.value = null;
+  modalOpen.value = true;
+};
+
+const openEditModal = (config) => {
+  editingConfig.value = config;
   modalOpen.value = true;
 };
 
@@ -146,13 +201,15 @@ const closeModal = () => {
 
 const handleSave = async (configData) => {
   try {
-    await $fetch('/api/serverchan', { method: 'POST', body: configData });
-    toast.success(t('serverchan.addSuccess'));
+    const response = editingConfig.value
+      ? await $fetch(`/api/serverchan/${editingConfig.value.id}`, { method: 'PATCH', body: configData })
+      : await $fetch('/api/serverchan', { method: 'POST', body: configData });
+    unwrapApiEnvelope(response, t('serverchan.saveError'));
+    toast.success(editingConfig.value ? t('serverchan.updateSuccess') : t('serverchan.addSuccess'));
     closeModal();
     await fetchServerchan();
   } catch (error) {
-    console.error('Failed to save Server酱:', error);
-    toast.error(error?.data?.message || t('serverchan.addError'));
+    toast.error(error?.message || error?.data?.msg || t('serverchan.saveError'));
   }
 };
 
@@ -160,13 +217,13 @@ const testServerchan = async (id) => {
   testingId.value = id;
   try {
     const response = await $fetch(`/api/serverchan/${id}/test`, { method: 'POST' });
-    if (response?.code === 0 && response?.data?.ok) {
+    const ok = unwrapApiEnvelope(response, t('serverchan.testFailed'));
+    if (ok === true || ok?.ok === true) {
       toast.success(t('serverchan.testSuccess'));
     } else {
       toast.error(response?.data?.error || response?.msg || t('serverchan.testFailed'));
     }
   } catch (error) {
-    console.error('Failed to test Server酱:', error);
     toast.error(error?.data?.data?.error || error?.data?.msg || error?.message || t('serverchan.testFailed'));
   } finally {
     testingId.value = null;
@@ -184,12 +241,12 @@ const confirmDelete = async () => {
     return;
   }
   try {
-    await $fetch(`/api/serverchan/${id}`, { method: 'DELETE' });
+    const response = await $fetch(`/api/serverchan/${id}`, { method: 'DELETE' });
+    unwrapApiEnvelope(response, t('serverchan.deleteError'));
     toast.success(t('serverchan.deleteSuccess'));
     await fetchServerchan();
   } catch (error) {
-    console.error('Failed to delete Server酱:', error);
-    toast.error(t('serverchan.deleteError'));
+    toast.error(error?.message || error?.data?.msg || t('serverchan.deleteError'));
   } finally {
     deleteDialog.value.isOpen = false;
     deleteDialog.value.configId = null;

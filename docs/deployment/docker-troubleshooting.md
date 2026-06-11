@@ -167,7 +167,7 @@ services:
   app:
     environment:
       - NODE_ENV=production
-      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - SECRET_ENCRYPTION_KEY=${SECRET_ENCRYPTION_KEY}
     restart: always
     logging:
       driver: "json-file"
@@ -181,13 +181,13 @@ services:
 services:
   app:
     secrets:
-      - admin_password
+      - secret_encryption_key
     environment:
-      - ADMIN_PASSWORD_FILE=/run/secrets/admin_password
+      - SECRET_ENCRYPTION_KEY_FILE=/run/secrets/secret_encryption_key
 
 secrets:
-  admin_password:
-    file: ./secrets/admin_password.txt
+  secret_encryption_key:
+    file: ./secrets/secret_encryption_key.txt
 ```
 
 ### 4. 健康检查
@@ -251,7 +251,7 @@ A: 不会。`./data` 目录通过 volume 挂载，数据持久化在宿主机。
 A: 
 ```bash
 # 备份数据库
-cp data/domains.db data/domains.db.backup
+cp data/app.db data/app.db.backup
 
 # 或使用 Docker volume
 docker run --rm -v dombeacon_data:/data -v $(pwd):/backup alpine tar czf /backup/data-backup.tar.gz /data

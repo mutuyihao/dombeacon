@@ -11,7 +11,7 @@ import {
 export default defineEventHandler(async (event) => {
   try {
     const query = getQuery(event);
-    const scope = query.scope ? normalizeSavedFilterScope(query.scope) : "";
+    const scope = normalizeSavedFilterScope(query.scope);
     const db = useDb();
     const rows = await db
       .select()
@@ -21,7 +21,7 @@ export default defineEventHandler(async (event) => {
 
     const items = rows
       .map(serializeSavedFilter)
-      .filter((item) => !scope || item.scope === scope);
+      .filter((item) => item.scope === scope);
 
     return success({ items });
   } catch (e: any) {

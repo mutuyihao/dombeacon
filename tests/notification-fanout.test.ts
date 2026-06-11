@@ -5,8 +5,11 @@ import * as schema from "../server/db/schema";
 import { wasDedupeKeyRecentlySent } from "../server/utils/notification-fanout";
 import {
   applyNotificationChannelPreset,
+  getEffectiveNotificationChannels,
+  getNotificationChannelSettings,
   getNotificationEventChannels,
   getRiskNotificationDeliverySummary,
+  setNotificationChannelSettings,
   setNotificationEventChannelPresets,
 } from "../server/utils/notification-preferences";
 
@@ -33,6 +36,7 @@ const createNotificationDb = () => {
       error_message TEXT,
       metadata TEXT,
       retry_of INTEGER,
+      archived_at INTEGER,
       created_at INTEGER
     );
 
@@ -59,6 +63,7 @@ const createNotificationDb = () => {
       send_key TEXT NOT NULL,
       enabled INTEGER DEFAULT 1,
       event_types TEXT,
+      options_json TEXT,
       created_at INTEGER
     );
 
@@ -81,11 +86,11 @@ describe("notification fanout utilities", () => {
     const { sqlite, db } = createNotificationDb();
 
     await db.insert(schema.notificationEvents).values({
-      eventType: "BRAND_WATCH_REGISTERED",
+      eventType: "SECURITY_FINDING_HIGH",
       channel: "WEBHOOK",
       status: "SENT",
       sentAt: new Date(),
-      metadata: JSON.stringify({ dedupeKey: "brand-watch-candidate:42" }),
+      metadata: JSON.stringify({ dedupeKey: "security-finding:42" }),
       createdAt: new Date(),
     });
 
@@ -104,8 +109,8 @@ describe("notification fanout utilities", () => {
     await expect(
       wasDedupeKeyRecentlySent({
         db,
-        eventType: "BRAND_WATCH_REGISTERED",
-        dedupeKey: "brand-watch-candidate:42",
+        eventType: "SECURITY_FINDING_HIGH",
+        dedupeKey: "security-finding:42",
       }),
     ).resolves.toBe(true);
 
@@ -145,7 +150,6 @@ describe("notification fanout utilities", () => {
     const saved = await setNotificationEventChannelPresets(
       {
         SECURITY_FINDING_HIGH: { email: false, push: true },
-        BRAND_WATCH_REGISTERED: { webhook: false },
       },
       { db },
     );
@@ -157,10 +161,10 @@ describe("notification fanout utilities", () => {
       push: true,
     });
     await expect(
-      getNotificationEventChannels("BRAND_WATCH_REGISTERED", { db }),
+      getNotificationEventChannels("SECURITY_FINDING_HIGH", { db }),
     ).resolves.toEqual({
-      email: true,
-      webhook: false,
+      email: false,
+      webhook: true,
       serverchan: true,
       push: true,
     });
@@ -179,10 +183,65 @@ describe("notification fanout utilities", () => {
     sqlite.close();
   });
 
+  it("requires channel opt-in and configuration before fanout is effective", async () => {
+    const { sqlite, db } = createNotificationDb();
+
+    await expect(getNotificationChannelSettings({ db })).resolves.toEqual({
+      email: false,
+      webhook: false,
+      serverchan: false,
+      push: false,
+    });
+
+    await expect(
+      getEffectiveNotificationChannels("WANTED_AVAILABLE", undefined, { db }),
+    ).resolves.toMatchObject({
+      channels: {
+        email: false,
+        webhook: false,
+        serverchan: false,
+        push: false,
+      },
+    });
+
+    await setNotificationChannelSettings(
+      { email: true, webhook: true },
+      { db },
+    );
+    await db.insert(schema.notificationRules).values({
+      instantEnabled: true,
+      targetEmail: "ops@example.com",
+      smtpConfigJson: JSON.stringify({
+        host: "smtp.example.com",
+        from: "noreply@example.com",
+      }),
+    });
+    await db.insert(schema.webhookConfigs).values({
+      name: "Availability webhook",
+      url: "https://hooks.example.com/dom-beacon",
+      method: "POST",
+      enabled: true,
+      eventTypes: null,
+      createdAt: new Date(),
+    });
+
+    await expect(
+      getEffectiveNotificationChannels("WANTED_AVAILABLE", undefined, { db }),
+    ).resolves.toMatchObject({
+      channels: {
+        email: true,
+        webhook: true,
+        serverchan: false,
+        push: false,
+      },
+    });
+
+    sqlite.close();
+  });
+
   it("summarizes risk notification delivery counts and dedupe keys", async () => {
     const { sqlite, db } = createNotificationDb();
     const now = new Date("2026-01-02T00:00:00.000Z");
-    const old = new Date(now.getTime() - 48 * 60 * 60 * 1000);
 
     await db.insert(schema.notificationEvents).values([
       {
@@ -202,20 +261,12 @@ describe("notification fanout utilities", () => {
         createdAt: now,
       },
       {
-        eventType: "BRAND_WATCH_REGISTERED",
-        channel: "WEBHOOK",
-        status: "SENT",
-        sentAt: old,
-        metadata: JSON.stringify({ dedupeKey: "brand-watch-candidate:old" }),
-        createdAt: old,
-      },
-      {
-        eventType: "BRAND_WATCH_REGISTERED",
+        eventType: "SECURITY_FINDING_HIGH",
         channel: "SERVERCHAN",
         status: "SENT",
         sentAt: now,
         metadata: JSON.stringify({
-          eventData: { dedupeKey: "brand-watch-candidate:2" },
+          eventData: { dedupeKey: "security-finding:2" },
         }),
         createdAt: now,
       },
@@ -227,7 +278,7 @@ describe("notification fanout utilities", () => {
       dedupeWindowHours: 24,
     });
 
-    expect(summary.events.SECURITY_FINDING_HIGH.sent).toBe(1);
+    expect(summary.events.SECURITY_FINDING_HIGH.sent).toBe(2);
     expect(summary.events.SECURITY_FINDING_HIGH.failed).toBe(1);
     expect(
       summary.events.SECURITY_FINDING_HIGH.channels.EMAIL.sent,
@@ -237,12 +288,9 @@ describe("notification fanout utilities", () => {
     ).toBe(1);
     expect(
       summary.events.SECURITY_FINDING_HIGH.dedupeKeysLastWindow,
-    ).toBe(1);
-    expect(
-      summary.events.BRAND_WATCH_REGISTERED.dedupeKeysLastWindow,
-    ).toBe(1);
-    expect(summary.events.BRAND_WATCH_REGISTERED.lastDedupeKey).toBe(
-      "brand-watch-candidate:2",
+    ).toBe(2);
+    expect(summary.events.SECURITY_FINDING_HIGH.lastDedupeKey).toBe(
+      "security-finding:2",
     );
 
     sqlite.close();
@@ -269,15 +317,15 @@ describe("notification fanout utilities", () => {
         presetEnabled: true,
         configured: false,
         destinationCount: 0,
-        severity: "warning",
+        severity: "disabled",
       });
       expect(
         summary.events.SECURITY_FINDING_HIGH.channels.WEBHOOK.diagnostic
           .message,
-      ).toContain("No enabled webhook");
+      ).toContain("disabled");
       expect(
         summary.events.SECURITY_FINDING_HIGH.channels.PUSH.diagnostic.message,
-      ).toBe("VAPID keys are not configured.");
+      ).toContain("disabled");
 
       await setNotificationEventChannelPresets(
         {
@@ -296,9 +344,17 @@ describe("notification fanout utilities", () => {
         message: "Preset disabled for this risk event.",
       });
 
+      await setNotificationChannelSettings(
+        { email: true, webhook: true, serverchan: true, push: true },
+        { db },
+      );
       await db.insert(schema.notificationRules).values({
+        instantEnabled: true,
         targetEmail: "ops@example.com",
-        smtpConfigJson: JSON.stringify({ host: "smtp.example.com" }),
+        smtpConfigJson: JSON.stringify({
+          host: "smtp.example.com",
+          from: "noreply@example.com",
+        }),
       });
       await db.insert(schema.webhookConfigs).values({
         name: "Risk webhook",

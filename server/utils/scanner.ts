@@ -530,18 +530,19 @@ async function updateStatus(
       },
     });
 
-  // Record history if changed or not recently checked (e.g. daily)
-  // For now, record all checks as per original code, but we focus on returning change info
-  await db.insert(domainStatusHistory).values({
-    domainId,
-    status,
-    checkedAt: now,
-    expiresAt,
-    source,
-    rawSnapshot,
-    rdapSummaryJson,
-    parseReason: reason,
-  });
+  // Only record history when status actually changed to avoid table bloat
+  if (isChanged) {
+    await db.insert(domainStatusHistory).values({
+      domainId,
+      status,
+      checkedAt: now,
+      expiresAt,
+      source,
+      rawSnapshot,
+      rdapSummaryJson,
+      parseReason: reason,
+    });
+  }
 
   try {
     await syncRdapRiskFindings(domainId, rdapSummaryJson, { db });

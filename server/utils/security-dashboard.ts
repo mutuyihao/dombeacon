@@ -1,10 +1,5 @@
 import { desc } from "drizzle-orm";
-import {
-  brandWatchCandidates,
-  brandWatchTerms,
-  domains,
-  riskFindings,
-} from "../db/schema";
+import { domains, riskFindings } from "../db/schema";
 import { useDb } from "./db";
 import {
   buildRiskMetricsSnapshot,
@@ -12,7 +7,6 @@ import {
 } from "./risk-metrics";
 import { calculateRiskScore, highestOpenSeverity } from "./risk-summary";
 
-const ACTIVE_BRAND_REVIEW_STATUSES = new Set(["OPEN", "WATCHING"]);
 const DNS_DRIFT_TYPES = new Set(["NAMESERVER_DRIFT", "MX_DRIFT"]);
 const DEFAULT_WINDOW_DAYS = 7;
 
@@ -44,10 +38,6 @@ const countBy = <T>(rows: T[], getKey: (row: T) => string | null | undefined) =>
     return acc;
   }, {});
 
-const isActiveBrandRisk = (candidate: typeof brandWatchCandidates.$inferSelect) =>
-  candidate.status === "REGISTERED" &&
-  ACTIVE_BRAND_REVIEW_STATUSES.has(candidate.reviewStatus || "OPEN");
-
 export const getSecurityDashboardSummary = async (options?: {
   db?: ReturnType<typeof useDb>;
   now?: Date;
@@ -60,18 +50,12 @@ export const getSecurityDashboardSummary = async (options?: {
   const limit = Math.max(1, Math.min(20, Math.floor(options?.limit || 8)));
   const cutoff = new Date(now.getTime() - windowDays * 24 * 60 * 60 * 1000);
 
-  const [domainRows, findingRows, termRows, candidateRows] = await Promise.all([
+  const [domainRows, findingRows] = await Promise.all([
     db.select().from(domains).all(),
     db
       .select()
       .from(riskFindings)
       .orderBy(desc(riskFindings.lastSeenAt), desc(riskFindings.id))
-      .all(),
-    db.select().from(brandWatchTerms).all(),
-    db
-      .select()
-      .from(brandWatchCandidates)
-      .orderBy(desc(brandWatchCandidates.lastSeenAt), desc(brandWatchCandidates.id))
       .all(),
   ]);
   const [riskMetricHistory] = await Promise.all([
@@ -80,12 +64,10 @@ export const getSecurityDashboardSummary = async (options?: {
   const riskMetrics = buildRiskMetricsSnapshot({
     domainRows,
     findingRows,
-    candidateRows,
     now,
   });
 
   const domainById = new Map(domainRows.map((row) => [row.id, row]));
-  const termById = new Map(termRows.map((row) => [row.id, row]));
   const ownedDomains = domainRows.filter(
     (row) => row.watchKind === "OWNED" && row.isActive !== false,
   );
@@ -93,12 +75,8 @@ export const getSecurityDashboardSummary = async (options?: {
   const openFindings = findingRows.filter(
     (row) => row.status === "OPEN" && ownedDomainIds.has(row.domainId),
   );
-  const activeBrandRisks = candidateRows.filter(isActiveBrandRisk);
 
   const newOpenFindings = openFindings.filter(
-    (row) => dateMs(row.firstSeenAt || row.lastSeenAt) >= cutoff.getTime(),
-  );
-  const newBrandRisks = activeBrandRisks.filter(
     (row) => dateMs(row.firstSeenAt || row.lastSeenAt) >= cutoff.getTime(),
   );
 
@@ -165,32 +143,6 @@ export const getSecurityDashboardSummary = async (options?: {
       lastSeenAt: toIso(finding.lastSeenAt),
     }));
 
-  const recentBrandRisks = activeBrandRisks
-    .slice()
-    .sort(
-      (left, right) =>
-        dateMs(right.lastSeenAt || right.firstSeenAt) -
-          dateMs(left.lastSeenAt || left.firstSeenAt) ||
-        right.id - left.id,
-    )
-    .slice(0, limit)
-    .map((candidate) => {
-      const term = termById.get(candidate.termId);
-      return {
-        id: candidate.id,
-        termId: candidate.termId,
-        term: term?.term || null,
-        domain: candidate.domain,
-        source: candidate.source,
-        mutationType: candidate.mutationType,
-        severity: candidate.severity,
-        reviewStatus: candidate.reviewStatus || "OPEN",
-        evidence: parseJson(candidate.evidenceJson, {}),
-        firstSeenAt: toIso(candidate.firstSeenAt),
-        lastSeenAt: toIso(candidate.lastSeenAt),
-      };
-    });
-
   return {
     generatedAt: now.toISOString(),
     windowDays,
@@ -199,16 +151,10 @@ export const getSecurityDashboardSummary = async (options?: {
     highOpenFindings: riskMetrics.highOpenFindings,
     registrarLockGaps: riskMetrics.registrarLockGaps,
     dnsDriftFindings: riskMetrics.dnsDriftFindings,
-    registeredLookalikes: riskMetrics.registeredLookalikes,
-    highRegisteredLookalikes: riskMetrics.highRegisteredLookalikes,
-    ctRegisteredLookalikes: riskMetrics.ctRegisteredLookalikes,
-    rdapRegisteredLookalikes: riskMetrics.rdapRegisteredLookalikes,
     riskMetrics,
     riskMetricHistory,
     findingTypeCounts: countBy(openFindings, (row) => row.findingType),
     findingSeverityCounts: countBy(openFindings, (row) => row.severity),
-    brandSourceCounts: countBy(activeBrandRisks, (row) => row.source),
-    brandSeverityCounts: countBy(activeBrandRisks, (row) => row.severity),
     trends: {
       windowDays,
       openFindings: newOpenFindings.length,
@@ -218,10 +164,8 @@ export const getSecurityDashboardSummary = async (options?: {
       dnsDriftFindings: newOpenFindings.filter((row) =>
         DNS_DRIFT_TYPES.has(row.findingType),
       ).length,
-      registeredLookalikes: newBrandRisks.length,
     },
     topRiskDomains,
     recentFindings,
-    recentBrandRisks,
   };
 };

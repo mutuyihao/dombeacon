@@ -38,6 +38,7 @@
           {{ $t('webhook.method') }}
         </label>
         <select v-model="form.method" class="input-bare">
+          <option value="GET">GET</option>
           <option value="POST">POST</option>
           <option value="PUT">PUT</option>
           <option value="PATCH">PATCH</option>
@@ -45,9 +46,22 @@
       </div>
 
       <div>
-        <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary mb-3">
-          {{ $t('webhook.eventTypes') }}
-        </p>
+        <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">
+              {{ $t('webhook.eventTypes') }}
+            </p>
+            <p class="mt-1 text-xs text-text-tertiary">{{ $t('webhook.allEventsHint') }}</p>
+          </div>
+          <div class="flex gap-2">
+            <button type="button" class="btn-ghost px-3 py-1.5 text-xs" @click="selectAllEvents">
+              {{ $t('webhook.selectAllEvents') }}
+            </button>
+            <button type="button" class="btn-ghost px-3 py-1.5 text-xs" @click="clearEvents">
+              {{ $t('webhook.clearEvents') }}
+            </button>
+          </div>
+        </div>
         <div class="surface-flat max-h-48 space-y-1 overflow-y-auto p-3">
           <label
             v-for="event in availableEvents"
@@ -144,23 +158,13 @@ const availableEvents = [
   'DROPPING_ALERT',
   'DAILY_SUMMARY',
   'SECURITY_FINDING_HIGH',
-  'BRAND_WATCH_REGISTERED',
 ];
 
-const eventLabels = {
-  WANTED_AVAILABLE: 'Wanted Domain Available',
-  WANTED_DROPPING: 'Wanted Domain Dropping',
-  OWNED_EXPIRING: 'Owned Domain Expiring',
-  SSL_EXPIRING: 'SSL Expiring Soon',
-  SSL_INVALID: 'SSL Invalid',
-  STATUS_CHANGE: 'Status Change',
-  DROPPING_ALERT: 'Dropping Alert',
-  DAILY_SUMMARY: 'Daily Summary',
-  SECURITY_FINDING_HIGH: 'High Security Finding',
-  BRAND_WATCH_REGISTERED: 'Registered Brand Watch Hit',
+const eventLabel = (event) => {
+  const key = `webhook.events.${String(event).toLowerCase()}`;
+  const value = t(key);
+  return value === key ? event : value;
 };
-
-const eventLabel = (event) => eventLabels[event] || event;
 
 const form = ref({
   name: '',
@@ -179,13 +183,18 @@ const parseJson = (value, fallback) => {
   }
 };
 
+const parseEventTypes = (value) => {
+  if (Array.isArray(value)) return value;
+  return parseJson(value, []);
+};
+
 watch(() => props.webhook, (webhook) => {
   if (webhook) {
     form.value = {
       name: webhook.name || '',
       url: webhook.url || '',
       method: webhook.method || 'POST',
-      eventTypes: parseJson(webhook.eventTypes, []).map((event) =>
+      eventTypes: parseEventTypes(webhook.eventTypes).map((event) =>
         String(event || '').toUpperCase(),
       ),
       headers: [],
@@ -209,6 +218,14 @@ const addHeader = () => {
 
 const removeHeader = (index) => {
   form.value.headers.splice(index, 1);
+};
+
+const selectAllEvents = () => {
+  form.value.eventTypes = [...availableEvents];
+};
+
+const clearEvents = () => {
+  form.value.eventTypes = [];
 };
 
 const handleSubmit = async () => {

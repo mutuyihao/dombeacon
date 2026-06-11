@@ -1,222 +1,236 @@
 <template>
-  <div class="space-y-14 pb-2 md:space-y-16">
-
+  <div class="flex flex-col gap-8 md:gap-10">
     <!-- ─── HERO ────────────────────────────────────────────────────────── -->
     <section class="relative">
-      <p class="eyebrow mb-4">{{ $t('dashboard.kicker') }}</p>
+      <p class="eyebrow mb-3">{{ $t('dashboard.kicker') }}</p>
 
-      <h1 class="headline-display max-w-4xl text-[2.35rem] leading-[1.05] sm:text-[3rem] md:text-[3.75rem] lg:text-[4.25rem]">
+      <h1 class="headline-display max-w-4xl text-[2.2rem] leading-[1.1] sm:text-[2.8rem] md:text-[3.2rem]">
         {{ $t('dashboard.title') }}
       </h1>
 
-      <p class="mt-5 max-w-2xl text-base leading-[1.7] text-text-secondary">
+      <p class="mt-4 max-w-2xl text-sm leading-[1.6] text-text-secondary">
         {{ $t('dashboard.description') }}
       </p>
 
-      <div class="hairline mt-7 max-w-28 bg-accent!" />
-
-      <div class="mt-7 flex flex-wrap gap-x-10 gap-y-3">
-        <NuxtLink
-          v-for="item in quickLinks"
-          :key="item.to"
-          :to="item.to"
-          class="btn-text"
-        >
-          <span>{{ item.label }}</span>
-          <ArrowRightIcon class="h-3.5 w-3.5" />
+      <div class="mt-6 flex flex-wrap gap-3">
+        <NuxtLink to="/domains" class="btn-primary">
+          <span>{{ $t('dashboard.quickDomains') }}</span>
+          <ArrowRightIcon class="h-4 w-4" />
+        </NuxtLink>
+        <NuxtLink to="/actions" class="btn-ghost border border-card-border bg-card shadow-soft hover:bg-surface-sunken">
+          <span>{{ $t('dashboard.quickActions') }}</span>
+          <ArrowRightIcon class="h-4 w-4" />
         </NuxtLink>
       </div>
     </section>
 
-    <!-- ─── METRIC STRIP — 5 columns separated by hairlines, no cards ──── -->
-    <section>
-      <div class="grid grid-cols-2 divide-y divide-hairline sm:grid-cols-3 sm:divide-y-0 lg:grid-cols-5">
-        <NuxtLink
-          v-for="(metric, index) in metrics"
-          :key="metric.key"
-          :to="metric.to"
-          :class="[
-            'group relative flex flex-col px-1 py-5 transition-colors sm:px-5',
-            index !== 0 && 'sm:before:absolute sm:before:left-0 sm:before:top-4 sm:before:bottom-4 sm:before:w-px sm:before:bg-hairline',
-          ]"
-        >
+    <!-- ─── METRIC STRIP — 5 hover-lift cards ──── -->
+    <section class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <NuxtLink
+        v-for="metric in metrics"
+        :key="metric.key"
+        :to="metric.to"
+        class="group surface relative flex flex-col justify-between p-5 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-elevated hover:border-accent/30"
+      >
+        <div>
           <p class="eyebrow flex items-center justify-between">
             <span>{{ metric.label }}</span>
-            <component :is="metric.icon" :class="['h-3.5 w-3.5 opacity-50 transition-opacity group-hover:opacity-100', metric.iconClass]" />
+            <component :is="metric.icon" :class="['h-4 w-4 opacity-50 transition-opacity group-hover:opacity-100 group-hover:text-accent', metric.iconClass]" />
           </p>
-          <p class="font-display mt-4 text-[2.4rem] font-medium leading-none tracking-[-0.045em] text-text-main transition-colors group-hover:text-accent">
+          <p class="font-sans mt-5 text-[2.2rem] font-bold leading-none tracking-tight text-text-main transition-colors group-hover:text-accent" data-numeric>
             {{ metric.value }}
           </p>
-          <p class="mt-3 text-[13px] leading-[1.55] text-text-secondary">{{ metric.hint }}</p>
-        </NuxtLink>
-      </div>
+        </div>
+        <p class="mt-3 text-xs leading-[1.5] text-text-secondary">{{ metric.hint }}</p>
+      </NuxtLink>
     </section>
 
-    <!-- ─── ACTION QUEUE + SSL RADAR ─────────────────────────────────── -->
-    <section class="grid gap-10 xl:grid-cols-2 xl:gap-12">
+    <!-- ─── WIDGET GRID ───────────────────────────────────────────────── -->
+    <section class="grid items-stretch gap-5 xl:grid-cols-2">
 
-      <div>
-        <p class="eyebrow mb-3">Action queue</p>
-        <h2 class="headline-display text-2xl">{{ $t('dashboard.openActions') }}</h2>
-        <p class="mt-2 text-sm text-text-secondary">{{ $t('dashboard.openActionsHint') }}</p>
-        <div class="hairline mt-6" />
+      <!-- Action Queue Widget -->
+      <div class="surface flex h-full min-h-[16rem] flex-col p-6 xl:min-h-[18rem]">
+        <div class="flex flex-1 flex-col">
+          <div class="flex items-center justify-between gap-4">
+            <h2 class="headline-display flex items-center gap-2 text-lg font-bold">
+              <ListTodoIcon class="h-5 w-5 text-accent" />
+              {{ $t('dashboard.openActions') }}
+            </h2>
+            <div class="flex shrink-0 items-center gap-3">
+              <span v-if="!actionsLoading && openActions.length" class="rounded-full bg-accent-glow px-2.5 py-0.5 text-xs font-semibold text-accent" data-numeric>
+                {{ openActions.length }}
+              </span>
+              <NuxtLink to="/actions" class="btn-text whitespace-nowrap text-xs">
+                <span>{{ $t('dashboard.viewAll') }}</span>
+                <ArrowRightIcon class="h-3.5 w-3.5" />
+              </NuxtLink>
+            </div>
+          </div>
+          <p class="mt-1 text-xs text-text-secondary">{{ $t('dashboard.openActionsHint') }}</p>
+          <div class="hairline mt-4" />
 
-        <div v-if="actionsLoading" class="space-y-1 pt-3">
-          <div v-for="i in 4" :key="i" class="h-12 animate-pulse rounded-md bg-surface-sunken" />
-        </div>
+          <div v-if="actionsLoading" class="space-y-2 pt-3">
+            <div v-for="i in 4" :key="i" class="h-12 animate-pulse rounded-md bg-surface-sunken" />
+          </div>
 
-        <div v-else-if="openActions.length" class="pt-2">
-          <NuxtLink
-            v-for="action in openActions"
-            :key="action.id"
-            :to="`/domains/${action.domainId}`"
-            class="metric-row is-link"
-          >
-            <div class="min-w-0">
-              <div class="flex items-center gap-2">
-                <span :class="['h-1.5 w-1.5 rounded-full', priorityDot(action.priority)]" />
-                <p class="metric-row-label truncate font-mono text-sm font-medium text-text-main transition-colors">
-                  {{ action.domain?.domain || '—' }}
+          <div v-else-if="openActions.length" class="divide-y divide-hairline">
+            <NuxtLink
+              v-for="action in openActions"
+              :key="action.id"
+              :to="`/domains/${action.domainId}`"
+              class="metric-row is-link"
+            >
+              <div class="min-w-0">
+                <div class="flex items-center gap-2">
+                  <span :class="['h-1.5 w-1.5 rounded-full', priorityDot(action.priority)]" />
+                  <p class="metric-row-label truncate font-mono text-[13.5px] font-medium text-text-main transition-colors">
+                    {{ action.domain?.domain || '—' }}
+                  </p>
+                </div>
+                <p class="mt-1 ml-3.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-text-tertiary">
+                  {{ formatActionType(action.actionType) }}
                 </p>
               </div>
-              <p class="mt-1 ml-3.5 text-xs uppercase tracking-[0.14em] text-text-tertiary">
-                {{ formatActionType(action.actionType) }}
+              <ArrowRightIcon class="h-4 w-4 text-text-tertiary transition-transform group-hover:translate-x-0.5 group-hover:text-accent" />
+            </NuxtLink>
+          </div>
+
+          <div v-else class="flex flex-1 flex-col items-center justify-center py-8 text-center">
+            <CheckCircleIcon class="mx-auto mb-3 h-8 w-8 text-status-available" />
+            <p class="text-sm text-text-secondary">{{ $t('dashboard.noOpenActions') }}</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- SSL Radar Widget -->
+      <div class="surface flex h-full min-h-[16rem] flex-col p-6 xl:min-h-[18rem]">
+        <div class="flex flex-1 flex-col">
+          <div class="flex items-center justify-between gap-4">
+            <h2 class="headline-display flex items-center gap-2 text-lg font-bold">
+              <ShieldAlertIcon class="h-5 w-5 text-accent" />
+              {{ $t('dashboard.sslRadar') }}
+            </h2>
+            <NuxtLink to="/ssl" class="btn-text whitespace-nowrap text-xs">
+              <span>{{ $t('dashboard.viewAll') }}</span>
+              <ArrowRightIcon class="h-3.5 w-3.5" />
+            </NuxtLink>
+          </div>
+          <p class="mt-1 text-xs text-text-secondary">{{ $t('dashboard.sslRadarHint') }}</p>
+          <div class="hairline mt-4" />
+
+          <div class="divide-y divide-hairline">
+            <NuxtLink
+              v-for="risk in sslRisks"
+              :key="risk.key"
+              :to="risk.to"
+              class="metric-row is-link"
+            >
+              <div class="flex min-w-0 items-center gap-3">
+                <span :class="['h-1.5 w-1.5 rounded-full', risk.dot]" />
+                <div class="min-w-0">
+                  <p class="metric-row-label truncate text-[13.5px] font-medium text-text-main">{{ risk.label }}</p>
+                  <p class="mt-0.5 truncate text-[11px] text-text-tertiary">{{ risk.hint }}</p>
+                </div>
+              </div>
+              <span class="font-sans text-xl font-bold tracking-tight text-text-main" data-numeric>{{ risk.value }}</span>
+            </NuxtLink>
+          </div>
+        </div>
+      </div>
+
+      <!-- Delivery Health Widget -->
+      <div class="surface flex h-full min-h-[16rem] flex-col p-6 xl:min-h-[18rem]">
+        <div class="flex flex-1 flex-col">
+          <div class="flex items-center justify-between gap-4">
+            <h2 class="headline-display flex items-center gap-2 text-lg font-bold">
+              <BellIcon class="h-5 w-5 text-accent" />
+              {{ $t('dashboard.failedNotifications') }}
+            </h2>
+            <div class="flex shrink-0 items-center gap-3">
+              <span v-if="!notificationsLoading && failedNotifications.length" class="rounded-full bg-status-dropping/10 px-2.5 py-0.5 text-xs font-semibold text-status-dropping" data-numeric>
+                {{ failedNotifications.length }}
+              </span>
+              <NuxtLink to="/notifications" class="btn-text whitespace-nowrap text-xs">
+                <span>{{ $t('dashboard.viewAll') }}</span>
+                <ArrowRightIcon class="h-3.5 w-3.5" />
+              </NuxtLink>
+            </div>
+          </div>
+          <p class="mt-1 text-xs text-text-secondary">{{ $t('dashboard.failedNotificationsHint') }}</p>
+          <div class="hairline mt-4" />
+
+          <div v-if="notificationsLoading" class="space-y-2 pt-3">
+            <div v-for="i in 3" :key="i" class="h-12 animate-pulse rounded-md bg-surface-sunken" />
+          </div>
+
+          <div v-else-if="failedNotifications.length" class="divide-y divide-hairline">
+            <div
+              v-for="event in failedNotifications"
+              :key="event.id"
+              class="py-3.5"
+            >
+              <div class="flex items-start justify-between gap-3">
+                <div class="flex min-w-0 items-center gap-3">
+                  <span class="h-3 w-px bg-status-dropping" />
+                  <p class="truncate font-mono text-[13.5px] font-medium text-text-main">{{ event.domain || event.eventType }}</p>
+                </div>
+                <span class="shrink-0 text-[10px] font-semibold uppercase tracking-[0.14em] text-status-dropping">
+                  {{ event.channel }}
+                </span>
+              </div>
+              <p class="mt-1.5 ml-4 line-clamp-2 text-xs leading-relaxed text-text-secondary">
+                {{ event.errorMessage || '—' }}
               </p>
             </div>
-            <ArrowRightIcon class="h-4 w-4 text-text-tertiary transition-transform group-hover:translate-x-0.5" />
-          </NuxtLink>
-        </div>
+          </div>
 
-        <div v-else class="pt-8 text-center">
-          <CheckCircleIcon class="mx-auto mb-3 h-6 w-6 text-status-available" />
-          <p class="text-sm text-text-secondary">{{ $t('dashboard.noOpenActions') }}</p>
-        </div>
-
-        <div class="mt-6">
-          <NuxtLink to="/ops/actions" class="btn-text">
-            {{ $t('dashboard.viewAll') }}
-            <ArrowRightIcon class="h-3.5 w-3.5" />
-          </NuxtLink>
+          <div v-else class="flex flex-1 flex-col items-center justify-center py-8 text-center">
+            <BellIcon class="mx-auto mb-3 h-8 w-8 text-status-available opacity-60" />
+            <p class="text-sm text-text-secondary">{{ $t('dashboard.noFailedNotifications') }}</p>
+          </div>
         </div>
       </div>
 
-      <div>
-        <p class="eyebrow mb-3">Certificate radar</p>
-        <h2 class="headline-display text-2xl">{{ $t('dashboard.sslRadar') }}</h2>
-        <p class="mt-2 text-sm text-text-secondary">{{ $t('dashboard.sslRadarHint') }}</p>
-        <div class="hairline mt-6" />
+      <!-- System Cadence Widget -->
+      <div class="surface flex h-full min-h-[16rem] flex-col p-6 xl:min-h-[18rem]">
+        <div class="flex flex-1 flex-col">
+          <div class="flex items-center justify-between gap-4">
+            <h2 class="headline-display flex items-center gap-2 text-lg font-bold">
+              <ActivityIcon class="h-5 w-5 text-accent" />
+              {{ $t('dashboard.recentTasks') }}
+            </h2>
+            <NuxtLink to="/tasks" class="btn-text whitespace-nowrap text-xs">
+              <span>{{ $t('dashboard.viewAll') }}</span>
+              <ArrowRightIcon class="h-3.5 w-3.5" />
+            </NuxtLink>
+          </div>
+          <p class="mt-1 text-xs text-text-secondary">{{ $t('dashboard.recentTasksHint') }}</p>
+          <div class="hairline mt-4" />
 
-        <div class="pt-2">
-          <NuxtLink
-            v-for="risk in sslRisks"
-            :key="risk.key"
-            :to="risk.to"
-            class="metric-row is-link"
-          >
-            <div class="flex min-w-0 items-center gap-3">
-              <span :class="['h-1.5 w-1.5 rounded-full', risk.dot]" />
+          <div v-if="tasksLoading" class="space-y-2 pt-3">
+            <div v-for="i in 3" :key="i" class="h-12 animate-pulse rounded-md bg-surface-sunken" />
+          </div>
+
+          <div v-else-if="recentTasks.length" class="divide-y divide-hairline">
+            <div
+              v-for="run in recentTasks"
+              :key="run.id"
+              class="metric-row"
+            >
               <div class="min-w-0">
-                <p class="metric-row-label truncate text-sm font-medium text-text-main">{{ risk.label }}</p>
-                <p class="mt-1 truncate text-xs text-text-tertiary">{{ risk.hint }}</p>
+                <p class="truncate text-[13.5px] font-medium text-text-main">{{ run.taskName }}</p>
+                <p class="mt-1 text-xs text-text-tertiary">{{ formatDateTime(run.finishedAt || run.startedAt) }}</p>
               </div>
-            </div>
-            <span class="font-display text-2xl font-medium tracking-[-0.035em] text-text-main">{{ risk.value }}</span>
-          </NuxtLink>
-        </div>
-
-        <div class="mt-6">
-          <NuxtLink to="/ssl" class="btn-text">
-            {{ $t('dashboard.viewAll') }}
-            <ArrowRightIcon class="h-3.5 w-3.5" />
-          </NuxtLink>
-        </div>
-      </div>
-
-    </section>
-
-    <!-- ─── DELIVERY HEALTH + SYSTEM CADENCE ─────────────────────────── -->
-    <section class="grid gap-10 xl:grid-cols-2 xl:gap-12">
-
-      <div>
-        <p class="eyebrow mb-3">Delivery health</p>
-        <h2 class="headline-display text-2xl">{{ $t('dashboard.failedNotifications') }}</h2>
-        <p class="mt-2 text-sm text-text-secondary">{{ $t('dashboard.failedNotificationsHint') }}</p>
-        <div class="hairline mt-6" />
-
-        <div v-if="notificationsLoading" class="space-y-1 pt-3">
-          <div v-for="i in 3" :key="i" class="h-12 animate-pulse rounded-md bg-surface-sunken" />
-        </div>
-
-        <div v-else-if="failedNotifications.length" class="pt-2">
-          <div
-            v-for="event in failedNotifications"
-            :key="event.id"
-            class="border-b border-hairline py-4 last:border-b-0"
-          >
-            <div class="flex items-start justify-between gap-3">
-              <div class="flex min-w-0 items-center gap-3">
-                <span class="h-3 w-px bg-status-dropping" />
-                <p class="truncate text-sm font-medium text-text-main">{{ event.domain || event.eventType }}</p>
-              </div>
-              <span class="shrink-0 text-[11px] font-semibold uppercase tracking-[0.14em] text-status-dropping">
-                {{ event.channel }}
+              <span :class="['text-[10px] font-semibold uppercase tracking-[0.14em]', taskClass(run)]">
+                {{ taskLabel(run) }}
               </span>
             </div>
-            <p class="mt-1.5 ml-4 line-clamp-2 text-xs leading-5 text-text-secondary">
-              {{ event.errorMessage || '—' }}
-            </p>
           </div>
-        </div>
 
-        <div v-else class="pt-8 text-center">
-          <BellIcon class="mx-auto mb-3 h-6 w-6 text-status-available" />
-          <p class="text-sm text-text-secondary">{{ $t('dashboard.noFailedNotifications') }}</p>
-        </div>
-
-        <div class="mt-6">
-          <NuxtLink to="/notifications" class="btn-text">
-            {{ $t('dashboard.viewAll') }}
-            <ArrowRightIcon class="h-3.5 w-3.5" />
-          </NuxtLink>
-        </div>
-      </div>
-
-      <div>
-        <p class="eyebrow mb-3">System cadence</p>
-        <h2 class="headline-display text-2xl">{{ $t('dashboard.recentTasks') }}</h2>
-        <p class="mt-2 text-sm text-text-secondary">{{ $t('dashboard.recentTasksHint') }}</p>
-        <div class="hairline mt-6" />
-
-        <div v-if="tasksLoading" class="space-y-1 pt-3">
-          <div v-for="i in 3" :key="i" class="h-12 animate-pulse rounded-md bg-surface-sunken" />
-        </div>
-
-        <div v-else-if="recentTasks.length" class="pt-2">
-          <div
-            v-for="run in recentTasks"
-            :key="run.id"
-            class="metric-row"
-          >
-            <div class="min-w-0">
-              <p class="truncate text-sm font-medium text-text-main">{{ run.taskName }}</p>
-              <p class="mt-1 text-xs text-text-tertiary">{{ formatDateTime(run.finishedAt || run.startedAt) }}</p>
-            </div>
-            <span :class="['text-[11px] font-semibold uppercase tracking-[0.14em]', taskClass(run)]">
-              {{ taskLabel(run) }}
-            </span>
+          <div v-else class="flex flex-1 flex-col items-center justify-center py-8 text-center">
+            <ActivityIcon class="mx-auto mb-3 h-8 w-8 text-text-tertiary" />
+            <p class="text-sm text-text-secondary">{{ $t('dashboard.noTaskRuns') }}</p>
           </div>
-        </div>
-
-        <div v-else class="pt-8 text-center">
-          <ActivityIcon class="mx-auto mb-3 h-6 w-6 text-text-tertiary" />
-          <p class="text-sm text-text-secondary">{{ $t('dashboard.noTaskRuns') }}</p>
-        </div>
-
-        <div class="mt-6">
-          <NuxtLink to="/ops/tasks" class="btn-text">
-            {{ $t('dashboard.viewAll') }}
-            <ArrowRightIcon class="h-3.5 w-3.5" />
-          </NuxtLink>
         </div>
       </div>
 
@@ -240,21 +254,12 @@ import {
 
 const { t } = useI18n();
 
-const [
-  domainsFetch,
-  actionsFetch,
-  sslFetch,
-  notificationsFetch,
-  tasksFetch,
-  costsFetch,
-] = await Promise.all([
-  useFetch('/api/domains', { query: { limit: 200 } }),
-  useFetch('/api/actions', { query: { status: 'OPEN', limit: 5 } }),
-  useFetch('/api/ssl'),
-  useFetch('/api/notifications', { query: { status: 'FAILED', limit: 5 } }),
-  useFetch('/api/tasks/runs', { query: { limit: 3 } }),
-  useFetch('/api/costs/summary', { query: { year: new Date().getFullYear() } }),
-]);
+const domainsFetch = useLazyFetch('/api/domains', { query: { limit: 200 } });
+const actionsFetch = useLazyFetch('/api/actions', { query: { status: 'OPEN', limit: 5 } });
+const sslFetch = useLazyFetch('/api/ssl');
+const notificationsFetch = useLazyFetch('/api/notifications', { query: { status: 'FAILED', limit: 5 } });
+const tasksFetch = useLazyFetch('/api/tasks/runs', { query: { limit: 3 } });
+const costsFetch = useLazyFetch('/api/costs/summary', { query: { year: new Date().getFullYear() } });
 
 const { data: domainsData, pending: domainsLoading } = domainsFetch;
 const { data: actionsData, pending: actionsLoading } = actionsFetch;
@@ -286,9 +291,9 @@ const wantedCount = computed(() => domainItems.value.filter((d) => d.watchKind =
 
 const quickLinks = computed(() => [
   { to: '/domains', label: t('nav.domains') },
-  { to: '/ops/actions', label: t('nav.actions') },
+  { to: '/actions', label: t('nav.actions') },
   { to: '/ssl', label: t('nav.ssl') },
-  { to: '/data/costs', label: t('nav.costs') },
+  { to: '/costs', label: t('nav.costs') },
   { to: '/notifications', label: t('nav.notifications') },
 ]);
 
@@ -307,7 +312,7 @@ const metrics = computed(() => [
     label: t('dashboard.metrics.actions'),
     value: actionsLoading.value ? '—' : actionsData.value?.data?.total || 0,
     hint: t('dashboard.metrics.actionsHint'),
-    to: '/ops/actions',
+    to: '/actions',
     icon: ListTodoIcon,
     iconClass: 'text-status-expiring',
   },
@@ -316,7 +321,7 @@ const metrics = computed(() => [
     label: t('dashboard.metrics.costs'),
     value: costsLoading.value ? '—' : formatCurrency(costSummary.value.total || 0, costSummary.value.currency),
     hint: t('dashboard.metrics.costsHint', { year: new Date().getFullYear() }),
-    to: '/data/costs',
+    to: '/costs',
     icon: DollarSignIcon,
     iconClass: 'text-priority-low',
   },

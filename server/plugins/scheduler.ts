@@ -1,8 +1,4 @@
-import {
-  runBrandWatchScan,
-  runDomainScan,
-  runDailySummary,
-} from "../utils/tasks";
+import { runDomainScan, runDailySummary } from "../utils/tasks";
 import {
   getNextDailyRun,
   getNextHourlyRun,
@@ -56,22 +52,8 @@ export default defineNitroPlugin((nitroApp) => {
     },
   );
 
-  const stopBrandWatchScan = scheduleRecurringTask(
-    "Brand watch scan",
-    (now) => getNextHourlyRun(now, timezone),
-    async () => {
-      try {
-        console.log("Triggering brand watch scan...");
-        await runBrandWatchScan();
-      } catch (e: any) {
-        console.error("Brand watch scan failed:", e?.message || e);
-      }
-    },
-  );
-
   nitroApp.hooks.hookOnce("close", () => {
     stopHourlyScan();
     stopDailySummary();
-    stopBrandWatchScan();
   });
 });

@@ -26,9 +26,7 @@ export default defineEventHandler(async (event) => {
     const trimmedName = body.name.trim().slice(0, 80);
     if (!trimmedName) return fail("Name required", 40000);
     const isDefault = !!body.isDefault;
-    const scope = normalizeSavedFilterScope(
-      body.scope || body.criteria?._scope || body.criteria?.scope,
-    );
+    const scope = normalizeSavedFilterScope(body.scope);
     const criteria = withSavedFilterScope(body.criteria, scope);
 
     if (isDefault) {

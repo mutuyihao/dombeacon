@@ -99,7 +99,6 @@ export const formatPushPayload = (
     SSL_EXPIRING: `🔒 ${domain} SSL expiring`,
     SSL_INVALID: `🔒 ${domain} SSL invalid`,
     SECURITY_FINDING_HIGH: `Security risk: ${domain}`,
-    BRAND_WATCH_REGISTERED: `Brand Watch: ${domain}`,
     SCAN_FAILED: `❌ Scan failed: ${domain}`,
     DAILY_SUMMARY: `📊 Daily Summary`,
     DROPPING_ALERT: `🚨 Domains dropping`,
@@ -109,7 +108,7 @@ export const formatPushPayload = (
   return {
     title: titleMap[eventType] || `DomBeacon: ${eventType}`,
     body: eventData?.message || JSON.stringify(eventData).slice(0, 200),
-    icon: "/icons/icon-192.png",
+    icon: "/icons/icon-192.svg",
     url: "/actions",
     data: { eventType, ...eventData },
   };

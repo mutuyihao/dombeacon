@@ -24,8 +24,8 @@ FROM ${NODE_IMAGE}
 
 WORKDIR /app
 
-# Runtime only needs SQLite libraries; native modules are built in the builder stage.
-RUN apk add --no-cache sqlite
+# Runtime only needs SQLite shared libraries; the native .node files are compiled in the builder stage.
+RUN apk add --no-cache sqlite-libs
 
 COPY --from=builder /app/.output ./.output
 

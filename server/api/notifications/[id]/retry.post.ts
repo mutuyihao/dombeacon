@@ -7,8 +7,10 @@ import {
 import { sendMail, getTemplate } from "../../../utils/mail";
 import { sendWebhook } from "../../../utils/webhook";
 import {
+  applyServerchanOptions,
   sendServerchan,
   formatServerchanMessage,
+  parseServerchanOptions,
 } from "../../../utils/serverchan";
 import {
   parseProtectedJson,
@@ -104,9 +106,11 @@ export default defineEventHandler(async (event) => {
           const message = metadata.eventData
             ? formatServerchanMessage(original.eventType, metadata.eventData)
             : { title: metadata.message?.title || "Retry", desp: "", short: "" };
+          const options = parseServerchanOptions(config.optionsJson);
           success_ = await sendServerchan(
             revealSecretText(config.sendKey),
-            message,
+            applyServerchanOptions(message, options),
+            options.timeoutMs,
           );
         }
       }

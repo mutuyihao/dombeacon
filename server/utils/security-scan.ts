@@ -15,7 +15,6 @@ import { useDb } from "./db";
 import { notifySecurityFinding } from "./risk-notifications";
 
 export type RiskSeverity = "LOW" | "MEDIUM" | "HIGH";
-export type RiskFindingStatus = "OPEN" | "SNOOZED" | "DISMISSED" | "RESOLVED";
 
 export type DnsSecurityRecords = {
   domain: string;

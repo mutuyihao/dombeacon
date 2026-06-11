@@ -1,5 +1,6 @@
 import { serverchanConfigs } from "~/server/db/schema";
 import { maskSecretText } from "~/server/utils/secrets";
+import { parseServerchanOptions } from "~/server/utils/serverchan";
 
 const parseEventTypes = (value: string | null | undefined) => {
   try {
@@ -20,6 +21,7 @@ export default defineEventHandler(async (event) => {
       name: config.name,
       sendKeyMasked: maskSecretText(config.sendKey),
       eventTypes: parseEventTypes(config.eventTypes),
+      options: parseServerchanOptions(config.optionsJson),
       enabled: Boolean(config.enabled),
       createdAt: config.createdAt,
     })),

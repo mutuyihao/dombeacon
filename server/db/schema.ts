@@ -52,19 +52,27 @@ export const domainStatusLatest = sqliteTable(
   }),
 );
 
-export const domainStatusHistory = sqliteTable("domain_status_history", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  domainId: integer("domain_id").references(() => domains.id, {
-    onDelete: "cascade",
+export const domainStatusHistory = sqliteTable(
+  "domain_status_history",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    domainId: integer("domain_id").references(() => domains.id, {
+      onDelete: "cascade",
+    }),
+    status: text("status").notNull(),
+    checkedAt: integer("checked_at", { mode: "timestamp" }),
+    expiresAt: integer("expires_at", { mode: "timestamp" }),
+    source: text("source"),
+    rawSnapshot: text("raw_snapshot"),
+    rdapSummaryJson: text("rdap_summary_json"),
+    parseReason: text("parse_reason"),
+  },
+  (table) => ({
+    domainIdIdx: index("idx_domain_status_history_domain_id").on(
+      table.domainId,
+    ),
   }),
-  status: text("status").notNull(),
-  checkedAt: integer("checked_at", { mode: "timestamp" }),
-  expiresAt: integer("expires_at", { mode: "timestamp" }),
-  source: text("source"),
-  rawSnapshot: text("raw_snapshot"),
-  rdapSummaryJson: text("rdap_summary_json"),
-  parseReason: text("parse_reason"),
-});
+);
 
 export const notificationRules = sqliteTable("notification_rules", {
   id: integer("id").primaryKey({ autoIncrement: true }),
@@ -165,82 +173,6 @@ export const riskFindings = sqliteTable(
   }),
 );
 
-export const brandWatchTerms = sqliteTable(
-  "brand_watch_terms",
-  {
-    id: integer("id").primaryKey({ autoIncrement: true }),
-    term: text("term").notNull(),
-    normalizedTerm: text("normalized_term").notNull(),
-    termType: text("term_type").notNull().default("BRAND"),
-    matchStrategy: text("match_strategy").notNull().default("STANDARD"),
-    tldsJson: text("tlds_json").notNull().default('["com","net","org"]'),
-    severity: text("severity").notNull().default("MEDIUM"),
-    enabled: integer("enabled", { mode: "boolean" }).default(true),
-    scanFrequencyHours: integer("scan_frequency_hours").default(24),
-    lastScannedAt: integer("last_scanned_at", { mode: "timestamp" }),
-    createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(
-      () => new Date(),
-    ),
-    updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(
-      () => new Date(),
-    ),
-  },
-  (table) => ({
-    normalizedTermIdx: index("idx_brand_watch_terms_normalized_term_v12").on(
-      table.normalizedTerm,
-    ),
-    enabledIdx: index("idx_brand_watch_terms_enabled_v12").on(table.enabled),
-    severityIdx: index("idx_brand_watch_terms_severity_v12").on(
-      table.severity,
-    ),
-  }),
-);
-
-export const brandWatchCandidates = sqliteTable(
-  "brand_watch_candidates",
-  {
-    id: integer("id").primaryKey({ autoIncrement: true }),
-    termId: integer("term_id").references(() => brandWatchTerms.id, {
-      onDelete: "cascade",
-    }).notNull(),
-    domain: text("domain").notNull(),
-    label: text("label").notNull(),
-    tld: text("tld").notNull(),
-    mutationType: text("mutation_type").notNull(),
-    status: text("status").notNull().default("UNKNOWN"),
-    severity: text("severity").notNull().default("MEDIUM"),
-    source: text("source").notNull().default("rdap"),
-    evidenceJson: text("evidence_json"),
-    reviewStatus: text("review_status").notNull().default("OPEN"),
-    reviewNote: text("review_note"),
-    reviewedAt: integer("reviewed_at", { mode: "timestamp" }),
-    reviewedBy: text("reviewed_by"),
-    firstSeenAt: integer("first_seen_at", { mode: "timestamp" }),
-    lastSeenAt: integer("last_seen_at", { mode: "timestamp" }),
-    checkedAt: integer("checked_at", { mode: "timestamp" }),
-    lastError: text("last_error"),
-    createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(
-      () => new Date(),
-    ),
-    updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(
-      () => new Date(),
-    ),
-  },
-  (table) => ({
-    termIdIdx: index("idx_brand_watch_candidates_term_id_v12").on(
-      table.termId,
-    ),
-    domainIdx: index("idx_brand_watch_candidates_domain_v12").on(table.domain),
-    statusIdx: index("idx_brand_watch_candidates_status_v12").on(table.status),
-    reviewStatusIdx: index("idx_brand_watch_candidates_review_status_v12").on(
-      table.reviewStatus,
-    ),
-    lastSeenAtIdx: index("idx_brand_watch_candidates_last_seen_at_v12").on(
-      table.lastSeenAt,
-    ),
-  }),
-);
-
 export const taskLocks = sqliteTable("task_locks", {
   taskName: text("task_name").primaryKey(),
   lockedUntil: integer("locked_until", { mode: "timestamp" }),
@@ -270,11 +202,13 @@ export const actions = sqliteTable(
     ),
     snoozedUntil: integer("snoozed_until", { mode: "timestamp" }),
     resolvedAt: integer("resolved_at", { mode: "timestamp" }),
+    archivedAt: integer("archived_at", { mode: "timestamp" }),
     metadata: text("metadata"), // JSON: { oldStatus, newStatus, expiresAt, error, etc. }
   },
   (table) => ({
     triggeredAtIdx: index("idx_actions_triggered_at_v12").on(table.triggeredAt),
     actionTypeIdx: index("idx_actions_action_type_v12").on(table.actionType),
+    archivedAtIdx: index("idx_actions_archived_at_v13").on(table.archivedAt),
   }),
 );
 
@@ -297,6 +231,7 @@ export const notificationEvents = sqliteTable(
     errorMessage: text("error_message"),
     metadata: text("metadata"), // JSON: additional context
     retryOf: integer("retry_of"), // ID of original notification_event that this is a retry of
+    archivedAt: integer("archived_at", { mode: "timestamp" }),
     createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(
       () => new Date(),
     ),
@@ -314,6 +249,9 @@ export const notificationEvents = sqliteTable(
       table.createdAt,
     ),
     sentAtIdx: index("idx_notification_events_sent_at_v12").on(table.sentAt),
+    archivedAtIdx: index("idx_notification_events_archived_at_v13").on(
+      table.archivedAt,
+    ),
   }),
 );
 
@@ -338,6 +276,7 @@ export const serverchanConfigs = sqliteTable("serverchan_configs", {
   sendKey: text("send_key").notNull(), // Server酱 SendKey
   enabled: integer("enabled", { mode: "boolean" }).default(true),
   eventTypes: text("event_types"), // JSON array: which events to send
+  optionsJson: text("options_json"), // Protected JSON: channel/noip/openid/tags/title prefix
   createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(
     () => new Date(),
   ),
@@ -371,21 +310,27 @@ export const sslStatusLatest = sqliteTable(
 );
 
 // SSL 证书历史记录表 (v1.1)
-export const sslStatusHistory = sqliteTable("ssl_status_history", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  domainId: integer("domain_id").references(() => domains.id, {
-    onDelete: "cascade",
+export const sslStatusHistory = sqliteTable(
+  "ssl_status_history",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    domainId: integer("domain_id").references(() => domains.id, {
+      onDelete: "cascade",
+    }),
+    checkedHost: text("checked_host"),
+    hasSSL: integer("has_ssl", { mode: "boolean" }),
+    isValid: integer("is_valid", { mode: "boolean" }),
+    issuer: text("issuer"),
+    validFrom: integer("valid_from", { mode: "timestamp" }),
+    validTo: integer("valid_to", { mode: "timestamp" }),
+    daysUntilExpiry: integer("days_until_expiry"),
+    validationError: text("validation_error"),
+    checkedAt: integer("checked_at", { mode: "timestamp" }),
+  },
+  (table) => ({
+    domainIdIdx: index("idx_ssl_status_history_domain_id").on(table.domainId),
   }),
-  checkedHost: text("checked_host"),
-  hasSSL: integer("has_ssl", { mode: "boolean" }),
-  isValid: integer("is_valid", { mode: "boolean" }),
-  issuer: text("issuer"),
-  validFrom: integer("valid_from", { mode: "timestamp" }),
-  validTo: integer("valid_to", { mode: "timestamp" }),
-  daysUntilExpiry: integer("days_until_expiry"),
-  validationError: text("validation_error"),
-  checkedAt: integer("checked_at", { mode: "timestamp" }),
-});
+);
 
 // 域名成本表 (v1.1)
 export const domainCosts = sqliteTable(

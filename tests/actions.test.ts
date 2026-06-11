@@ -32,6 +32,7 @@ describe("getActionsWithDomains()", () => {
         triggered_at INTEGER,
         snoozed_until INTEGER,
         resolved_at INTEGER,
+        archived_at INTEGER,
         metadata TEXT
       );
     `);
