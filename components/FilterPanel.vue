@@ -152,7 +152,7 @@
 </template>
 
 <script setup>
-import { Sliders as SlidersIcon, ChevronDown as ChevronDownIcon, X as XIcon } from 'lucide-vue-next';
+import { Sliders as SlidersIcon, ChevronDown as ChevronDownIcon, X as XIcon } from '@lucide/vue';
 
 const props = defineProps({
   modelValue: { type: Object, required: true },

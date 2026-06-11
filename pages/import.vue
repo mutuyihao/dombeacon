@@ -142,7 +142,7 @@ import {
   CheckCircle as CheckCircleIcon,
   AlertCircle as AlertCircleIcon,
   ChevronDown as ChevronDownIcon,
-} from 'lucide-vue-next';
+} from '@lucide/vue';
 import { unwrapApiEnvelope } from '~/utils/api-envelope';
 
 const { t } = useI18n();

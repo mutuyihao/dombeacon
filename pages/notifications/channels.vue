@@ -373,7 +373,7 @@ import {
   Webhook as WebhookIcon,
   Key as KeyIcon,
   MessageSquare as MessageSquareIcon,
-} from 'lucide-vue-next';
+} from '@lucide/vue';
 import { unwrapApiEnvelope } from '~/utils/api-envelope';
 
 const { t } = useI18n();

@@ -67,7 +67,7 @@
 
 <script setup>
 import { TransitionRoot, TransitionChild, Dialog, DialogPanel, DialogTitle } from '@headlessui/vue';
-import { X as XIcon } from 'lucide-vue-next';
+import { X as XIcon } from '@lucide/vue';
 
 const props = defineProps({
   isOpen: { type: Boolean, default: false },

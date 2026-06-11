@@ -26,7 +26,7 @@
 </template>
 
 <script setup>
-import { AlertTriangle, AlertCircle, Info, Trash2 } from 'lucide-vue-next';
+import { AlertTriangle, AlertCircle, Info, Trash2 } from '@lucide/vue';
 
 const props = defineProps({
   isOpen: Boolean,

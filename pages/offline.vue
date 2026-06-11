@@ -20,7 +20,7 @@
 </template>
 
 <script setup>
-import { WifiOff as WifiOffIcon } from 'lucide-vue-next';
+import { WifiOff as WifiOffIcon } from '@lucide/vue';
 
 const retry = () => {
   if (import.meta.client) {

@@ -136,7 +136,7 @@
 </template>
 
 <script setup>
-import { Plus as PlusIcon, X as XIcon } from 'lucide-vue-next';
+import { Plus as PlusIcon, X as XIcon } from '@lucide/vue';
 
 const props = defineProps({
   isOpen: Boolean,

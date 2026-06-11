@@ -137,7 +137,7 @@ import {
   Clock as ClockIcon,
   AlertCircle as AlertCircleIcon,
   Globe as GlobeIcon,
-} from 'lucide-vue-next';
+} from '@lucide/vue';
 import { unwrapApiEnvelope } from '~/utils/api-envelope';
 
 const { t } = useI18n();

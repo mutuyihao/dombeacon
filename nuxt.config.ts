@@ -60,7 +60,7 @@ export default defineNuxtConfig({
   vite: {
     plugins: [tailwindcss()],
     optimizeDeps: {
-      include: ["lucide-vue-next", "date-fns", "@headlessui/vue"],
+      include: ["@lucide/vue", "date-fns", "@headlessui/vue"],
     },
     build: {
       modulePreload: { polyfill: false },

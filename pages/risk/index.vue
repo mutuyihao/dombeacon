@@ -256,7 +256,7 @@ import {
   RefreshCw as RefreshCwIcon,
   ShieldAlert as ShieldAlertIcon,
   ShieldCheck as ShieldCheckIcon,
-} from 'lucide-vue-next';
+} from '@lucide/vue';
 
 const { t, locale } = useI18n();
 

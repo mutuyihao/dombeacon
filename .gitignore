@@ -10,6 +10,13 @@ dist
 node_modules
 .npm-cache
 
+# This project is pnpm-only; do not commit alternate package-manager locks.
+package-lock.json
+npm-shrinkwrap.json
+yarn.lock
+bun.lock
+bun.lockb
+
 # Logs
 logs
 *.log

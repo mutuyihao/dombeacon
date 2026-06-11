@@ -117,7 +117,7 @@ import {
   DollarSign as DollarSignIcon,
   Loader2 as Loader2Icon,
   UploadCloud as UploadCloudIcon,
-} from 'lucide-vue-next';
+} from '@lucide/vue';
 import { unwrapApiEnvelope } from '~/utils/api-envelope';
 
 const { t } = useI18n();

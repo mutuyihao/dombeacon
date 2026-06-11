@@ -246,7 +246,7 @@ import {
   Save as SaveIcon,
   Star as StarIcon,
   Trash2 as Trash2Icon,
-} from 'lucide-vue-next';
+} from '@lucide/vue';
 import { Popover, PopoverButton, PopoverPanel } from '@headlessui/vue';
 import { unwrapApiEnvelope } from '~/utils/api-envelope';
 

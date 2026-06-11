@@ -482,7 +482,7 @@
 
 <script setup>
 import { format } from 'date-fns';
-import { AlertCircle as AlertCircleIcon, CheckCircle as CheckCircleIcon, ChevronDown as ChevronDownIcon } from 'lucide-vue-next';
+import { AlertCircle as AlertCircleIcon, CheckCircle as CheckCircleIcon, ChevronDown as ChevronDownIcon } from '@lucide/vue';
 import { unwrapApiEnvelope } from '~/utils/api-envelope';
 
 const { t } = useI18n();

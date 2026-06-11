@@ -125,7 +125,7 @@ import {
   Play as PlayIcon,
   Trash as TrashIcon,
   MessageSquare as MessageSquareIcon,
-} from 'lucide-vue-next';
+} from '@lucide/vue';
 import { unwrapApiEnvelope } from '~/utils/api-envelope';
 
 const { t } = useI18n();

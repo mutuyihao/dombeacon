@@ -185,7 +185,7 @@ import {
   Radar as RadarIcon,
   Sun as SunIcon,
   X as XIcon,
-} from 'lucide-vue-next';
+} from '@lucide/vue';
 
 const route = useRoute();
 const { locale, setLocale, t } = useI18n();

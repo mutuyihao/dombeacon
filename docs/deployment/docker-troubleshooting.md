@@ -132,18 +132,18 @@ curl http://localhost:8080
 # 使用 Alpine Linux (已采用)
 FROM node:24-alpine
 
-# 清理 npm 缓存
-RUN npm cache clean --force
+# 清理 pnpm store
+RUN pnpm store prune
 
 # 仅安装生产依赖
-RUN npm install --production
+RUN pnpm install --prod --frozen-lockfile
 ```
 
 ### 构建缓存优化
 ```dockerfile
-# 先复制 package.json (利用缓存)
-COPY package*.json ./
-RUN npm install
+# 先复制 package.json + pnpm-lock.yaml (利用缓存)
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
 
 # 再复制源代码
 COPY . .

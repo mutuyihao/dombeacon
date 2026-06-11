@@ -205,7 +205,7 @@
 import {
   RefreshCw as RefreshIcon,
   Bell as BellIcon,
-} from 'lucide-vue-next';
+} from '@lucide/vue';
 import { unwrapApiEnvelope } from '~/utils/api-envelope';
 
 const { t } = useI18n();

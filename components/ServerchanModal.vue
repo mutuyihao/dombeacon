@@ -216,7 +216,7 @@
 </template>
 
 <script setup>
-import { Info as InfoIcon } from 'lucide-vue-next';
+import { Info as InfoIcon } from '@lucide/vue';
 
 const props = defineProps({
   isOpen: Boolean,

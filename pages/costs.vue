@@ -183,7 +183,7 @@ import {
   TrendingUp as TrendingUpIcon,
   Calendar as CalendarIcon,
   Trash as TrashIcon,
-} from 'lucide-vue-next';
+} from '@lucide/vue';
 import { unwrapApiEnvelope } from '~/utils/api-envelope';
 
 const { t } = useI18n();

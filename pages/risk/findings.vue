@@ -411,7 +411,7 @@ import {
   Save as SaveIcon,
   Star as StarIcon,
   Trash2 as TrashIcon,
-} from 'lucide-vue-next';
+} from '@lucide/vue';
 
 const route = useRoute();
 const router = useRouter();

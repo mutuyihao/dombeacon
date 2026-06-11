@@ -110,7 +110,7 @@ import {
   Play as PlayIcon,
   Trash as TrashIcon,
   Webhook as WebhookIcon,
-} from 'lucide-vue-next';
+} from '@lucide/vue';
 import { unwrapApiEnvelope } from '~/utils/api-envelope';
 
 const { t } = useI18n();

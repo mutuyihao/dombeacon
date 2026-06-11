@@ -29,7 +29,7 @@
 </template>
 
 <script setup>
-import { CheckCircle2, AlertCircle, Info, AlertTriangle, X as XIcon } from 'lucide-vue-next';
+import { CheckCircle2, AlertCircle, Info, AlertTriangle, X as XIcon } from '@lucide/vue';
 
 const toasts = useState('toasts', () => []);
 

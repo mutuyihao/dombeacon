@@ -84,7 +84,7 @@
 </template>
 
 <script setup>
-import { Loader2 as Loader2Icon, RefreshCw as RefreshCwIcon, ShieldAlert as ShieldAlertIcon, Trash2 as Trash2Icon } from 'lucide-vue-next';
+import { Loader2 as Loader2Icon, RefreshCw as RefreshCwIcon, ShieldAlert as ShieldAlertIcon, Trash2 as Trash2Icon } from '@lucide/vue';
 import { format } from 'date-fns';
 
 const props = defineProps({

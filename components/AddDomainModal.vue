@@ -80,7 +80,7 @@
 
 <script setup>
 import { ref, reactive, computed, watch } from 'vue';
-import { Loader2 as Loader2Icon } from 'lucide-vue-next';
+import { Loader2 as Loader2Icon } from '@lucide/vue';
 import { unwrapApiEnvelope } from '~/utils/api-envelope';
 import { isValidDomainName, normalizeDomainInput } from '~/utils/domain';
 
