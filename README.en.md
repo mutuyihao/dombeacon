@@ -232,3 +232,7 @@ pnpm build
 ## License
 
 MIT
+
+## Acknowledgements
+
+This project received help from the [LINUX DO](https://linux.do/latest) community during development. The product is released to the community, and its support is appreciated.

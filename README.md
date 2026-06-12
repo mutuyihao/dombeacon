@@ -232,3 +232,7 @@ pnpm build
 ## 许可证
 
 MIT
+
+## 致谢
+
+本项目开发过程中获得了 [LINUX DO](https://linux.do/latest) 社区佬友的帮助，本产品会在社区发布，感谢社区的支持。
