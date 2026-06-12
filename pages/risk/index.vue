@@ -276,12 +276,14 @@ const postureLevel = computed(() => {
   return 'clear';
 });
 
-const postureTitle = computed(() => t(`risk.posture.${postureLevel.value}.title`));
+const postureCounts = computed(() => ({
+  open: summary.value.openFindings || 0,
+  high: summary.value.highOpenFindings || 0,
+}));
+
+const postureTitle = computed(() => t(`risk.posture.${postureLevel.value}.title`, postureCounts.value));
 const postureDescription = computed(() =>
-  t(`risk.posture.${postureLevel.value}.description`, {
-    open: summary.value.openFindings || 0,
-    high: summary.value.highOpenFindings || 0,
-  }),
+  t(`risk.posture.${postureLevel.value}.description`, postureCounts.value),
 );
 const postureIcon = computed(() => (postureLevel.value === 'clear' ? CheckCircleIcon : ShieldAlertIcon));
 const postureIconClass = computed(() =>
