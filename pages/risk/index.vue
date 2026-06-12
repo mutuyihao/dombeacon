@@ -159,10 +159,10 @@
       </article>
     </section>
 
-    <section class="grid gap-5 xl:grid-cols-2">
-      <article class="surface p-5">
+    <section class="grid min-w-0 gap-5 xl:grid-cols-2">
+      <article class="surface min-w-0 overflow-hidden p-5">
         <div class="flex items-center justify-between gap-3">
-          <div>
+          <div class="min-w-0">
             <p class="eyebrow mb-2">{{ t('risk.domains.kicker') }}</p>
             <h2 class="headline-display text-2xl">{{ t('risk.domains.title') }}</h2>
           </div>
@@ -177,9 +177,9 @@
             v-for="domain in topRiskDomains"
             :key="domain.domainId"
             :to="findingQueueLink({ status: 'OPEN', domainId: domain.domainId })"
-            class="group flex items-center justify-between gap-4 py-4"
+            class="group flex min-w-0 items-center justify-between gap-4 py-4"
           >
-            <div class="min-w-0">
+            <div class="min-w-0 flex-1">
               <p class="truncate font-mono text-sm font-medium text-text-main group-hover:text-accent">
                 {{ domain.domain || `#${domain.domainId}` }}
               </p>
@@ -190,7 +190,7 @@
                 }) }}
               </p>
             </div>
-            <div class="text-right">
+            <div class="shrink-0 text-right">
               <p class="font-sans text-2xl font-bold tracking-tight text-text-main">{{ domain.riskScore }}</p>
               <p :class="['text-[10px] font-semibold uppercase tracking-[0.12em]', severityTextClass(domain.highestSeverity)]">
                 {{ severityLabel(domain.highestSeverity || 'LOW') }}
@@ -203,9 +203,9 @@
         </p>
       </article>
 
-      <article class="surface p-5">
+      <article class="surface min-w-0 overflow-hidden p-5">
         <div class="flex items-center justify-between gap-3">
-          <div>
+          <div class="min-w-0">
             <p class="eyebrow mb-2">{{ t('risk.stream.kicker') }}</p>
             <h2 class="headline-display text-2xl">{{ t('risk.stream.title') }}</h2>
           </div>
@@ -217,10 +217,10 @@
             v-for="finding in recentFindings"
             :key="finding.id"
             :to="findingQueueLink({ status: 'OPEN', domainId: finding.domainId, findingType: finding.findingType })"
-            class="group block py-4"
+            class="group block min-w-0 py-4"
           >
-            <div class="flex items-start justify-between gap-4">
-              <div class="min-w-0">
+            <div class="flex min-w-0 items-start justify-between gap-4">
+              <div class="min-w-0 flex-1">
                 <p class="truncate font-mono text-sm font-medium text-text-main group-hover:text-accent">
                   {{ finding.domain || `#${finding.domainId}` }}
                 </p>
@@ -230,10 +230,10 @@
                 {{ severityLabel(finding.severity) }}
               </span>
             </div>
-            <p class="mt-2 line-clamp-2 text-xs leading-5 text-text-secondary">
+            <p class="mt-2 line-clamp-2 break-words text-xs leading-5 text-text-secondary">
               {{ findingEvidence(finding) }}
             </p>
-            <p class="mt-2 font-mono text-[11px] text-text-tertiary">
+            <p class="mt-2 break-words font-mono text-[11px] text-text-tertiary">
               {{ t('risk.stream.lastSeen', { time: formatDate(finding.lastSeenAt || finding.firstSeenAt) }) }}
             </p>
           </NuxtLink>
